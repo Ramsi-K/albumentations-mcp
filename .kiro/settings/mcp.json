@@ -5,28 +5,53 @@
       "args": ["mcp-server-fetch"],
       "env": {},
       "disabled": false,
-      "autoApprove": ["fetch"]
+      "autoApprove": ["mcp_fetch_fetch"]
     },
     "memory": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-memory"],
       "env": {},
       "disabled": false,
-      "autoApprove": ["create_memory", "search_memory"]
+      "autoApprove": [
+        "mcp_memory_create_entities",
+        "mcp_memory_create_relations",
+        "mcp_memory_add_observations",
+        "mcp_memory_delete_entities",
+        "mcp_memory_delete_observations",
+        "mcp_memory_delete_relations",
+        "mcp_memory_read_graph",
+        "mcp_memory_search_nodes",
+        "mcp_memory_open_nodes"
+      ]
     },
     "sequential-thinking": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
       "env": {},
       "disabled": false,
-      "autoApprove": ["think_sequentially"]
+      "autoApprove": ["mcp_sequential_thinking_sequentialthinking"]
     },
     "filesystem": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
       "env": {},
       "disabled": false,
-      "autoApprove": ["read_file", "list_directory"]
+      "autoApprove": [
+        "mcp_filesystem_read_file",
+        "mcp_filesystem_read_text_file",
+        "mcp_filesystem_read_media_file",
+        "mcp_filesystem_read_multiple_files",
+        "mcp_filesystem_write_file",
+        "mcp_filesystem_edit_file",
+        "mcp_filesystem_create_directory",
+        "mcp_filesystem_list_directory",
+        "mcp_filesystem_list_directory_with_sizes",
+        "mcp_filesystem_directory_tree",
+        "mcp_filesystem_move_file",
+        "mcp_filesystem_search_files",
+        "mcp_filesystem_get_file_info",
+        "mcp_filesystem_list_allowed_directories"
+      ]
     }
   }
 }
