@@ -13,15 +13,9 @@
 ```python
 # Core MCP and processing
 mcp>=1.0.0
-pydantic>=2.0.0
 albumentations>=1.3.0
 pillow>=9.0.0
 numpy>=1.21.0
-
-# Async and web framework
-uvicorn>=0.20.0
-fastapi>=0.100.0  # Optional web interface
-asyncio
 
 # Logging and monitoring
 structlog>=22.0.0
@@ -38,11 +32,10 @@ pre-commit>=3.0.0
 
 ## Architecture Patterns
 
-- **Layered Architecture**: MCP Interface → Processing Pipeline → Analysis → Storage
-- **Hook System**: 8-stage extensible pipeline with priority-based execution
-- **Dependency Injection**: Modular components with interface-based design
-- **Async/Await**: Full async support for concurrent processing
-- **Pydantic Models**: Type-safe data validation and serialization
+- **Simple MCP Tools**: Use `@mcp.tool()` decorators for function registration
+- **FastMCP Library**: Built-in MCP protocol handling via `mcp.run("stdio")`
+- **Minimal Dependencies**: Just MCP + Albumentations + Pillow
+- **Direct Processing**: Simple function calls without complex pipelines
 
 ## Build Commands
 
@@ -95,49 +88,34 @@ pre-commit run --all-files
 
 ```bash
 # Run as MCP server (for Kiro integration)
-python -m albumentations_mcp.main
+python main.py
 
 # Run with specific configuration
-MCP_LOG_LEVEL=DEBUG python -m albumentations_mcp.main
+MCP_LOG_LEVEL=DEBUG python main.py
 
-# Docker deployment
-docker build -t albumentations-mcp .
-docker run -p 8000:8000 albumentations-mcp
+# Test with MCP Inspector (if available)
+# Server runs on stdio, not HTTP ports
 ```
 
 ## Project Structure
 
 ```
-src/albumentations_mcp/
-├── main.py              # MCP server entrypoint
-├── server.py            # MCP protocol implementation
-├── models.py            # Pydantic data models
-├── parser.py            # Natural language parsing
-├── processor.py         # Image processing engine
-├── hooks/               # 8-stage hook system
-│   ├── pre_mcp.py
-│   ├── post_mcp.py
-│   ├── pre_transform.py
-│   ├── post_transform.py
-│   ├── post_transform_verify.py
-│   ├── post_transform_classify.py
-│   ├── pre_save.py
-│   └── post_save.py
-├── analysis/            # Vision and classification
-│   ├── vision.py
-│   └── classification.py
-└── utils/               # Utilities and helpers
+src/
+├── main.py              # FastMCP server with @mcp.tool() decorators
+├── image_utils.py       # Base64 ↔ PIL Image conversion
+├── parser.py            # Simple natural language parsing
+├── transforms.py        # Albumentations transform logic
+└── analysis.py          # Optional vision/classification analysis
 
 tests/
-├── unit/                # Component tests
-├── integration/         # End-to-end tests
-├── fixtures/            # Test data
-└── mocks/               # Mock implementations
+├── test_tools.py        # Test MCP tools
+├── test_parser.py       # Test prompt parsing
+├── test_images.py       # Test image handling
+└── fixtures/            # Test data
 
-prompts/                 # Structured prompt templates
-├── augmentation_parser.txt
-├── vision_verification.txt
-└── classification_reasoning.txt
+prompts/                 # Simple prompt templates (optional)
+├── augmentation_examples.txt
+└── transform_mappings.txt
 ```
 
 ## Configuration
@@ -146,8 +124,6 @@ prompts/                 # Structured prompt templates
 
 ```bash
 # MCP Server Configuration
-MCP_SERVER_HOST=localhost
-MCP_SERVER_PORT=8000
 MCP_LOG_LEVEL=INFO
 
 # Model Configuration
