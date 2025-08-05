@@ -21,7 +21,7 @@ Simple MCP server using FastMCP library for image augmentation tools.
   - Write unit tests for image conversion
   - _Requirements: 1.2, 7.1, 7.2_
 
-- [ ] 3. Build natural language parser
+- [x] 3. Build natural language parser
 
   - Create simple prompt parser using string matching
   - Map phrases to Albumentations transforms ("blur" → Blur)

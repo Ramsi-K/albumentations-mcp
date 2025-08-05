@@ -12,6 +12,8 @@ from PIL import Image
 import io
 import albumentations as A
 import numpy as np
+from src.parser import parse_prompt, validate_prompt, get_available_transforms
+from src.image_utils import base64_to_pil, pil_to_base64
 
 # Initialize FastMCP server
 mcp = FastMCP("albumentations-mcp")
@@ -43,18 +45,38 @@ def list_available_transforms() -> dict:
     Returns:
         Dictionary containing available transforms and their descriptions
     """
-    # TODO: Implement in task 4.2
-    return {
-        "transforms": [
-            {"name": "Blur", "description": "Apply gaussian blur"},
-            {"name": "Rotate", "description": "Rotate image"},
-            # More transforms will be added
-        ]
-    }
+    try:
+        transforms_info = get_available_transforms()
+
+        # Format for MCP response
+        transforms_list = []
+        for name, info in transforms_info.items():
+            transforms_list.append(
+                {
+                    "name": name,
+                    "description": info["description"],
+                    "example_phrases": info["example_phrases"],
+                    "parameters": info["default_parameters"],
+                    "parameter_ranges": info["parameter_ranges"],
+                }
+            )
+
+        return {
+            "transforms": transforms_list,
+            "total_count": len(transforms_list),
+            "message": f"Found {len(transforms_list)} available transforms",
+        }
+    except Exception as e:
+        return {
+            "transforms": [],
+            "total_count": 0,
+            "error": str(e),
+            "message": f"Error retrieving transforms: {str(e)}",
+        }
 
 
 @mcp.tool()
-def validate_prompt(prompt: str) -> dict:
+def validate_prompt_tool(prompt: str) -> dict:
     """Validate and preview what transforms would be applied for a given prompt.
 
     Args:
@@ -63,16 +85,18 @@ def validate_prompt(prompt: str) -> dict:
     Returns:
         Dictionary with validation results and transform preview
     """
-    # TODO: Implement in task 4.3
     try:
-        # Parse prompt logic will be implemented later
-        return {
-            "valid": True,
-            "transforms": [],
-            "message": "Validation not yet implemented",
-        }
+        return validate_prompt(prompt)
     except Exception as e:
-        return {"valid": False, "error": str(e)}
+        return {
+            "valid": False,
+            "confidence": 0.0,
+            "transforms_found": 0,
+            "transforms": [],
+            "warnings": [f"Validation error: {str(e)}"],
+            "suggestions": ["Please check your prompt and try again"],
+            "message": f"Validation failed: {str(e)}",
+        }
 
 
 if __name__ == "__main__":
