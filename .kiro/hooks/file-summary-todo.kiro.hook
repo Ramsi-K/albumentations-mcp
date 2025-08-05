@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "File Summary & TODO Generator",
+  "description": "When creating or editing any file, automatically generate a file summary and comprehensive TODO tree before any code is written. Ensures proper planning and structure.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A file is being created or edited. Before generating any code, you must:\n\n1. **File Summary**: Write a clear, concise summary of what this file does, its purpose, and how it fits into the overall project architecture.\n\n2. **TODO Tree**: Create a comprehensive, hierarchical TODO list that covers:\n   - All major logical sections needed in this file\n   - Key functions, classes, or components to implement\n   - Dependencies and imports required\n   - Error handling considerations\n   - Testing requirements\n   - Documentation needs\n\nThe TODO tree must be clearly structured with proper indentation and cover every aspect of the file implementation. Do not generate any actual code until all TODO items are explicitly defined and the user confirms the structure is complete.\n\nFormat your response as:\n```\n# File Summary\n[Clear description of file purpose and role]\n\n# TODO Tree\n- [ ] Major Section 1\n  - [ ] Subsection 1.1\n  - [ ] Subsection 1.2\n- [ ] Major Section 2\n  - [ ] Subsection 2.1\n  etc.\n```\n\nOnly proceed with code generation after the TODO structure is approved."
+  }
+}
