@@ -13,7 +13,7 @@ Simple MCP server using FastMCP library for image augmentation tools.
   - Create `pyproject.toml` with minimal dependencies (handled by uv)
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-- [ ] 2. Create image handling utilities
+- [x] 2. Create image handling utilities
 
   - Write Base64 ↔ PIL Image conversion functions
   - Add basic image format validation

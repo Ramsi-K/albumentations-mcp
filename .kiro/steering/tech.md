@@ -39,59 +39,63 @@ pre-commit>=3.0.0
 
 ## Build Commands
 
+**IMPORTANT: This project uses UV for dependency management. Always use `uv run` instead of direct python commands.**
+
 ### Development Setup
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
+# Install dependencies (handled automatically by uv)
+uv sync
 
 # Install pre-commit hooks
-pre-commit install
+uv run pre-commit install
 
 # Run development server
-python -m albumentations_mcp.main
+uv run python main.py
 ```
 
 ### Testing
 
 ```bash
 # Run all tests
-pytest
+uv run pytest
 
 # Run with coverage
-pytest --cov=src --cov-report=html
+uv run pytest --cov=src --cov-report=html
 
 # Run specific test categories
-pytest tests/unit/        # Unit tests only
-pytest tests/integration/ # Integration tests only
-pytest -m slow           # Performance tests
+uv run pytest tests/unit/        # Unit tests only
+uv run pytest tests/integration/ # Integration tests only
+uv run pytest -m slow           # Performance tests
+
+# Run specific test file
+uv run pytest tests/test_image_utils.py -v
 ```
 
 ### Code Quality
 
 ```bash
 # Format code
-black src/ tests/
+uv run black src/ tests/
 
 # Lint code
-ruff check src/ tests/
+uv run ruff check src/ tests/
 
 # Type checking
-mypy src/
+uv run mypy src/
 
 # Run all quality checks
-pre-commit run --all-files
+uv run pre-commit run --all-files
 ```
 
 ### MCP Server Deployment
 
 ```bash
 # Run as MCP server (for Kiro integration)
-python main.py
+uv run python main.py
 
 # Run with specific configuration
-MCP_LOG_LEVEL=DEBUG python main.py
+MCP_LOG_LEVEL=DEBUG uv run python main.py
 
 # Test with MCP Inspector (if available)
 # Server runs on stdio, not HTTP ports

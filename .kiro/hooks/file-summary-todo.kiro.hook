@@ -4,7 +4,7 @@
   "description": "When creating or editing any file, automatically generate a file summary and comprehensive TODO tree before any code is written. Ensures proper planning and structure.",
   "version": "1",
   "when": {
-    "type": "fileEdited",
+    "type": "fileCreated",
     "patterns": [
       "**/*"
     ]
