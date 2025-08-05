@@ -2,17 +2,36 @@
   "enabled": true,
   "name": "Task Completion Git Commit",
   "description": "Monitors task completion files and generates detailed git commit messages describing what was accomplished",
-  "version": "1",
-  "when": {
-    "type": "fileEdited",
-    "patterns": [
-      ".kiro/specs/*/tasks.md",
-      "src/**/*.py",
-      "tests/**/*.py",
-      "README.md",
-      "pyproject.toml"
-    ]
-  },
+  "version": "2",
+  "when": [
+    {
+      "type": "fileEdited",
+      "patterns": [".kiro/specs/*/tasks.md", "src/**/*.py", "tests/**/*.py", "README.md", "pyproject.toml"]
+    },
+    {
+      "type": "fileCreated",
+      "patterns": ["src/**/*.py", "tests/**/*.py"]
+    },
+    {
+      "type": "fileSaved",
+      "patterns": [".kiro/specs/*/tasks.md", "src/**/*.py", "tests/**/*.py"]
+    },
+    {
+      "type": "afterTaskCompletion",
+      "patterns": ["**/*"]
+    },
+    {
+      "type": "beforeCommit",
+      "patterns": ["**/*"]
+    },
+    {
+      "type": "taskStatusChanged",
+      "patterns": [".kiro/specs/*/tasks.md"]
+    },
+    {
+      "type": "manual"
+    }
+  ],
   "then": {
     "type": "askAgent",
     "prompt": "A task or subtask has been completed based on file changes. Please analyze the recent changes and generate a detailed git commit message that:\n\n1. Uses conventional commit format (feat:, fix:, docs:, test:, refactor:, etc.)\n2. Clearly describes what was accomplished\n3. Mentions specific files or components that were modified\n4. Explains the impact or benefit of the changes\n5. Keeps the subject line under 50 characters\n6. Includes a detailed body if the changes are complex\n\nConsider the context of this albumentations-mcp project and focus on meaningful, descriptive commit messages that would help other developers understand the progress made."

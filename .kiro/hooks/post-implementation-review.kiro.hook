@@ -1,0 +1,27 @@
+{
+  "enabled": true,
+  "name": "Post-Implementation Review",
+  "description": "Comprehensive review after any code is written or modified",
+  "version": "1",
+  "when": [
+    {
+      "type": "afterTaskCompletion",
+      "patterns": ["**/*"]
+    },
+    {
+      "type": "fileSaved",
+      "patterns": ["src/**/*.py", "tests/**/*.py"]
+    },
+    {
+      "type": "fileEdited",
+      "patterns": ["src/**/*.py", "tests/**/*.py"]
+    },
+    {
+      "type": "manual"
+    }
+  ],
+  "then": {
+    "type": "askAgent",
+    "prompt": "Code has been implemented or modified. Perform a comprehensive review:\n\n1. **Code Quality**: Check for clean code principles, readability, and maintainability\n2. **Error Handling**: Verify proper exception handling and edge case coverage\n3. **Performance**: Identify potential performance issues or optimizations\n4. **Security**: Check for security vulnerabilities or unsafe operations\n5. **Testing**: Assess testability and suggest test cases\n6. **Documentation**: Ensure proper docstrings and comments\n7. **Integration**: Verify the code integrates properly with existing components\n\nProvide specific, actionable feedback with examples where helpful."
+  }
+}

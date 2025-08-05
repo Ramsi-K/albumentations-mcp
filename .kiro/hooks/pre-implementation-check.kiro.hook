@@ -1,0 +1,26 @@
+{
+  "enabled": true,
+  "name": "Pre-Implementation Check",
+  "description": "Comprehensive pre-implementation analysis that triggers on any development activity",
+  "version": "1",
+  "when": [
+    {
+      "type": "beforeTaskExecution",
+      "patterns": ["**/*"]
+    },
+    {
+      "type": "fileCreated",
+      "patterns": ["src/**/*", "tests/**/*"]
+    },
+    {
+      "type": "manual"
+    },
+    {
+      "type": "onDemand"
+    }
+  ],
+  "then": {
+    "type": "askAgent",
+    "prompt": "Before implementing any code, perform these checks:\n\n1. **Existing Code Analysis**: Search the codebase for similar functionality that could be reused or extended\n2. **Architecture Review**: Ensure the new implementation fits the overall project structure\n3. **Dependency Check**: Verify all required imports and dependencies are available\n4. **Requirements Mapping**: Confirm the implementation addresses specific requirements from the spec\n5. **Test Strategy**: Plan how the code will be tested and validated\n\nProvide a brief analysis and recommendations before proceeding with implementation."
+  }
+}

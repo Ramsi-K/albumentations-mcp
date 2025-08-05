@@ -2,15 +2,32 @@
   "enabled": true,
   "name": "Function Code Review",
   "description": "Automatically triggers a senior-level code review whenever a function is written or modified, checking for bad practices, overengineering, and missed edge cases",
-  "version": "1",
-  "when": {
-    "type": "fileEdited",
-    "patterns": [
-      "src/**/*.py",
-      "tests/**/*.py",
-      "*.py"
-    ]
-  },
+  "version": "2",
+  "when": [
+    {
+      "type": "fileCreated",
+      "patterns": ["src/**/*.py", "tests/**/*.py", "*.py"]
+    },
+    {
+      "type": "fileEdited",
+      "patterns": ["src/**/*.py", "tests/**/*.py", "*.py"]
+    },
+    {
+      "type": "fileSaved",
+      "patterns": ["src/**/*.py", "tests/**/*.py", "*.py"]
+    },
+    {
+      "type": "afterTaskCompletion",
+      "patterns": ["**/*.py"]
+    },
+    {
+      "type": "beforeCommit",
+      "patterns": ["**/*.py"]
+    },
+    {
+      "type": "manual"
+    }
+  ],
   "then": {
     "type": "askAgent",
     "prompt": "A function has been written or modified in the codebase. Please perform a thorough code review as a senior engineer would, focusing on:\n\n1. **Bad Practices**: Check for anti-patterns, code smells, and violations of clean code principles\n2. **Overengineering**: Identify unnecessary complexity, premature optimization, or overly abstract solutions\n3. **Edge Cases**: Look for missing error handling, boundary conditions, and potential failure scenarios\n4. **Code Quality**: Assess readability, maintainability, performance implications, and adherence to Python best practices\n5. **Security**: Check for potential vulnerabilities or unsafe operations\n6. **Testing**: Evaluate if the function is testable and suggest test cases for edge conditions\n\nProvide specific, actionable feedback with code examples where helpful. Be constructive but thorough in your critique, as if you were mentoring a junior developer."
