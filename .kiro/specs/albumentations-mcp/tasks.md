@@ -4,12 +4,13 @@ Simple MCP server using FastMCP library for image augmentation tools.
 
 ## Task List
 
-- [ ] 1. Set up FastMCP server
+- [x] 1. Set up FastMCP server
 
-  - Install: `pip install mcp albumentations pillow`
+  - Initialize project with `uv init` and create virtual environment
+  - Install dependencies: `uv add mcp albumentations pillow`
   - Create `main.py` with FastMCP import and basic structure
   - Set up project structure: `src/`, `tests/`
-  - Create `pyproject.toml` with minimal dependencies
+  - Create `pyproject.toml` with minimal dependencies (handled by uv)
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
 - [ ] 2. Create image handling utilities
