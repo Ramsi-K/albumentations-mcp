@@ -2,8 +2,9 @@
 
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import Dict, Any, Optional
+from datetime import UTC, datetime
+from typing import Any
+
 from .hooks import (
     HookContext,
     HookStage,
@@ -11,9 +12,9 @@ from .hooks import (
     get_hook_registry,
     register_hook,
 )
-from .hooks.pre_mcp import PreMCPHook
 from .hooks.post_mcp import PostMCPHook
-from .parser import parse_prompt, PromptParsingError
+from .hooks.pre_mcp import PreMCPHook
+from .parser import PromptParsingError, parse_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +39,8 @@ class AugmentationPipeline:
         logger.info("Default hooks registered")
 
     async def parse_prompt_with_hooks(
-        self, prompt: str, session_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, prompt: str, session_id: str | None = None,
+    ) -> dict[str, Any]:
         """Parse prompt using the complete hook system."""
         if session_id is None:
             session_id = str(uuid.uuid4())
@@ -49,22 +50,18 @@ class AugmentationPipeline:
             session_id=session_id,
             original_prompt=prompt,
             metadata={
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "pipeline_version": "1.0.0",
             },
         )
 
-        logger.info(
-            f"Starting prompt parsing pipeline for session {session_id}"
-        )
+        logger.info(f"Starting prompt parsing pipeline for session {session_id}")
 
         try:
             # Stage 1: Pre-MCP processing
             result = await execute_stage(HookStage.PRE_MCP, context)
             if not result.success or not result.should_continue:
-                return self._format_error_response(
-                    context, "Pre-MCP stage failed"
-                )
+                return self._format_error_response(context, "Pre-MCP stage failed")
             context = result.context
 
             # Stage 2: Parse the prompt (core functionality)
@@ -87,12 +84,12 @@ class AugmentationPipeline:
                         "parser_confidence": parse_result.confidence,
                         "parser_warnings": parse_result.warnings,
                         "parser_suggestions": parse_result.suggestions,
-                    }
+                    },
                 )
                 context.warnings.extend(parse_result.warnings)
 
             except PromptParsingError as e:
-                error_msg = f"Prompt parsing failed: {str(e)}"
+                error_msg = f"Prompt parsing failed: {e!s}"
                 logger.error(error_msg)
                 context.errors.append(error_msg)
                 return self._format_error_response(context, error_msg)
@@ -105,18 +102,16 @@ class AugmentationPipeline:
 
             # Format successful response
             response = self._format_success_response(context)
-            logger.info(
-                f"Pipeline completed successfully for session {session_id}"
-            )
+            logger.info(f"Pipeline completed successfully for session {session_id}")
             return response
 
         except Exception as e:
-            error_msg = f"Pipeline execution failed: {str(e)}"
+            error_msg = f"Pipeline execution failed: {e!s}"
             logger.error(error_msg, exc_info=True)
             context.errors.append(error_msg)
             return self._format_error_response(context, error_msg)
 
-    def _format_success_response(self, context: HookContext) -> Dict[str, Any]:
+    def _format_success_response(self, context: HookContext) -> dict[str, Any]:
         """Format successful pipeline response."""
         return {
             "success": True,
@@ -129,8 +124,8 @@ class AugmentationPipeline:
         }
 
     def _format_error_response(
-        self, context: HookContext, error: str
-    ) -> Dict[str, Any]:
+        self, context: HookContext, error: str,
+    ) -> dict[str, Any]:
         """Format error pipeline response."""
         return {
             "success": False,
@@ -142,7 +137,7 @@ class AugmentationPipeline:
             "message": error,
         }
 
-    def get_pipeline_status(self) -> Dict[str, Any]:
+    def get_pipeline_status(self) -> dict[str, Any]:
         """Get current pipeline status and registered hooks."""
         registry = get_hook_registry()
         return {
@@ -165,7 +160,7 @@ def get_pipeline() -> AugmentationPipeline:
 
 
 async def parse_prompt_with_hooks(
-    prompt: str, session_id: Optional[str] = None
-) -> Dict[str, Any]:
+    prompt: str, session_id: str | None = None,
+) -> dict[str, Any]:
     """Convenience function to parse prompt with hooks."""
     return await get_pipeline().parse_prompt_with_hooks(prompt, session_id)

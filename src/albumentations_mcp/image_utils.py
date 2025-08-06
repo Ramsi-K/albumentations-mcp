@@ -9,9 +9,10 @@ import binascii
 import io
 import logging
 import os
-from typing import List, Dict, Any
-from PIL import Image, ImageFile
+from typing import Any
+
 import numpy as np
+from PIL import Image, ImageFile
 
 # Enable loading of truncated images
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -31,13 +32,11 @@ MAX_PIXELS = int(os.getenv("MAX_PIXELS", str(89_478_485)))  # PIL default
 class ImageConversionError(Exception):
     """Raised when image conversion fails."""
 
-    pass
 
 
 class ImageValidationError(Exception):
     """Raised when image validation fails."""
 
-    pass
 
 
 def _sanitize_base64_input(image_b64: str) -> str:
@@ -90,13 +89,12 @@ def _decode_image_data(image_b64: str) -> bytes:
     try:
         image_data = base64.b64decode(image_b64, validate=True)
     except (binascii.Error, ValueError) as e:
-        raise ImageConversionError(f"Invalid base64 encoding: {str(e)}")
+        raise ImageConversionError(f"Invalid base64 encoding: {e!s}")
 
     # Check file size before processing
     if len(image_data) > MAX_FILE_SIZE:
         raise ImageValidationError(
-            f"Image file too large: {len(image_data)} bytes "
-            f"(max: {MAX_FILE_SIZE})"
+            f"Image file too large: {len(image_data)} bytes (max: {MAX_FILE_SIZE})",
         )
 
     return image_data
@@ -125,20 +123,17 @@ def _load_image_safely(image_data: bytes) -> Image.Image:
             width, height = image.size
             if width * height > MAX_PIXELS:
                 raise ImageConversionError(
-                    f"Image too large: {width}x{height} pixels "
-                    f"(max: {MAX_PIXELS})"
+                    f"Image too large: {width}x{height} pixels (max: {MAX_PIXELS})",
                 )
 
         # Force loading to catch truncated/corrupted images
         image.load()
         return image
 
-    except (OSError, IOError) as e:
-        raise ImageConversionError(f"Cannot open image: {str(e)}")
+    except OSError as e:
+        raise ImageConversionError(f"Cannot open image: {e!s}")
     except Image.DecompressionBombError as e:
-        raise ImageConversionError(
-            f"Image too large (decompression bomb): {str(e)}"
-        )
+        raise ImageConversionError(f"Image too large (decompression bomb): {e!s}")
 
 
 def _normalize_image_mode(image: Image.Image) -> Image.Image:
@@ -165,7 +160,7 @@ def _normalize_image_mode(image: Image.Image) -> Image.Image:
         return image.convert("RGB")
     except Exception as e:
         raise ImageConversionError(
-            f"Cannot convert image mode '{image.mode}' to RGB: {str(e)}"
+            f"Cannot convert image mode '{image.mode}' to RGB: {e!s}",
         )
 
 
@@ -201,7 +196,7 @@ def base64_to_pil(image_b64: str) -> Image.Image:
 
         logger.debug(
             f"Successfully converted base64 to PIL image: "
-            f"{image.size}, mode: {image.mode}"
+            f"{image.size}, mode: {image.mode}",
         )
         return image
 
@@ -209,13 +204,11 @@ def base64_to_pil(image_b64: str) -> Image.Image:
         raise
     except Exception as e:
         raise ImageConversionError(
-            f"Unexpected error during image conversion: {str(e)}"
+            f"Unexpected error during image conversion: {e!s}",
         )
 
 
-def pil_to_base64(
-    image: Image.Image, format: str = "PNG", quality: int = 95
-) -> str:
+def pil_to_base64(image: Image.Image, format: str = "PNG", quality: int = 95) -> str:
     """Convert PIL Image to Base64 string with format validation.
 
     Args:
@@ -237,8 +230,7 @@ def pil_to_base64(
     format = format.upper()
     if format not in SUPPORTED_FORMATS:
         raise ImageValidationError(
-            f"Unsupported format '{format}'. "
-            f"Supported: {SUPPORTED_FORMATS}"
+            f"Unsupported format '{format}'. Supported: {SUPPORTED_FORMATS}",
         )
 
     # Validate image
@@ -266,14 +258,12 @@ def pil_to_base64(
 
         logger.debug(
             f"Successfully converted PIL image to base64: "
-            f"format={format}, size={len(base64_data)}"
+            f"format={format}, size={len(base64_data)}",
         )
         return base64_data
 
     except Exception as e:
-        raise ImageConversionError(
-            f"Failed to convert image to base64: {str(e)}"
-        )
+        raise ImageConversionError(f"Failed to convert image to base64: {e!s}")
 
 
 def numpy_to_pil(array: np.ndarray) -> Image.Image:
@@ -295,14 +285,11 @@ def numpy_to_pil(array: np.ndarray) -> Image.Image:
     try:
         # Validate array dimensions
         if array.ndim not in (2, 3):
-            raise ImageValidationError(
-                f"Array must be 2D or 3D, got {array.ndim}D"
-            )
+            raise ImageValidationError(f"Array must be 2D or 3D, got {array.ndim}D")
 
         if array.ndim == 3 and array.shape[2] not in (1, 3, 4):
             raise ImageValidationError(
-                f"3D array must have 1, 3, or 4 channels, "
-                f"got {array.shape[2]}"
+                f"3D array must have 1, 3, or 4 channels, got {array.shape[2]}",
             )
 
         # Handle different data types
@@ -312,7 +299,7 @@ def numpy_to_pil(array: np.ndarray) -> Image.Image:
                 array = (array * 255).astype(np.uint8)
             else:
                 raise ImageValidationError(
-                    "Float arrays must have values in [0, 1] range"
+                    "Float arrays must have values in [0, 1] range",
                 )
         elif array.dtype != np.uint8:
             # Try to convert to uint8
@@ -323,9 +310,7 @@ def numpy_to_pil(array: np.ndarray) -> Image.Image:
             image = Image.fromarray(array)
         elif array.shape[2] == 1:
             image = Image.fromarray(array.squeeze(2))
-        elif array.shape[2] == 3:
-            image = Image.fromarray(array)
-        elif array.shape[2] == 4:
+        elif array.shape[2] == 3 or array.shape[2] == 4:
             image = Image.fromarray(array)
 
         # Validate resulting image
@@ -333,7 +318,7 @@ def numpy_to_pil(array: np.ndarray) -> Image.Image:
 
         logger.debug(
             f"Successfully converted numpy array to PIL image: "
-            f"{image.size}, mode: {image.mode}"
+            f"{image.size}, mode: {image.mode}",
         )
         return image
 
@@ -341,7 +326,7 @@ def numpy_to_pil(array: np.ndarray) -> Image.Image:
         raise
     except Exception as e:
         raise ImageConversionError(
-            f"Failed to convert numpy array to PIL image: {str(e)}"
+            f"Failed to convert numpy array to PIL image: {e!s}",
         )
 
 
@@ -370,7 +355,7 @@ def pil_to_numpy(image: Image.Image) -> np.ndarray:
 
         logger.debug(
             f"Successfully converted PIL image to numpy array: "
-            f"{array.shape}, dtype: {array.dtype}"
+            f"{array.shape}, dtype: {array.dtype}",
         )
         return array
 
@@ -378,7 +363,7 @@ def pil_to_numpy(image: Image.Image) -> np.ndarray:
         raise
     except Exception as e:
         raise ImageConversionError(
-            f"Failed to convert PIL image to numpy array: {str(e)}"
+            f"Failed to convert PIL image to numpy array: {e!s}",
         )
 
 
@@ -403,14 +388,12 @@ def validate_image(image: Image.Image) -> None:
 
         # Check dimensions
         if width <= 0 or height <= 0:
-            raise ImageValidationError(
-                f"Invalid image dimensions: {width}x{height}"
-            )
+            raise ImageValidationError(f"Invalid image dimensions: {width}x{height}")
 
         if width > MAX_IMAGE_SIZE[0] or height > MAX_IMAGE_SIZE[1]:
             raise ImageValidationError(
                 f"Image too large: {width}x{height} "
-                f"(max: {MAX_IMAGE_SIZE[0]}x{MAX_IMAGE_SIZE[1]})"
+                f"(max: {MAX_IMAGE_SIZE[0]}x{MAX_IMAGE_SIZE[1]})",
             )
 
         # Check if image data is accessible
@@ -423,23 +406,19 @@ def validate_image(image: Image.Image) -> None:
         try:
             np.array(image)
         except Exception as e:
-            raise ImageValidationError(
-                f"Cannot convert image to numpy array: {str(e)}"
-            )
+            raise ImageValidationError(f"Cannot convert image to numpy array: {e!s}")
 
-        logger.debug(
-            f"Image validation passed: {width}x{height}, mode: {image.mode}"
-        )
+        logger.debug(f"Image validation passed: {width}x{height}, mode: {image.mode}")
 
     except ImageValidationError:
         raise
     except Exception as e:
         raise ImageValidationError(
-            f"Unexpected error during image validation: {str(e)}"
+            f"Unexpected error during image validation: {e!s}",
         )
 
 
-def get_image_info(image: Image.Image) -> Dict[str, Any]:
+def get_image_info(image: Image.Image) -> dict[str, Any]:
     """Get comprehensive information about a PIL Image.
 
     Args:
@@ -479,7 +458,7 @@ def is_supported_format(format_name: str) -> bool:
     return format_name.upper() in SUPPORTED_FORMATS
 
 
-def get_supported_formats() -> List[str]:
+def get_supported_formats() -> list[str]:
     """Get list of supported image formats.
 
     Returns:

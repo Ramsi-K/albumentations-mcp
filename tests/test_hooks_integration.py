@@ -2,10 +2,18 @@
 
 import pytest
 import asyncio
-from src.hooks import HookContext, HookStage, get_hook_registry, register_hook
-from src.hooks.pre_mcp import PreMCPHook
-from src.hooks.post_mcp import PostMCPHook
-from src.pipeline import AugmentationPipeline, parse_prompt_with_hooks
+from src.albumentations_mcp.hooks import (
+    HookContext,
+    HookStage,
+    get_hook_registry,
+    register_hook,
+)
+from src.albumentations_mcp.hooks.pre_mcp import PreMCPHook
+from src.albumentations_mcp.hooks.post_mcp import PostMCPHook
+from src.albumentations_mcp.pipeline import (
+    AugmentationPipeline,
+    parse_prompt_with_hooks,
+)
 
 
 class TestHookSystem:

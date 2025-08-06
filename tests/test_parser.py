@@ -1,7 +1,7 @@
 """Tests for the natural language parser module."""
 
 import pytest
-from src.parser import (
+from src.albumentations_mcp.parser import (
     PromptParser,
     parse_prompt,
     validate_prompt,

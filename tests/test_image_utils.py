@@ -6,7 +6,7 @@ import pytest
 import numpy as np
 from PIL import Image
 
-from src.image_utils import (
+from src.albumentations_mcp.image_utils import (
     base64_to_pil,
     pil_to_base64,
     numpy_to_pil,

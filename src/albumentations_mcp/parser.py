@@ -301,8 +301,7 @@ class PromptParser:
                     [
                         "Try phrases like: 'add blur', 'increase contrast', "
                         "'rotate image'",
-                        "Use simple descriptions: 'blur', 'brighten', "
-                        "'add noise'",
+                        "Use simple descriptions: 'blur', 'brighten', 'add noise'",
                     ],
                 )
 
@@ -377,9 +376,7 @@ class PromptParser:
                 blur_value = float(match.group(1))
                 # Ensure odd number for blur_limit
                 blur_limit = (
-                    int(blur_value)
-                    if int(blur_value) % 2 == 1
-                    else int(blur_value) + 1
+                    int(blur_value) if int(blur_value) % 2 == 1 else int(blur_value) + 1
                 )
                 parameters["blur_limit"] = max(3, min(blur_limit, 99))
 
@@ -482,19 +479,13 @@ class PromptParser:
             ),
             TransformType.MOTION_BLUR: "Apply motion blur effect",
             TransformType.RANDOM_CONTRAST: "Randomly adjust image contrast",
-            TransformType.RANDOM_BRIGHTNESS: (
-                "Randomly adjust image brightness"
-            ),
-            TransformType.HUE_SATURATION_VALUE: (
-                "Adjust hue, saturation, and value"
-            ),
+            TransformType.RANDOM_BRIGHTNESS: ("Randomly adjust image brightness"),
+            TransformType.HUE_SATURATION_VALUE: ("Adjust hue, saturation, and value"),
             TransformType.ROTATE: "Rotate image by specified angle",
             TransformType.HORIZONTAL_FLIP: "Flip image horizontally",
             TransformType.VERTICAL_FLIP: "Flip image vertically",
             TransformType.GAUSSIAN_NOISE: "Add gaussian noise to image",
-            TransformType.RANDOM_CROP: (
-                "Randomly crop image to specified size"
-            ),
+            TransformType.RANDOM_CROP: ("Randomly crop image to specified size"),
             TransformType.RANDOM_RESIZE_CROP: "Randomly crop and resize image",
             TransformType.NORMALIZE: "Normalize image pixel values",
             TransformType.CLAHE: (
@@ -575,8 +566,7 @@ class PromptParser:
                 "transforms": [],
                 "warnings": [str(e)],
                 "suggestions": [
-                    "Try simple phrases like 'blur image' or "
-                    "'increase brightness'",
+                    "Try simple phrases like 'blur image' or 'increase brightness'",
                     "Use 'and' to combine multiple transformations",
                     "Be specific with parameters like 'rotate by 45 degrees'",
                 ],

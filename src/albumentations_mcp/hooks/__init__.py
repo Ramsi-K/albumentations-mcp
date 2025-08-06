@@ -4,12 +4,13 @@ This module provides the core hook registry and execution framework
 for the 8-stage extensible pipeline.
 """
 
+import asyncio
 import logging
-from typing import Dict, List, Any, Optional, Callable, Union
+from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
-import asyncio
-from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional, Union
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +34,12 @@ class HookContext:
 
     session_id: str
     original_prompt: str
-    image_data: Optional[bytes] = None
-    parsed_transforms: Optional[List[Dict[str, Any]]] = None
-    augmented_image: Optional[bytes] = None
-    metadata: Dict[str, Any] = None
-    errors: List[str] = None
-    warnings: List[str] = None
+    image_data: bytes | None = None
+    parsed_transforms: list[dict[str, Any]] | None = None
+    augmented_image: bytes | None = None
+    metadata: dict[str, Any] = None
+    errors: list[str] = None
+    warnings: list[str] = None
 
     def __post_init__(self):
         if self.metadata is None:
@@ -55,8 +56,8 @@ class HookResult:
     def __init__(
         self,
         success: bool = True,
-        context: Optional[HookContext] = None,
-        error: Optional[str] = None,
+        context: HookContext | None = None,
+        error: str | None = None,
         should_continue: bool = True,
     ):
         self.success = success
@@ -75,7 +76,6 @@ class BaseHook(ABC):
     @abstractmethod
     async def execute(self, context: HookContext) -> HookResult:
         """Execute the hook with given context."""
-        pass
 
     def __str__(self):
         return f"{self.__class__.__name__}({self.name})"
@@ -85,7 +85,7 @@ class HookRegistry:
     """Registry for managing and executing hooks."""
 
     def __init__(self):
-        self._hooks: Dict[HookStage, List[BaseHook]] = {
+        self._hooks: dict[HookStage, list[BaseHook]] = {
             stage: [] for stage in HookStage
         }
 
@@ -100,19 +100,15 @@ class HookRegistry:
         for i, hook in enumerate(hooks):
             if hook.name == hook_name:
                 del hooks[i]
-                logger.debug(
-                    f"Unregistered hook {hook_name} from stage {stage}"
-                )
+                logger.debug(f"Unregistered hook {hook_name} from stage {stage}")
                 return True
         return False
 
-    def get_hooks(self, stage: HookStage) -> List[BaseHook]:
+    def get_hooks(self, stage: HookStage) -> list[BaseHook]:
         """Get all hooks for a stage."""
         return self._hooks[stage].copy()
 
-    async def execute_stage(
-        self, stage: HookStage, context: HookContext
-    ) -> HookResult:
+    async def execute_stage(self, stage: HookStage, context: HookContext) -> HookResult:
         """Execute all hooks for a given stage."""
         hooks = self._hooks[stage]
 
@@ -134,7 +130,7 @@ class HookRegistry:
 
                     if hook.critical:
                         logger.error(
-                            f"Critical hook {hook.name} failed, stopping pipeline"
+                            f"Critical hook {hook.name} failed, stopping pipeline",
                         )
                         return HookResult(
                             success=False,
@@ -149,17 +145,17 @@ class HookRegistry:
                 if not result.should_continue:
                     logger.info(f"Hook {hook.name} requested pipeline stop")
                     return HookResult(
-                        success=True, context=context, should_continue=False
+                        success=True, context=context, should_continue=False,
                     )
 
             except Exception as e:
-                error_msg = f"Hook {hook.name} raised exception: {str(e)}"
+                error_msg = f"Hook {hook.name} raised exception: {e!s}"
                 logger.error(error_msg, exc_info=True)
                 context.errors.append(error_msg)
 
                 if hook.critical:
                     logger.error(
-                        f"Critical hook {hook.name} failed with exception, stopping pipeline"
+                        f"Critical hook {hook.name} failed with exception, stopping pipeline",
                     )
                     return HookResult(
                         success=False,
@@ -171,7 +167,7 @@ class HookRegistry:
         logger.info(f"Completed stage {stage} successfully")
         return HookResult(success=True, context=context)
 
-    def list_hooks(self) -> Dict[str, List[str]]:
+    def list_hooks(self) -> dict[str, list[str]]:
         """List all registered hooks by stage."""
         return {
             stage.value: [hook.name for hook in hooks]

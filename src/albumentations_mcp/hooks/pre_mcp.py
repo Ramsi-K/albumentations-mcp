@@ -2,7 +2,7 @@
 
 import logging
 import re
-from typing import Optional
+
 from . import BaseHook, HookContext, HookResult
 
 logger = logging.getLogger(__name__)
@@ -17,15 +17,13 @@ class PreMCPHook(BaseHook):
     async def execute(self, context: HookContext) -> HookResult:
         """Sanitize and preprocess input before parsing."""
         try:
-            logger.debug(
-                f"Pre-MCP processing for session {context.session_id}"
-            )
+            logger.debug(f"Pre-MCP processing for session {context.session_id}")
 
             # Sanitize prompt
             sanitized_prompt = self._sanitize_prompt(context.original_prompt)
             if sanitized_prompt != context.original_prompt:
                 logger.info(
-                    f"Sanitized prompt: '{context.original_prompt}' -> '{sanitized_prompt}'"
+                    f"Sanitized prompt: '{context.original_prompt}' -> '{sanitized_prompt}'",
                 )
                 context.original_prompt = sanitized_prompt
                 context.metadata["prompt_sanitized"] = True
@@ -33,7 +31,7 @@ class PreMCPHook(BaseHook):
             # Validate prompt length
             if len(context.original_prompt) > 1000:
                 context.warnings.append(
-                    "Prompt is very long, consider shortening for better results"
+                    "Prompt is very long, consider shortening for better results",
                 )
 
             # Add preprocessing metadata
@@ -42,14 +40,14 @@ class PreMCPHook(BaseHook):
                     "pre_mcp_processed": True,
                     "prompt_length": len(context.original_prompt),
                     "prompt_word_count": len(context.original_prompt.split()),
-                }
+                },
             )
 
             logger.debug("Pre-MCP processing completed successfully")
             return HookResult(success=True, context=context)
 
         except Exception as e:
-            error_msg = f"Pre-MCP processing failed: {str(e)}"
+            error_msg = f"Pre-MCP processing failed: {e!s}"
             logger.error(error_msg, exc_info=True)
             return HookResult(success=False, error=error_msg, context=context)
 
