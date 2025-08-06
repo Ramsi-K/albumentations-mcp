@@ -29,6 +29,15 @@ Simple MCP server using FastMCP library for image augmentation tools.
   - Handle basic errors and provide suggestions
   - _Requirements: 1.1, 1.4, 7.3_
 
+  **Quality Checklist (Manual - Kiro hooks not working):**
+
+  - [x] File Summary & TODO tree added to docstring
+  - [x] Code review findings documented in method docstrings
+  - [x] Quality tools configured (ruff, black, mypy)
+  - [x] Linting issues identified and addressed
+  - [x] Tests written and passing (21 tests)
+  - [x] Commit message generated
+
 - [ ] 4. Implement MCP tools with @mcp.tool() decorators
 
   - [ ] 4.1 Create augment_image tool

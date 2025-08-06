@@ -3,13 +3,60 @@
 This module provides simple string-matching based parsing to convert
 natural language descriptions into structured Albumentations transform
 specifications.
+
+# File Summary
+Natural language parser that converts English descriptions like
+"add blur and rotate" into structured Albumentations transform
+specifications. Core component that bridges human language with
+computer vision transformations.
+
+# TODO Tree
+- [x] Core Parser Infrastructure
+  - [x] Import dependencies (re, logging, typing, dataclasses, enum)
+  - [x] Define TransformType enum with all supported transforms
+  - [x] Create TransformConfig dataclass
+  - [x] Create ParseResult dataclass
+  - [x] Define PromptParsingError exception
+- [x] Transform Mapping System
+  - [x] Build phrase-to-transform dictionary
+  - [x] Create default parameters for each transform
+  - [x] Build regex patterns for parameter extraction
+- [x] Core Parsing Logic
+  - [x] Implement prompt splitting (handle "and", commas, etc.)
+  - [x] Phrase matching algorithm
+  - [x] Parameter extraction with validation
+  - [x] Confidence scoring system
+- [x] Error Handling & Suggestions
+  - [x] Handle empty/invalid prompts
+  - [x] Generate suggestions for unrecognized phrases
+  - [x] Provide meaningful error messages
+- [x] Utility Functions
+  - [x] Transform descriptions
+  - [x] Parameter ranges
+  - [x] Available transforms listing
+- [x] Global Interface
+  - [x] Singleton parser instance
+  - [x] Convenience functions
+- [x] Testing Requirements
+  - [x] Unit tests for all parsing scenarios
+  - [x] Parameter extraction tests
+  - [x] Error handling tests
+
+# Code Review Notes
+- ISSUE: parse_prompt() method is too complex (80+ lines)
+- ISSUE: Missing input validation for prompt length limits
+- ISSUE: No protection against ReDoS attacks in regex patterns
+- ISSUE: Global parser instance not thread-safe
+- TODO: Add proper input sanitization
+- TODO: Implement rate limiting protection
+- TODO: Add comprehensive logging context
 """
 
-import re
 import logging
-from typing import Dict, List, Any, Optional, Tuple
+import re
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +85,7 @@ class TransformConfig:
     """Configuration for a single transform."""
 
     name: TransformType
-    parameters: Dict[str, Any]
+    parameters: dict[str, Any]
     probability: float = 1.0
 
 
@@ -46,17 +93,15 @@ class TransformConfig:
 class ParseResult:
     """Result of parsing a natural language prompt."""
 
-    transforms: List[TransformConfig]
+    transforms: list[TransformConfig]
     original_prompt: str
     confidence: float
-    warnings: List[str]
-    suggestions: List[str]
+    warnings: list[str]
+    suggestions: list[str]
 
 
 class PromptParsingError(Exception):
     """Raised when prompt parsing fails."""
-
-    pass
 
 
 class PromptParser:
@@ -68,7 +113,7 @@ class PromptParser:
         self._default_parameters = self._build_default_parameters()
         self._parameter_patterns = self._build_parameter_patterns()
 
-    def _build_transform_mappings(self) -> Dict[str, TransformType]:
+    def _build_transform_mappings(self) -> dict[str, TransformType]:
         """Build mapping from natural language phrases to transforms."""
         return {
             # Blur transforms
@@ -121,7 +166,7 @@ class PromptParser:
             "enhance": TransformType.CLAHE,
         }
 
-    def _build_default_parameters(self) -> Dict[TransformType, Dict[str, Any]]:
+    def _build_default_parameters(self) -> dict[TransformType, dict[str, Any]]:
         """Build default parameters for each transform type."""
         return {
             TransformType.BLUR: {"blur_limit": 7, "p": 1.0},
@@ -156,27 +201,32 @@ class PromptParser:
             },
         }
 
-    def _build_parameter_patterns(self) -> Dict[str, re.Pattern]:
+    def _build_parameter_patterns(self) -> dict[str, re.Pattern]:
         """Build regex patterns for extracting parameters from text."""
         return {
             "blur_amount": re.compile(
-                r"blur\s+(?:by\s+)?(\d+(?:\.\d+)?)", re.IGNORECASE
+                r"blur\s+(?:by\s+)?(\d+(?:\.\d+)?)",
+                re.IGNORECASE,
             ),
             "rotation_angle": re.compile(
                 r"rotate\s+(?:by\s+)?(\d+(?:\.\d+)?)\s*(?:degrees?)?",
                 re.IGNORECASE,
             ),
             "brightness_amount": re.compile(
-                r"brightness\s+(?:by\s+)?(\d+(?:\.\d+)?)", re.IGNORECASE
+                r"brightness\s+(?:by\s+)?(\d+(?:\.\d+)?)",
+                re.IGNORECASE,
             ),
             "contrast_amount": re.compile(
-                r"contrast\s+(?:by\s+)?(\d+(?:\.\d+)?)", re.IGNORECASE
+                r"contrast\s+(?:by\s+)?(\d+(?:\.\d+)?)",
+                re.IGNORECASE,
             ),
             "noise_level": re.compile(
-                r"noise\s+(?:level\s+)?(\d+(?:\.\d+)?)", re.IGNORECASE
+                r"noise\s+(?:level\s+)?(\d+(?:\.\d+)?)",
+                re.IGNORECASE,
             ),
             "crop_size": re.compile(
-                r"crop\s+(?:to\s+)?(\d+)(?:x(\d+))?", re.IGNORECASE
+                r"crop\s+(?:to\s+)?(\d+)(?:x(\d+))?",
+                re.IGNORECASE,
             ),
         }
 
@@ -191,6 +241,13 @@ class PromptParser:
 
         Raises:
             PromptParsingError: If prompt cannot be parsed
+
+        # Code Review Findings:
+        # BAD PRACTICE: Method too complex (80+ lines) - should be split
+        # MISSING: Input validation for prompt length limits
+        # SECURITY: No protection against ReDoS attacks
+        # EDGE CASE: No handling of Unicode characters
+        # PERFORMANCE: Inefficient O(n*m) string matching
         """
         if not prompt or not isinstance(prompt, str):
             raise PromptParsingError("Prompt must be a non-empty string")
@@ -222,7 +279,9 @@ class PromptParser:
                     transforms.append(transform_config)
                     matched_phrases += 1
                     logger.debug(
-                        f"Matched phrase '{phrase}' to {transform_config.name}"
+                        "Matched phrase '%s' to %s",
+                        phrase,
+                        transform_config.name,
                     )
                 else:
                     warnings.append(f"Could not understand phrase: '{phrase}'")
@@ -236,13 +295,15 @@ class PromptParser:
             if not transforms:
                 if not warnings:
                     warnings.append(
-                        "No recognizable transformations found in prompt"
+                        "No recognizable transformations found in prompt",
                     )
                 suggestions.extend(
                     [
-                        "Try phrases like: 'add blur', 'increase contrast', 'rotate image'",
-                        "Use simple descriptions: 'blur', 'brighten', 'add noise'",
-                    ]
+                        "Try phrases like: 'add blur', 'increase contrast', "
+                        "'rotate image'",
+                        "Use simple descriptions: 'blur', 'brighten', "
+                        "'add noise'",
+                    ],
                 )
 
             result = ParseResult(
@@ -254,15 +315,17 @@ class PromptParser:
             )
 
             logger.info(
-                f"Parsed prompt successfully: {len(transforms)} transforms, confidence: {confidence:.2f}"
+                "Parsed prompt successfully: %d transforms, confidence: %.2f",
+                len(transforms),
+                confidence,
             )
             return result
 
         except Exception as e:
-            logger.error(f"Error parsing prompt '{prompt}': {str(e)}")
-            raise PromptParsingError(f"Failed to parse prompt: {str(e)}")
+            logger.error(f"Error parsing prompt '{prompt}': {e!s}")
+            raise PromptParsingError(f"Failed to parse prompt: {e!s}")
 
-    def _split_prompt(self, prompt: str) -> List[str]:
+    def _split_prompt(self, prompt: str) -> list[str]:
         """Split prompt into individual phrases."""
         # Split on common separators
         separators = [" and ", " then ", " also ", ",", ";"]
@@ -277,8 +340,9 @@ class PromptParser:
         return [p.strip() for p in phrases if p.strip()]
 
     def _match_phrase_to_transform(
-        self, phrase: str
-    ) -> Optional[TransformConfig]:
+        self,
+        phrase: str,
+    ) -> TransformConfig | None:
         """Match a phrase to a transform configuration."""
         # Direct mapping lookup
         for pattern, transform_type in self._transform_mappings.items():
@@ -286,14 +350,18 @@ class PromptParser:
                 # Extract parameters from phrase
                 parameters = self._extract_parameters(phrase, transform_type)
                 return TransformConfig(
-                    name=transform_type, parameters=parameters, probability=1.0
+                    name=transform_type,
+                    parameters=parameters,
+                    probability=1.0,
                 )
 
         return None
 
     def _extract_parameters(
-        self, phrase: str, transform_type: TransformType
-    ) -> Dict[str, Any]:
+        self,
+        phrase: str,
+        transform_type: TransformType,
+    ) -> dict[str, Any]:
         """Extract parameters from phrase for specific transform type."""
         # Start with defaults
         parameters = self._default_parameters[transform_type].copy()
@@ -323,7 +391,7 @@ class PromptParser:
 
         elif transform_type == TransformType.RANDOM_BRIGHTNESS:
             match = self._parameter_patterns["brightness_amount"].search(
-                phrase
+                phrase,
             )
             if match:
                 brightness = float(match.group(1))
@@ -370,7 +438,7 @@ class PromptParser:
 
         return parameters
 
-    def _suggest_alternatives(self, phrase: str) -> List[str]:
+    def _suggest_alternatives(self, phrase: str) -> list[str]:
         """Suggest alternative phrasings for unrecognized phrases."""
         suggestions = []
 
@@ -384,7 +452,7 @@ class PromptParser:
         # Limit suggestions to avoid overwhelming output
         return suggestions[:3]
 
-    def get_available_transforms(self) -> Dict[str, Dict[str, Any]]:
+    def get_available_transforms(self) -> dict[str, dict[str, Any]]:
         """Get information about available transforms and their parameters."""
         result = {}
 
@@ -409,27 +477,39 @@ class PromptParser:
         """Get human-readable description for transform type."""
         descriptions = {
             TransformType.BLUR: "Apply gaussian blur to the image",
-            TransformType.GAUSSIAN_BLUR: "Apply gaussian blur with configurable kernel",
+            TransformType.GAUSSIAN_BLUR: (
+                "Apply gaussian blur with configurable kernel"
+            ),
             TransformType.MOTION_BLUR: "Apply motion blur effect",
             TransformType.RANDOM_CONTRAST: "Randomly adjust image contrast",
-            TransformType.RANDOM_BRIGHTNESS: "Randomly adjust image brightness",
-            TransformType.HUE_SATURATION_VALUE: "Adjust hue, saturation, and value",
+            TransformType.RANDOM_BRIGHTNESS: (
+                "Randomly adjust image brightness"
+            ),
+            TransformType.HUE_SATURATION_VALUE: (
+                "Adjust hue, saturation, and value"
+            ),
             TransformType.ROTATE: "Rotate image by specified angle",
             TransformType.HORIZONTAL_FLIP: "Flip image horizontally",
             TransformType.VERTICAL_FLIP: "Flip image vertically",
             TransformType.GAUSSIAN_NOISE: "Add gaussian noise to image",
-            TransformType.RANDOM_CROP: "Randomly crop image to specified size",
+            TransformType.RANDOM_CROP: (
+                "Randomly crop image to specified size"
+            ),
             TransformType.RANDOM_RESIZE_CROP: "Randomly crop and resize image",
             TransformType.NORMALIZE: "Normalize image pixel values",
-            TransformType.CLAHE: "Apply Contrast Limited Adaptive Histogram Equalization",
+            TransformType.CLAHE: (
+                "Apply Contrast Limited Adaptive Histogram Equalization"
+            ),
         }
         return descriptions.get(
-            transform_type, f"Apply {transform_type.value} transformation"
+            transform_type,
+            f"Apply {transform_type.value} transformation",
         )
 
     def _get_parameter_ranges(
-        self, transform_type: TransformType
-    ) -> Dict[str, str]:
+        self,
+        transform_type: TransformType,
+    ) -> dict[str, str]:
         """Get parameter ranges for transform type."""
         ranges = {
             TransformType.BLUR: {"blur_limit": "3-99 (odd numbers)"},
@@ -462,7 +542,7 @@ class PromptParser:
         }
         return ranges.get(transform_type, {})
 
-    def validate_prompt(self, prompt: str) -> Dict[str, Any]:
+    def validate_prompt(self, prompt: str) -> dict[str, Any]:
         """Validate prompt and return detailed analysis."""
         try:
             result = self.parse_prompt(prompt)
@@ -481,7 +561,10 @@ class PromptParser:
                 ],
                 "warnings": result.warnings,
                 "suggestions": result.suggestions,
-                "message": f"Found {len(result.transforms)} transforms with {result.confidence:.1%} confidence",
+                "message": (
+                    f"Found {len(result.transforms)} transforms with "
+                    f"{result.confidence:.1%} confidence"
+                ),
             }
 
         except PromptParsingError as e:
@@ -492,11 +575,12 @@ class PromptParser:
                 "transforms": [],
                 "warnings": [str(e)],
                 "suggestions": [
-                    "Try simple phrases like 'blur image' or 'increase brightness'",
+                    "Try simple phrases like 'blur image' or "
+                    "'increase brightness'",
                     "Use 'and' to combine multiple transformations",
                     "Be specific with parameters like 'rotate by 45 degrees'",
                 ],
-                "message": f"Parsing failed: {str(e)}",
+                "message": f"Parsing failed: {e!s}",
             }
 
 
@@ -517,11 +601,11 @@ def parse_prompt(prompt: str) -> ParseResult:
     return get_parser().parse_prompt(prompt)
 
 
-def validate_prompt(prompt: str) -> Dict[str, Any]:
+def validate_prompt(prompt: str) -> dict[str, Any]:
     """Convenience function to validate a prompt using global parser."""
     return get_parser().validate_prompt(prompt)
 
 
-def get_available_transforms() -> Dict[str, Dict[str, Any]]:
+def get_available_transforms() -> dict[str, dict[str, Any]]:
     """Convenience function to get available transforms."""
     return get_parser().get_available_transforms()

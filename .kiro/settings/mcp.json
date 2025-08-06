@@ -2,14 +2,22 @@
   "mcpServers": {
     "fetch": {
       "command": "uvx",
-      "args": ["mcp-server-fetch"],
+      "args": [
+        "mcp-server-fetch"
+      ],
       "env": {},
       "disabled": false,
-      "autoApprove": ["mcp_fetch_fetch"]
+      "autoApprove": [
+        "mcp_fetch_fetch",
+        "fetch"
+      ]
     },
     "memory": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ],
       "env": {},
       "disabled": false,
       "autoApprove": [
@@ -26,14 +34,24 @@
     },
     "sequential-thinking": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
       "env": {},
       "disabled": false,
-      "autoApprove": ["mcp_sequential_thinking_sequentialthinking"]
+      "autoApprove": [
+        "mcp_sequential_thinking_sequentialthinking",
+        "sequentialthinking"
+      ]
     },
     "filesystem": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "."
+      ],
       "env": {},
       "disabled": false,
       "autoApprove": [
@@ -50,7 +68,8 @@
         "mcp_filesystem_move_file",
         "mcp_filesystem_search_files",
         "mcp_filesystem_get_file_info",
-        "mcp_filesystem_list_allowed_directories"
+        "mcp_filesystem_list_allowed_directories",
+        "create_directory"
       ]
     }
   }

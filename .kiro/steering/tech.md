@@ -41,6 +41,29 @@ pre-commit>=3.0.0
 
 **IMPORTANT: This project uses UV for dependency management. Always use `uv run` instead of direct python commands.**
 
+## Quality Requirements (Manual - Kiro Hooks Not Working)
+
+**Before implementing any task, you MUST:**
+
+1. **Pre-Implementation Check**: Search existing code, verify architecture fit
+2. **File Summary & TODO**: Add comprehensive docstring with file purpose and TODO tree
+3. **Code Review**: Document complexity, security, and performance considerations in docstrings
+
+**After implementing any task, you MUST:**
+
+1. **Quality Tools**: Run `uv run black src/ && uv run ruff check src/ --fix && uv run mypy src/`
+2. **Testing**: Write comprehensive tests and ensure all pass with `uv run pytest -v`
+3. **Documentation**: Update docstrings, README, and add code review findings
+4. **Commit Message**: Generate proper conventional commit message
+
+**Quality Standards:**
+
+- Functions must be under 10 cyclomatic complexity
+- All code must have type hints and docstrings
+- Test coverage must be comprehensive
+- All linting issues must be addressed
+- Security vulnerabilities must be avoided
+
 ### Development Setup
 
 ```bash

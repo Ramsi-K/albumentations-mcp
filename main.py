@@ -14,6 +14,8 @@ import albumentations as A
 import numpy as np
 from src.parser import parse_prompt, validate_prompt, get_available_transforms
 from src.image_utils import base64_to_pil, pil_to_base64
+from src.pipeline import parse_prompt_with_hooks, get_pipeline
+import asyncio
 
 # Initialize FastMCP server
 mcp = FastMCP("albumentations-mcp")
@@ -86,7 +88,26 @@ def validate_prompt_tool(prompt: str) -> dict:
         Dictionary with validation results and transform preview
     """
     try:
-        return validate_prompt(prompt)
+        # Use hook-integrated pipeline for validation
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(parse_prompt_with_hooks(prompt))
+        finally:
+            loop.close()
+
+        # Convert pipeline result to validation format
+        return {
+            "valid": result["success"] and len(result["transforms"]) > 0,
+            "confidence": result["metadata"].get("parser_confidence", 0.0),
+            "transforms_found": len(result["transforms"]),
+            "transforms": result["transforms"],
+            "warnings": result["warnings"],
+            "suggestions": result["metadata"].get("parser_suggestions", []),
+            "message": result["message"],
+            "session_id": result["session_id"],
+            "pipeline_metadata": result["metadata"],
+        }
     except Exception as e:
         return {
             "valid": False,
@@ -96,6 +117,23 @@ def validate_prompt_tool(prompt: str) -> dict:
             "warnings": [f"Validation error: {str(e)}"],
             "suggestions": ["Please check your prompt and try again"],
             "message": f"Validation failed: {str(e)}",
+        }
+
+
+@mcp.tool()
+def get_pipeline_status() -> dict:
+    """Get current pipeline status and registered hooks.
+
+    Returns:
+        Dictionary with pipeline status and hook information
+    """
+    try:
+        pipeline = get_pipeline()
+        return pipeline.get_pipeline_status()
+    except Exception as e:
+        return {
+            "error": str(e),
+            "message": f"Error getting pipeline status: {str(e)}",
         }
 
 

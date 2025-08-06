@@ -1,0 +1,80 @@
+# Quality Checklist Template
+
+**Use this checklist for every task since Kiro hooks are not working properly**
+
+## Pre-Implementation (Before writing any code)
+
+- [ ] **Check Existing Implementation**: Search codebase for similar functionality
+- [ ] **Architecture Review**: Ensure new code fits overall project structure
+- [ ] **Dependency Check**: Verify all required imports and dependencies
+- [ ] **Requirements Mapping**: Confirm implementation addresses specific requirements
+- [ ] **Test Strategy**: Plan how the code will be tested
+
+## During Implementation (For each file created/edited)
+
+- [ ] **File Summary**: Add clear summary of file purpose to docstring
+- [ ] **TODO Tree**: Create comprehensive TODO list in docstring (mark completed items)
+- [ ] **Function Documentation**: Add docstrings with args, returns, raises
+- [ ] **Type Hints**: Use modern type annotations (dict vs Dict, etc.)
+- [ ] **Error Handling**: Proper exception handling with specific error types
+
+## Code Review (For each function written)
+
+- [ ] **Complexity Check**: Functions under 10 cyclomatic complexity
+- [ ] **Single Responsibility**: Each function does one thing well
+- [ ] **Input Validation**: Proper validation of parameters
+- [ ] **Edge Cases**: Handle empty inputs, invalid data, etc.
+- [ ] **Security**: No injection vulnerabilities, safe regex patterns
+- [ ] **Performance**: Efficient algorithms, no obvious bottlenecks
+
+## Post-Implementation (After code is written)
+
+- [ ] **Quality Tools**: Run ruff, black, mypy
+  ```bash
+  uv run black src/
+  uv run ruff check src/ --fix
+  uv run mypy src/
+  ```
+- [ ] **Tests**: Write comprehensive tests covering:
+  - [ ] Happy path scenarios
+  - [ ] Error conditions
+  - [ ] Edge cases
+  - [ ] Parameter validation
+- [ ] **Integration**: Verify code works with existing components
+- [ ] **Documentation**: Update README, docstrings, comments
+
+## Task Completion
+
+- [ ] **All Tests Passing**: Run full test suite
+- [ ] **Quality Metrics**: Address linting issues
+- [ ] **Commit Message**: Generate proper conventional commit message
+- [ ] **Code Review Notes**: Document any technical debt or future improvements
+
+## Quality Commands
+
+```bash
+# Install/update dependencies
+uv sync
+
+# Format code
+uv run black src/ tests/
+
+# Lint and fix issues
+uv run ruff check src/ tests/ --fix
+
+# Type checking
+uv run mypy src/
+
+# Run tests
+uv run pytest tests/ -v
+
+# Run all quality checks
+uv run black src/ tests/ && uv run ruff check src/ tests/ --fix && uv run mypy src/ && uv run pytest tests/ -v
+```
+
+## Notes
+
+- This checklist replaces the non-working Kiro hooks
+- Check off items as you complete them
+- Add task-specific items as needed
+- Keep this updated as project evolves
