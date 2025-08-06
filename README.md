@@ -1,8 +1,39 @@
 # Albumentations-MCP
 
-**An MCP-compliant image augmentation server for the Kiro Hackathon.**
+**Natural language image augmentation via MCP protocol**
 
-This server implements the Model Context Protocol (MCP) to provide natural language-driven image augmentation using the [Albumentations](https://albumentations.ai/) library. Agents like Kiro can call tools to transform images, verify results with vision models, and check classification consistency.
+Transform images using plain English with this MCP-compliant server built on the [Albumentations](https://albumentations.ai/) library. Perfect for computer vision teams who need quick, reliable image transformations without writing repetitive code.
+
+## Quick Start
+
+```bash
+# Install from PyPI
+uv add albumentations-mcp
+
+# Add to your MCP client (e.g., Claude Desktop)
+# In your mcp.json configuration:
+{
+  "mcpServers": {
+    "albumentations": {
+      "command": "uvx",
+      "args": ["albumentations-mcp"],
+      "env": {
+        "ENABLE_VISION_VERIFICATION": "true",
+        "ENABLE_CLASSIFICATION_CHECK": "true"
+      }
+    }
+  }
+}
+```
+
+## For Computer Vision Teams
+
+Streamline your daily image tasks - easier than writing Albumentations code each time:
+
+- `"add blur and rotate 15 degrees"`
+- `"increase contrast and add noise"`
+- `"make it brighter and flip horizontally"`
+- `"apply gaussian blur with medium intensity"`
 
 ## MCP Compliance
 
@@ -38,10 +69,54 @@ This server fulfills the MCP format through:
 ✅ **Comprehensive Logging** - Structured metadata and analysis  
 ✅ **Error Recovery** - Graceful fallbacks and helpful suggestions
 
----
+## Installation & Configuration
 
-This repo is for my entry in the [Kiro Hackathon](<[https://kiro.dev](https://kiro.devpost.com/?ref_feature=challenge&ref_medium=your-open-hackathons&ref_content=Submissions+open&_gl=1*ged24j*_gcl_au*NTk3MjQyNDAxLjE3NDk1Nzk1NzY.*_ga*MjAyNjgxNzE2MS4xNzQ5NTc5NTc3*_ga_0YHJK3Y10M*czE3NTQxMjU4ODgkbzUkZzAkdDE3NTQxMjU4ODgkajYwJGwwJGgw)>).  
-I'm building an MCP-compliant image augmentation server using the [Albumentations](https://albumentations.ai/) library.
+### PyPI Installation
+
+```bash
+uv add albumentations-mcp
+# or
+pip install albumentations-mcp
+```
+
+### MCP Client Setup
+
+**Claude Desktop** (`~/.claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "albumentations": {
+      "command": "uvx",
+      "args": ["albumentations-mcp"],
+      "env": {
+        "ENABLE_VISION_VERIFICATION": "true",
+        "ENABLE_CLASSIFICATION_CHECK": "true",
+        "HOOK_LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}
+```
+
+**Other MCP Clients**: Use `uvx albumentations-mcp` as the command with stdio transport.
+
+## Environment Variables
+
+- `ENABLE_VISION_VERIFICATION`: Enable AI-powered result validation (default: true)
+- `ENABLE_CLASSIFICATION_CHECK`: Enable ML pipeline safety checks (default: true)
+- `ENABLE_PRE_MCP_HOOK`: Enable input sanitization (default: true)
+- `ENABLE_POST_MCP_HOOK`: Enable JSON spec logging (default: true)
+- `HOOK_LOG_LEVEL`: Logging level for hooks (default: INFO)
+
+## Use Cases
+
+Perfect for computer vision teams working on:
+
+- **Data preprocessing pipelines** - Quick augmentation without boilerplate
+- **ML model training** - Safe augmentations with classification consistency checks
+- **Image analysis workflows** - Natural language interface for non-technical users
+- **Rapid prototyping** - Test augmentation ideas without writing code
 
 The goal is to expose configurable image transforms as callable tools via the Model Context Protocol (MCP), so agents like Claude—or IDEs like Kiro—can apply augmentations dynamically during runtime.
 
