@@ -510,7 +510,7 @@ This document defines the formal MCP tool interface specifications for the album
 **Supported Input Methods**:
 
 1. **Base64 Encoded**: Direct embedding in MCP request
-2. **File Path**: Local file system path (development only)
+2. **File Path**: Local file system path (for local deployments)
 3. **URL**: HTTP/HTTPS image URL (with validation)
 4. **Binary Upload**: Raw binary data with content-type header
 

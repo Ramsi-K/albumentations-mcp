@@ -17,27 +17,30 @@ albumentations-mcp/
 │       ├── product.md
 │       ├── tech.md
 │       └── structure.md
-├── src/                     # Source code (to be implemented)
-├── tests/                   # Test suite (to be implemented)
-├── prompts/                 # Prompt templates (to be implemented)
+├── src/                     # Source code directory
+│   └── albumentations_mcp/  # Main package (underscores for Python)
+├── tests/                   # Test suite
+├── prompts/                 # Prompt templates (optional)
 ├── README.md                # Project overview and documentation
 ├── LICENSE                  # MIT license
 └── .gitignore              # Git ignore patterns
 ```
 
-## Planned Source Code Structure
+## PyPI Package Structure
 
-The `src/albumentations_mcp/` directory will follow a layered architecture:
+The `src/albumentations_mcp/` directory follows Python packaging standards:
 
 ### Core MCP Layer
 
-- `main.py` - MCP server entrypoint for Kiro integration
-- `server.py` - MCP protocol implementation and tool registration
-- `models.py` - Pydantic data models with JSON serialization
+- `__init__.py` - Package initialization and version info
+- `__main__.py` - CLI entry point for `uvx albumentations-mcp`
+- `server.py` - Main MCP server with FastMCP tools
+- `models.py` - Pydantic data models with JSON serialization (optional)
 
 ### Processing Pipeline
 
 - `parser.py` - Natural language to Albumentations transform parsing
+- `image_utils.py` - Base64 ↔ PIL Image conversion utilities
 - `processor.py` - Image processing engine with Albumentations integration
 - `pipeline.py` - Complete augmentation workflow orchestration
 

@@ -74,7 +74,10 @@ uv sync
 uv run pre-commit install
 
 # Run development server
-uv run python main.py
+uv run python -m albumentations_mcp
+
+# Or run directly for testing
+uv run python src/albumentations_mcp/server.py
 ```
 
 ### Testing

@@ -2,7 +2,7 @@
 
 ## Albumentations-MCP
 
-An MCP-compliant image augmentation server that bridges natural language processing with computer vision. Built for the Kiro Hackathon, this tool enables users to describe image transformations in plain English and receive professionally augmented images with comprehensive analysis.
+An MCP-compliant image augmentation server that bridges natural language processing with computer vision. This production-ready tool enables users to describe image transformations in plain English and receive professionally augmented images with comprehensive analysis.
 
 ## Core Value Proposition
 
@@ -22,14 +22,22 @@ An MCP-compliant image augmentation server that bridges natural language process
 
 ## Target Users
 
+- **Computer Vision Teams**: Daily image processing tasks without repetitive coding
 - **ML Engineers**: Safe augmentation with classification consistency checks
-- **Computer Vision Researchers**: Rapid prototyping with natural language interface
 - **Data Scientists**: Batch processing with comprehensive metadata and analysis
-- **Kiro Users**: Seamless IDE integration through MCP protocol
+- **Research Teams**: Rapid prototyping with natural language interface
+- **MCP Client Users**: Seamless integration with Claude Desktop, Kiro, and other MCP-compatible tools
+
+## Distribution & Installation
+
+- **PyPI Package**: `uv add albumentations-mcp` or `pip install albumentations-mcp`
+- **MCP Integration**: `uvx albumentations-mcp` for stdio transport
+- **Cross-Project Usage**: Install once, use across multiple projects
+- **Minimal Setup**: Single configuration entry in MCP client
 
 ## Project Status
 
-- **Phase**: Specification Complete - Ready for Implementation
-- **Hackathon Entry**: August 2025
+- **Phase**: Production Ready - Available on PyPI
 - **License**: MIT
 - **Architecture**: Modular, extensible, production-ready design
+- **Maintenance**: Actively maintained with regular updates

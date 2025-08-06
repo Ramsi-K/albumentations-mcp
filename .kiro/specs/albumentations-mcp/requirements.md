@@ -19,7 +19,7 @@ The albumentations-mcp tool is an MCP-compliant image augmentation system that a
 
 ### Requirement 2
 
-**User Story:** As a developer, I want MCP-compliant functionality, so that the tool integrates seamlessly with Kiro and other MCP-compatible systems.
+**User Story:** As a user, I want MCP-compliant functionality, so that the tool integrates seamlessly with Claude Desktop, Kiro, and other MCP-compatible systems.
 
 #### Acceptance Criteria
 
@@ -46,7 +46,7 @@ The albumentations-mcp tool is an MCP-compliant image augmentation system that a
 
 ### Requirement 4
 
-**User Story:** As a developer, I want integrated development tools, so that code quality is maintained automatically throughout the project.
+**User Story:** As a maintainer, I want integrated quality tools, so that code quality is maintained automatically throughout the project.
 
 #### Acceptance Criteria
 
@@ -69,14 +69,14 @@ The albumentations-mcp tool is an MCP-compliant image augmentation system that a
 
 ### Requirement 6
 
-**User Story:** As a developer, I want a clean project structure, so that the codebase is maintainable and components are properly separated.
+**User Story:** As a maintainer, I want a clean project structure, so that the codebase is maintainable and components are properly separated.
 
 #### Acceptance Criteria
 
 1. WHEN the project is structured THEN MCP logic SHALL be separated into dedicated modules
 2. WHEN the project is structured THEN hook system SHALL be in isolated, pluggable modules
 3. WHEN the project is structured THEN augmentation logic SHALL be separated from MCP and hook concerns
-4. WHEN adding new functionality THEN developers SHALL be able to extend each component independently
+4. WHEN adding new functionality THEN maintainers SHALL be able to extend each component independently
 
 ### Requirement 7
 

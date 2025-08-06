@@ -1,6 +1,6 @@
 # Implementation Plan
 
-Simple MCP server using FastMCP library for image augmentation tools.
+Production-ready PyPI package for natural language image augmentation via MCP protocol. Focus on easy installation (`uv add albumentations-mcp`) and seamless MCP client integration (`uvx albumentations-mcp`).
 
 ## Task List
 
@@ -38,24 +38,34 @@ Simple MCP server using FastMCP library for image augmentation tools.
   - [x] Tests written and passing (21 tests)
   - [x] Commit message generated
 
-- [ ] 4. Implement MCP tools with @mcp.tool() decorators
+- [x] 4. Restructure for PyPI distribution
 
-  - [ ] 4.1 Create augment_image tool
+  - Restructure to `src/albumentations_mcp/` package layout
+  - Create `__init__.py` with package exports and version info
+  - Create `__main__.py` entry point for `uvx albumentations-mcp`
+  - Move existing files to proper package structure with relative imports
+  - Update `pyproject.toml` with proper package metadata and entry points
+  - Test package installation and CLI command functionality
+  - _Requirements: 2.1, 2.2, 2.3, 2.4, 11.1, 11.2, 11.3, 11.4_
 
-    - Use `@mcp.tool()` decorator
+- [ ] 5. Implement MCP tools with @mcp.tool() decorators
+
+  - [ ] 5.1 Create augment_image tool
+
+    - Use `@mcp.tool()` decorator in `server.py`
     - Accept `image_b64: str` and `prompt: str`
     - Parse prompt → create Albumentations pipeline → apply
     - Return augmented image as Base64 string
     - _Requirements: 1.1, 1.2, 1.3, 7.1, 7.2, 7.5_
 
-  - [ ] 4.2 Add list_available_transforms tool
+  - [ ] 5.2 Add list_available_transforms tool
 
     - Use `@mcp.tool()` decorator
     - Return list of transforms with descriptions
     - Include parameter ranges and examples
     - _Requirements: 2.1, 2.2_
 
-  - [ ] 4.3 Create validate_prompt tool
+  - [ ] 5.3 Create validate_prompt tool
     - Use `@mcp.tool()` decorator
     - Parse prompt and return what would be applied
     - Show parameters and warnings
@@ -93,66 +103,144 @@ Simple MCP server using FastMCP library for image augmentation tools.
   - Create simple CI workflow
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 9. Create main server runner
-  - Add `if __name__ == "__main__":` block
-  - Use `mcp.run("stdio")` for Kiro integration
-  - Add basic error handling
-  - Create simple documentation
+- [ ] 9. Prepare for PyPI publishing
+  - Create comprehensive README.md with installation and usage examples
+  - Add LICENSE file (MIT)
+  - Test package build with `uv build`
+  - Test local installation with `uv pip install dist/albumentations-mcp-*.whl`
+  - Verify `uvx albumentations-mcp` command works correctly
+  - Create GitHub repository with proper documentation
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 11.1, 11.2, 11.3, 11.4_
 
-## Simple Server Structure
+## PyPI Package Structure
+
+```
+albumentations-mcp/                    # Project root
+├── pyproject.toml                     # Package metadata & dependencies
+├── README.md                          # Documentation
+├── LICENSE                            # MIT license
+├── src/                              # Source code directory
+│   └── albumentations_mcp/           # Your package
+│       ├── __init__.py               # Package initialization
+│       ├── __main__.py               # Entry point for uvx
+│       ├── server.py                 # Main MCP server & tools
+│       ├── parser.py                 # Natural language parsing
+│       ├── image_utils.py            # Image processing utilities
+│       ├── processor.py              # Image processing logic
+│       └── hooks/                    # Hook system (Python files)
+│           ├── __init__.py           # Hook registry
+│           ├── vision_verify.py     # Vision verification hook
+│           ├── classification.py    # Classification hook
+│           └── metadata_logger.py   # Metadata logging hook
+└── tests/                            # Test files
+    ├── test_server.py
+    ├── test_hooks.py
+    └── fixtures/
+        └── sample_images/
+```
+
+## Entry Point Structure
+
+**`src/albumentations_mcp/__main__.py`** (for `uvx albumentations-mcp`):
+
+```python
+#!/usr/bin/env python3
+"""CLI entry point for albumentations-mcp server."""
+
+import sys
+from .server import main
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
+**`src/albumentations_mcp/server.py`** (main MCP server):
 
 ```python
 from mcp.server.fastmcp import FastMCP
-import base64
-from PIL import Image
-import io
-import albumentations as A
+from .parser import parse_prompt
+from .image_utils import base64_to_pil, pil_to_base64
+from .hooks import HookRegistry
 
 mcp = FastMCP("albumentations-mcp")
+hook_registry = HookRegistry()
 
 @mcp.tool()
 def augment_image(image_b64: str, prompt: str) -> str:
     """Apply image augmentations based on natural language prompt."""
-    # Convert base64 to PIL Image
-    image_data = base64.b64decode(image_b64)
-    image = Image.open(io.BytesIO(image_data))
+    # Implementation with hook integration
+    pass
 
-    # Parse prompt and create transforms
-    transforms = parse_prompt(prompt)  # Your parsing logic
-    pipeline = A.Compose(transforms)
-
-    # Apply transforms
-    augmented = pipeline(image=np.array(image))['image']
-
-    # Convert back to base64
-    result_image = Image.fromarray(augmented)
-    buffer = io.BytesIO()
-    result_image.save(buffer, format='PNG')
-    return base64.b64encode(buffer.getvalue()).decode()
-
-@mcp.tool()
-def list_available_transforms() -> dict:
-    """List all available Albumentations transforms."""
-    return {
-        "transforms": [
-            {"name": "Blur", "description": "Apply gaussian blur"},
-            {"name": "Rotate", "description": "Rotate image"},
-            # ... more transforms
-        ]
-    }
-
-@mcp.tool()
-def validate_prompt(prompt: str) -> dict:
-    """Validate and preview what transforms would be applied."""
-    try:
-        transforms = parse_prompt(prompt)
-        return {"valid": True, "transforms": transforms}
-    except Exception as e:
-        return {"valid": False, "error": str(e)}
+def main():
+    """Main entry point for the MCP server."""
+    mcp.run("stdio")
 
 if __name__ == "__main__":
-    mcp.run("stdio")
+    main()
 ```
 
-That's it! Simple, clean, and exactly what you need for the hackathon.
+**`pyproject.toml`** configuration:
+
+```toml
+[project.scripts]
+albumentations-mcp = "albumentations_mcp.__main__:main"
+
+[project.entry-points."console_scripts"]
+albumentations-mcp = "albumentations_mcp.__main__:main"
+```
+
+## Entry Point Structure
+
+**`src/albumentations_mcp/__main__.py`** (for `uvx albumentations-mcp`):
+
+```python
+#!/usr/bin/env python3
+"""CLI entry point for albumentations-mcp server."""
+
+import sys
+from .server import main
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
+**`src/albumentations_mcp/server.py`** (main MCP server):
+
+```python
+from mcp.server.fastmcp import FastMCP
+from .parser import parse_prompt
+from .image_utils import base64_to_pil, pil_to_base64
+from .hooks import HookRegistry
+
+mcp = FastMCP("albumentations-mcp")
+hook_registry = HookRegistry()
+
+@mcp.tool()
+def augment_image(image_b64: str, prompt: str) -> str:
+    """Apply image augmentations based on natural language prompt."""
+    # Implementation with hook integration
+    pass
+
+def main():
+    """Main entry point for the MCP server."""
+    mcp.run("stdio")
+
+if __name__ == "__main__":
+    main()
+```
+
+**`pyproject.toml`** configuration:
+
+```toml
+[project.scripts]
+albumentations-mcp = "albumentations_mcp.__main__:main"
+
+[project.entry-points."console_scripts"]
+albumentations-mcp = "albumentations_mcp.__main__:main"
+```
+
+This structure enables:
+
+- `uv add albumentations-mcp` (PyPI installation)
+- `uvx albumentations-mcp` (direct execution)
+- Proper Python package imports and distribution

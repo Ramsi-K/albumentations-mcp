@@ -113,6 +113,49 @@ class ParserInterface:
 
 **Purpose**: Provides extensible pipeline customization points
 
+**Implementation**: Python-based hook modules with automatic discovery
+
+```python
+# src/albumentations_mcp/hooks/vision_verify.py
+from typing import Dict, Any
+
+HOOK_STAGE = "post_transform_verify"  # Optional stage declaration
+
+async def execute(context: Dict[str, Any]) -> Dict[str, Any]:
+    """Vision verification hook - Python function"""
+    original_image = context.get("original_image")
+    augmented_image = context.get("augmented_image")
+    prompt = context.get("prompt")
+
+    # Your vision model logic here
+    analysis = await analyze_transformation(original_image, augmented_image, prompt)
+
+    return {
+        "success": True,
+        "vision_analysis": analysis
+    }
+```
+
+**Hook Registry**: Automatic discovery and registration
+
+```python
+# src/albumentations_mcp/hooks/__init__.py
+class HookRegistry:
+    def _load_hooks(self):
+        """Automatically load all hook modules"""
+        hooks_dir = os.path.dirname(__file__)
+        for filename in os.listdir(hooks_dir):
+            if filename.endswith('.py') and filename != '__init__.py':
+                module_name = filename[:-3]
+                try:
+                    module = importlib.import_module(f'.{module_name}', __package__)
+                    if hasattr(module, 'execute'):
+                        stage = getattr(module, 'HOOK_STAGE', 'post_transform')
+                        self.register_hook(stage, module.execute)
+                except ImportError:
+                    pass
+```
+
 **Key Classes**:
 
 - `HookRegistry`: Manages hook registration and discovery
@@ -972,7 +1015,7 @@ class MetadataLogger:
 
 ## Scope Definition: Core vs Bonus Features
 
-### 🎯 CORE SCOPE (Hackathon Primary)
+### 🎯 CORE SCOPE (Production Ready)
 
 **Target**: MCP tools invoked by Kiro or other MCP orchestrators
 
@@ -1089,7 +1132,7 @@ class VisionEvaluator:
 - **Scalability**: Hook system that handles complex workflows without conflicts
 - **Compliance**: JSON-serializable data throughout for API/logging compatibility
 
-This architecture transforms the hackathon project into a production-ready system while maintaining all the original creative features.
+This architecture provides a production-ready system with comprehensive features for professional image augmentation workflows.
 
 ## MCP Tool Specifications
 
@@ -1422,7 +1465,7 @@ class VisionVerificationHook:
 - **Model Abstraction**: Pluggable vision and classification models
 - **Failure Resilience**: Explicit policies for hook failures
 - **Storage Flexibility**: Abstract interface supports local/cloud storage
-- **Clear Scope**: Core hackathon features vs bonus extensions
+- **Clear Scope**: Core production features vs optional extensions
 
 This design fixes all critical gaps while prioritizing MCP integration as the primary use case.
 
@@ -1858,7 +1901,7 @@ class ConsistencyChecker:
 # .github/workflows/test.yml
 - name: Run Tests
   run: |
-    pytest tests/ --cov=src/ --cov-report=xml
+    pytest tests/ --cov=src/albumentations_mcp/ --cov-report=xml
     coverage report --fail-under=90
 ```
 

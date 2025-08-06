@@ -501,7 +501,7 @@ jobs:
 
       - name: Run unit tests
         run: |
-          pytest tests/unit/ -v --cov=src/ --cov-report=xml
+          pytest tests/unit/ -v --cov=src/albumentations_mcp/ --cov-report=xml
 
       - name: Run integration tests
         run: |
