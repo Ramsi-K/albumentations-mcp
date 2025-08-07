@@ -144,22 +144,23 @@ Production-ready PyPI package for natural language image augmentation via MCP pr
     - Check for circular dependencies and unnecessary coupling
     - _Requirements: 4.1, 4.2_
 
-- [ ] 9. Add vision verification system
+- [ ] 9. Add LLM-based visual verification system
 
-  - [ ] 9.1 Create vision analysis interface
+  - [x] 9.1 Create image file output system
 
-    - Define VisionAnalyzer abstract base class
-    - Create mock vision analyzer for testing
-    - Add support for multiple vision model backends (Kiro, Claude, GPT-4V)
+    - Create utility functions to save images to temporary files
+    - Generate unique filenames with timestamps for original and augmented images
+    - Add file cleanup utilities for temporary image files
+    - Create verification report templates that reference saved image files
     - _Requirements: 8.1, 8.2, 8.6_
 
-  - [ ] 9.2 Implement post_transform_verify hook
+  - [x] 9.2 Implement post_transform_verify hook
 
-    - Create hook that triggers vision model analysis for quality sampling
-    - Compare original and augmented images using vision models to verify intent
-    - Generate confidence scores (1-5) and explanations of observed changes
-    - Save visual evaluation results as visual_eval.md for audit trail
-    - Make verification optional and non-blocking (graceful failure)
+    - Create hook that saves both original and augmented images to files
+    - Generate visual_eval.md report with image file paths and verification prompts
+    - Include structured questions for the LLM to evaluate transformation success
+    - Add confidence scoring framework (1-5) and change description templates
+    - Make verification optional and non-blocking (graceful failure on file I/O errors)
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6_
 
 - [ ] 10. Add classification consistency checking

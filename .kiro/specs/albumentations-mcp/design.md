@@ -212,11 +212,12 @@ class ProcessorInterface:
 
 ### Analysis Components
 
-**Vision Model Interface**:
+**LLM Visual Verification Interface**:
 
-- Integrates with vision-capable models (Kiro, Claude, GPT-4V, etc.)
-- Compares original and augmented images
-- Generates confidence scores and explanations
+- Saves original and augmented images to temporary files
+- Generates verification reports that the existing LLM can review
+- Leverages the same VLM (Kiro, Claude Desktop) already using the MCP tools
+- Creates structured evaluation prompts for the LLM to assess transformation success
 - Supports multiple model backends with fallbacks
 
 **Classification Model Interface**:
@@ -229,9 +230,10 @@ class ProcessorInterface:
 **Interfaces**:
 
 ```python
-class VisionAnalyzer:
-    async def analyze_transformation(self, original: Image, augmented: Image, prompt: str) -> AnalysisResult
-    def generate_confidence_score(self, analysis: str) -> float
+class VisualVerificationManager:
+    def save_images_for_review(self, original: Image, augmented: Image, session_id: str) -> Dict[str, str]
+    def generate_verification_report(self, image_paths: Dict[str, str], prompt: str) -> str
+    def cleanup_temp_files(self, file_paths: List[str]) -> None
     async def batch_analyze(self, comparisons: List[Tuple[Image, Image, str]]) -> List[AnalysisResult]
 
 class ClassificationAnalyzer:

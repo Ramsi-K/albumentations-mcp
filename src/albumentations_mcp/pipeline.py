@@ -13,6 +13,7 @@ from .hooks import (
     register_hook,
 )
 from .hooks.post_mcp import PostMCPHook
+from .hooks.post_transform_verify import post_transform_verify_hook
 from .hooks.pre_mcp import PreMCPHook
 from .parser import PromptParsingError, parse_prompt
 
@@ -36,6 +37,11 @@ class AugmentationPipeline:
         # Register post-MCP hook
         register_hook(HookStage.POST_MCP, PostMCPHook())
 
+        # Register post-transform verification hook
+        register_hook(
+            HookStage.POST_TRANSFORM_VERIFY, post_transform_verify_hook
+        )
+
         logger.info("Default hooks registered")
 
     async def parse_prompt_with_hooks(
@@ -57,13 +63,17 @@ class AugmentationPipeline:
             },
         )
 
-        logger.info(f"Starting prompt parsing pipeline for session {session_id}")
+        logger.info(
+            f"Starting prompt parsing pipeline for session {session_id}"
+        )
 
         try:
             # Stage 1: Pre-MCP processing
             result = await execute_stage(HookStage.PRE_MCP, context)
             if not result.success or not result.should_continue:
-                return self._format_error_response(context, "Pre-MCP stage failed")
+                return self._format_error_response(
+                    context, "Pre-MCP stage failed"
+                )
             context = result.context
 
             # Stage 2: Parse the prompt (core functionality)
@@ -104,7 +114,9 @@ class AugmentationPipeline:
 
             # Format successful response
             response = self._format_success_response(context)
-            logger.info(f"Pipeline completed successfully for session {session_id}")
+            logger.info(
+                f"Pipeline completed successfully for session {session_id}"
+            )
             return response
 
         except Exception as e:

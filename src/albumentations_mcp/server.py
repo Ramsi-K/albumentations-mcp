@@ -69,6 +69,83 @@ def augment_image(image_b64: str, prompt: str) -> str:
         )
 
         if processing_result.success and processing_result.augmented_image:
+            # Execute visual verification hook if enabled
+            try:
+                from .hooks import HookContext, HookStage, execute_stage
+                import uuid
+
+                # Create context for verification hook
+                session_id = str(uuid.uuid4())[:8]
+                verification_context = HookContext(
+                    session_id=session_id,
+                    original_prompt=prompt,
+                    metadata={
+                        "original_image": image,
+                        "augmented_image": processing_result.augmented_image,
+                        "applied_transforms": processing_result.applied_transforms,
+                        "skipped_transforms": processing_result.skipped_transforms,
+                        "processing_time": processing_result.execution_time,
+                        "pipeline_version": "1.0.0",
+                    },
+                )
+
+                # Execute verification hook (non-blocking)
+                # Since we're in a sync function, we need to handle async properly
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        # If loop is running, use thread executor
+                        import concurrent.futures
+
+                        with (
+                            concurrent.futures.ThreadPoolExecutor() as executor
+                        ):
+                            future = executor.submit(
+                                asyncio.run,
+                                execute_stage(
+                                    HookStage.POST_TRANSFORM_VERIFY,
+                                    verification_context,
+                                ),
+                            )
+                            verification_result = future.result()
+                    else:
+                        verification_result = loop.run_until_complete(
+                            execute_stage(
+                                HookStage.POST_TRANSFORM_VERIFY,
+                                verification_context,
+                            )
+                        )
+                except RuntimeError:
+                    # No event loop, create one
+                    verification_result = asyncio.run(
+                        execute_stage(
+                            HookStage.POST_TRANSFORM_VERIFY,
+                            verification_context,
+                        )
+                    )
+
+                if verification_result.success:
+                    import logging
+
+                    logger = logging.getLogger(__name__)
+                    logger.debug(
+                        f"Visual verification completed for session {session_id}"
+                    )
+                else:
+                    import logging
+
+                    logger = logging.getLogger(__name__)
+                    logger.warning(
+                        f"Visual verification failed for session {session_id}"
+                    )
+
+            except Exception as e:
+                import logging
+
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Visual verification hook failed: {e}")
+                # Continue processing even if verification fails
+
             # Convert augmented image back to base64
             return pil_to_base64(processing_result.augmented_image)
         # If processing failed, return original image

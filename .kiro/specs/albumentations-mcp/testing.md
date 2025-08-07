@@ -11,7 +11,7 @@ tests/
 ├── unit/
 │   ├── test_parser.py           # Natural language parsing
 │   ├── test_hooks.py            # Hook system execution
-│   ├── test_models.py           # Vision/classification models
+│   ├── test_verification.py     # LLM visual verification system
 │   ├── test_serialization.py   # Pydantic model validation
 │   └── test_transforms.py      # Albumentations integration
 ├── integration/
@@ -24,7 +24,7 @@ tests/
 │   ├── prompts/                # Test prompt variations
 │   └── responses/              # Expected response data
 └── mocks/
-    ├── vision_models.py        # Mock vision model responses
+    ├── verification.py         # Mock file operations and report generation
     ├── classifiers.py          # Mock classification results
     └── storage.py              # Mock file operations
 ```
@@ -188,12 +188,13 @@ class TestHookSystem:
 ```python
 import pytest
 from albumentations_mcp.models import ImagePayload, TransformSpec, ProcessingResult
-from albumentations_mcp.analysis import VisionAnalyzer, ClassificationAnalyzer
+from albumentations_mcp.verification import VisualVerificationManager
+from albumentations_mcp.analysis import ClassificationAnalyzer
 
-class TestVisionAnalyzer:
+class TestVisualVerificationManager:
     @pytest.fixture
-    def analyzer(self):
-        return VisionAnalyzer(model_name="mock")
+    def verification_manager(self):
+        return VisualVerificationManager()
 
     @pytest.fixture
     def sample_images(self):
@@ -201,20 +202,36 @@ class TestVisionAnalyzer:
         augmented = ImagePayload.from_base64("augmented-image-data")
         return original, augmented
 
-    async def test_vision_analysis(self, analyzer, sample_images):
-        """Test vision model analysis"""
+    def test_save_images_for_review(self, verification_manager, sample_images):
+        """Test saving images to temporary files for LLM review"""
         original, augmented = sample_images
-        result = await analyzer.analyze_transformation(
-            original, augmented, "add blur"
+        file_paths = verification_manager.save_images_for_review(
+            original, augmented, "test_session_123"
         )
 
-        assert 1 <= result.confidence_score <= 5
-        assert len(result.explanation) > 10
-        assert isinstance(result.visual_changes, list)
-        assert result.model_used == "mock"
+        assert "original" in file_paths
+        assert "augmented" in file_paths
+        assert file_paths["original"].endswith(".png")
+        assert file_paths["augmented"].endswith(".png")
 
-    async def test_vision_analysis_failure(self, analyzer, sample_images):
-        """Test graceful handling of vision model failures"""
+    def test_generate_verification_report(self, verification_manager):
+        """Test generation of verification report for LLM review"""
+        image_paths = {
+            "original": "/tmp/original_123.png",
+            "augmented": "/tmp/augmented_123.png"
+        }
+
+        report = verification_manager.generate_verification_report(
+            image_paths, "add blur"
+        )
+
+        assert "original_123.png" in report
+        assert "augmented_123.png" in report
+        assert "add blur" in report
+        assert "transformation success" in report.lower()
+
+    def test_cleanup_temp_files(self, verification_manager, sample_images):
+        """Test cleanup of temporary files after LLM review"""
         original, augmented = sample_images
 
         # Mock model failure
