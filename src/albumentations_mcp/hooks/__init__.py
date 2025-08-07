@@ -8,9 +8,10 @@ import asyncio
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
+
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -28,26 +29,21 @@ class HookStage(str, Enum):
     POST_SAVE = "post_save"
 
 
-@dataclass
-class HookContext:
+class HookContext(BaseModel):
     """Context passed between hooks containing pipeline state."""
 
-    session_id: str
-    original_prompt: str
-    image_data: bytes | None = None
-    parsed_transforms: list[dict[str, Any]] | None = None
-    augmented_image: bytes | None = None
-    metadata: dict[str, Any] = None
-    errors: list[str] = None
-    warnings: list[str] = None
-
-    def __post_init__(self):
-        if self.metadata is None:
-            self.metadata = {}
-        if self.errors is None:
-            self.errors = []
-        if self.warnings is None:
-            self.warnings = []
+    session_id: str = Field(..., description="Unique session identifier")
+    original_prompt: str = Field(..., description="Original user prompt")
+    image_data: bytes | None = Field(None, description="Original image data")
+    parsed_transforms: list[dict[str, Any]] | None = Field(
+        None, description="Parsed transform specifications"
+    )
+    augmented_image: bytes | None = Field(None, description="Processed image data")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Context metadata"
+    )
+    errors: list[str] = Field(default_factory=list, description="Error messages")
+    warnings: list[str] = Field(default_factory=list, description="Warning messages")
 
 
 class HookResult:
@@ -100,7 +96,9 @@ class HookRegistry:
         for i, hook in enumerate(hooks):
             if hook.name == hook_name:
                 del hooks[i]
-                logger.debug(f"Unregistered hook {hook_name} from stage {stage}")
+                logger.debug(
+                    f"Unregistered hook {hook_name} from stage {stage}",
+                )
                 return True
         return False
 
@@ -108,7 +106,11 @@ class HookRegistry:
         """Get all hooks for a stage."""
         return self._hooks[stage].copy()
 
-    async def execute_stage(self, stage: HookStage, context: HookContext) -> HookResult:
+    async def execute_stage(
+        self,
+        stage: HookStage,
+        context: HookContext,
+    ) -> HookResult:
         """Execute all hooks for a given stage."""
         hooks = self._hooks[stage]
 

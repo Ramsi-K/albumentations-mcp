@@ -18,14 +18,20 @@ class PostMCPHook(BaseHook):
     async def execute(self, context: HookContext) -> HookResult:
         """Log and validate the generated JSON spec."""
         try:
-            logger.debug(f"Post-MCP processing for session {context.session_id}")
+            logger.debug(
+                f"Post-MCP processing for session {context.session_id}",
+            )
 
             if not context.parsed_transforms:
-                context.warnings.append("No transforms were parsed from the prompt")
+                context.warnings.append(
+                    "No transforms were parsed from the prompt",
+                )
                 return HookResult(success=True, context=context)
 
             # Validate transform specifications
-            validation_result = self._validate_transforms(context.parsed_transforms)
+            validation_result = self._validate_transforms(
+                context.parsed_transforms,
+            )
             if not validation_result["valid"]:
                 context.warnings.extend(validation_result["warnings"])
 
@@ -33,7 +39,9 @@ class PostMCPHook(BaseHook):
             json_spec = self._generate_json_spec(context)
 
             # Log the JSON spec
-            logger.info(f"Generated JSON spec: {json.dumps(json_spec, indent=2)}")
+            logger.info(
+                f"Generated JSON spec: {json.dumps(json_spec, indent=2)}",
+            )
 
             # Add to metadata
             context.metadata.update(
@@ -53,7 +61,10 @@ class PostMCPHook(BaseHook):
             logger.error(error_msg, exc_info=True)
             return HookResult(success=False, error=error_msg, context=context)
 
-    def _validate_transforms(self, transforms: list[dict[str, Any]]) -> dict[str, Any]:
+    def _validate_transforms(
+        self,
+        transforms: list[dict[str, Any]],
+    ) -> dict[str, Any]:
         """Validate the parsed transforms."""
         warnings = []
 
@@ -68,7 +79,9 @@ class PostMCPHook(BaseHook):
             if "parameters" not in transform:
                 warnings.append(f"Transform {i} missing 'parameters' field")
             elif not isinstance(transform["parameters"], dict):
-                warnings.append(f"Transform {i} parameters is not a dictionary")
+                warnings.append(
+                    f"Transform {i} parameters is not a dictionary",
+                )
 
         return {"valid": len(warnings) == 0, "warnings": warnings}
 

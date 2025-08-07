@@ -11,7 +11,7 @@ transform pipeline creation, execution, and error recovery.
 # TODO Tree
 - [x] Core Processing Infrastructure
   - [x] Import dependencies (albumentations, numpy, PIL, logging)
-  - [x] Define ProcessingResult dataclass
+  - [x] Define ProcessingResult Pydantic model
   - [x] Create ImageProcessor class
   - [x] Define ProcessingError exception
 - [x] Transform Pipeline Creation
@@ -42,8 +42,9 @@ transform pipeline creation, execution, and error recovery.
 
 import logging
 import time
-from dataclasses import dataclass
-from typing import Any
+from typing import Any, Tuple
+
+from pydantic import BaseModel, Field
 
 import albumentations as A
 from PIL import Image
@@ -61,17 +62,24 @@ class ProcessingError(Exception):
     """Raised when image processing fails."""
 
 
-@dataclass
-class ProcessingResult:
+class ProcessingResult(BaseModel):
     """Result of image processing operation."""
 
-    success: bool
-    augmented_image: Image.Image | None
-    applied_transforms: list[dict[str, Any]]
-    skipped_transforms: list[dict[str, Any]]
-    metadata: dict[str, Any]
-    execution_time: float
-    error_message: str | None = None
+    model_config = {"arbitrary_types_allowed": True}
+
+    success: bool = Field(..., description="Whether processing completed successfully")
+    augmented_image: Image.Image | None = Field(None, description="Processed image")
+    applied_transforms: list[dict[str, Any]] = Field(
+        default_factory=list, description="Successfully applied transforms"
+    )
+    skipped_transforms: list[dict[str, Any]] = Field(
+        default_factory=list, description="Transforms that were skipped"
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Processing metadata"
+    )
+    execution_time: float = Field(..., ge=0, description="Processing time in seconds")
+    error_message: str | None = Field(None, description="Error message if failed")
 
 
 class ImageProcessor:
@@ -82,7 +90,9 @@ class ImageProcessor:
         self._transform_cache = {}  # Cache for compiled transforms
 
     def process_image(
-        self, image: Image.Image, transforms: list[dict[str, Any]],
+        self,
+        image: Image.Image,
+        transforms: list[dict[str, Any]],
     ) -> ProcessingResult:
         """Process image with given transform specifications.
 
@@ -184,7 +194,8 @@ class ImageProcessor:
             )
 
     def _create_pipeline(
-        self, transforms: list[dict[str, Any]],
+        self,
+        transforms: list[dict[str, Any]],
     ) -> tuple[A.Compose | None, dict[str, Any]]:
         """Create Albumentations pipeline from transform specifications.
 
@@ -229,7 +240,8 @@ class ImageProcessor:
             return None, {"applied": [], "skipped": transforms}
 
     def _create_transform(
-        self, transform_spec: dict[str, Any],
+        self,
+        transform_spec: dict[str, Any],
     ) -> A.BasicTransform | None:
         """Create single Albumentations transform from specification.
 
@@ -270,7 +282,9 @@ class ImageProcessor:
             return None
 
     def _validate_parameters(
-        self, transform_name: str, parameters: dict[str, Any],
+        self,
+        transform_name: str,
+        parameters: dict[str, Any],
     ) -> dict[str, Any]:
         """Validate and clean transform parameters.
 
@@ -308,7 +322,8 @@ class ImageProcessor:
                 brightness_limit = clean_params["brightness_limit"]
                 if isinstance(brightness_limit, (int, float)):
                     clean_params["brightness_limit"] = max(
-                        0.0, min(float(brightness_limit), 1.0),
+                        0.0,
+                        min(float(brightness_limit), 1.0),
                     )
 
             # Handle contrast limit
@@ -316,7 +331,8 @@ class ImageProcessor:
                 contrast_limit = clean_params["contrast_limit"]
                 if isinstance(contrast_limit, (int, float)):
                     clean_params["contrast_limit"] = max(
-                        0.0, min(float(contrast_limit), 1.0),
+                        0.0,
+                        min(float(contrast_limit), 1.0),
                     )
 
         elif transform_name == "GaussNoise":
@@ -360,7 +376,8 @@ def get_processor() -> ImageProcessor:
 
 
 def process_image(
-    image: Image.Image, transforms: list[dict[str, Any]],
+    image: Image.Image,
+    transforms: list[dict[str, Any]],
 ) -> ProcessingResult:
     """Convenience function to process image with transforms."""
     return get_processor().process_image(image, transforms)

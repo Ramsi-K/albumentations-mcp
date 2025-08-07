@@ -4,6 +4,7 @@ import logging
 import re
 
 from . import BaseHook, HookContext, HookResult
+from .utils import MAX_PROMPT_LENGTH
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,9 @@ class PreMCPHook(BaseHook):
     async def execute(self, context: HookContext) -> HookResult:
         """Sanitize and preprocess input before parsing."""
         try:
-            logger.debug(f"Pre-MCP processing for session {context.session_id}")
+            logger.debug(
+                f"Pre-MCP processing for session {context.session_id}",
+            )
 
             # Sanitize prompt
             sanitized_prompt = self._sanitize_prompt(context.original_prompt)
@@ -29,7 +32,7 @@ class PreMCPHook(BaseHook):
                 context.metadata["prompt_sanitized"] = True
 
             # Validate prompt length
-            if len(context.original_prompt) > 1000:
+            if len(context.original_prompt) > MAX_PROMPT_LENGTH:
                 context.warnings.append(
                     "Prompt is very long, consider shortening for better results",
                 )

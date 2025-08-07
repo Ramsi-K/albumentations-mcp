@@ -12,10 +12,10 @@ computer vision transformations.
 
 # TODO Tree
 - [x] Core Parser Infrastructure
-  - [x] Import dependencies (re, logging, typing, dataclasses, enum)
+  - [x] Import dependencies (re, logging, typing, pydantic, enum)
   - [x] Define TransformType enum with all supported transforms
-  - [x] Create TransformConfig dataclass
-  - [x] Create ParseResult dataclass
+  - [x] Create TransformConfig Pydantic model
+  - [x] Create ParseResult Pydantic model
   - [x] Define PromptParsingError exception
 - [x] Transform Mapping System
   - [x] Build phrase-to-transform dictionary
@@ -43,6 +43,7 @@ computer vision transformations.
   - [x] Error handling tests
 
 # Code Review Notes
+- FIXED: Converted all dataclass definitions to Pydantic models
 - ISSUE: parse_prompt() method is too complex (80+ lines)
 - ISSUE: Missing input validation for prompt length limits
 - ISSUE: No protection against ReDoS attacks in regex patterns
@@ -52,11 +53,14 @@ computer vision transformations.
 - TODO: Add comprehensive logging context
 """
 
+from __future__ import annotations
+
 import logging
 import re
-from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, List
+
+from pydantic import BaseModel, Field, field_validator
 
 logger = logging.getLogger(__name__)
 
@@ -79,24 +83,100 @@ class TransformType(str, Enum):
     CLAHE = "CLAHE"
 
 
-@dataclass
-class TransformConfig:
+class TransformConfig(BaseModel):
     """Configuration for a single transform."""
 
-    name: TransformType
-    parameters: dict[str, Any]
-    probability: float = 1.0
+    name: TransformType = Field(..., description="Name of the Albumentations transform")
+    parameters: dict[str, Any] = Field(
+        default_factory=dict, description="Transform parameters"
+    )
+    probability: float = Field(
+        default=1.0,
+        ge=0.0,
+        le=1.0,
+        description="Probability of applying transform",
+    )
+
+    @field_validator("parameters")
+    @classmethod
+    def validate_parameters(cls, v, info):
+        """Validate parameters based on transform type."""
+        transform_name = info.data.get("name") if info.data else None
+        if transform_name and transform_name in [
+            "Blur",
+            "MotionBlur",
+            "GaussianBlur",
+        ]:
+            if "blur_limit" in v and (v["blur_limit"] < 3 or v["blur_limit"] > 100):
+                raise ValueError("blur_limit must be between 3 and 100")
+        return v
 
 
-@dataclass
-class ParseResult:
+class ParseResult(BaseModel):
     """Result of parsing a natural language prompt."""
 
-    transforms: list[TransformConfig]
-    original_prompt: str
-    confidence: float
-    warnings: list[str]
-    suggestions: list[str]
+    transforms: List[TransformConfig] = Field(
+        ..., description="List of parsed transform configurations"
+    )
+    original_prompt: str = Field(..., description="Original input prompt")
+    confidence: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Confidence score for parsing accuracy",
+    )
+    warnings: List[str] = Field(default_factory=list, description="Parsing warnings")
+    suggestions: List[str] = Field(
+        default_factory=list, description="Suggestions for improvement"
+    )
+
+
+class TransformConfig(BaseModel):
+    """Configuration for a single transform."""
+
+    name: TransformType = Field(..., description="Name of the Albumentations transform")
+    parameters: dict[str, Any] = Field(
+        default_factory=dict, description="Transform parameters"
+    )
+    probability: float = Field(
+        default=1.0,
+        ge=0.0,
+        le=1.0,
+        description="Probability of applying transform",
+    )
+
+    @field_validator("parameters")
+    @classmethod
+    def validate_parameters(cls, v, info):
+        """Validate parameters based on transform type."""
+        transform_name = info.data.get("name") if info.data else None
+        if transform_name and transform_name in [
+            "Blur",
+            "MotionBlur",
+            "GaussianBlur",
+        ]:
+            if "blur_limit" in v and (v["blur_limit"] < 3 or v["blur_limit"] > 100):
+                raise ValueError("blur_limit must be between 3 and 100")
+        return v
+
+
+class ParseResult(BaseModel):
+    """Result of parsing a natural language prompt."""
+
+    transforms: List[TransformConfig] = Field(
+        ..., description="List of parsed transform configurations"
+    )
+    original_prompt: str = Field(..., description="Original input prompt")
+    confidence: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Confidence score for parsing accuracy",
+    )
+    warnings: List[str] = Field(default_factory=list, description="Parsing warnings")
+    suggestions: List[str] = Field(
+        default_factory=list, description="Suggestions for improvement"
+    )
 
 
 class PromptParsingError(Exception):
@@ -408,7 +488,12 @@ class PromptParser:
                 parameters["contrast_limit"] = max(0.1, min(contrast, 1.0))
 
             # Handle increase/decrease keywords for brightness
-            if "brighten" in phrase or "increase brightness" in phrase or "darken" in phrase or "decrease brightness" in phrase:
+            if (
+                "brighten" in phrase
+                or "increase brightness" in phrase
+                or "darken" in phrase
+                or "decrease brightness" in phrase
+            ):
                 if "brightness_limit" not in parameters:
                     parameters["brightness_limit"] = 0.2
 
