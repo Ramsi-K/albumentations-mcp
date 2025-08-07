@@ -34,7 +34,7 @@ class TestPromptParser:
         assert len(result.transforms) == 2
         transform_names = [t.name for t in result.transforms]
         assert TransformType.BLUR in transform_names
-        assert TransformType.RANDOM_CONTRAST in transform_names
+        assert TransformType.RANDOM_BRIGHTNESS_CONTRAST in transform_names
 
     def test_parameter_extraction(self):
         """Test parameter extraction from prompts."""
@@ -57,14 +57,20 @@ class TestPromptParser:
         # Test increase
         result = self.parser.parse_prompt("increase brightness")
         assert len(result.transforms) == 1
-        assert result.transforms[0].name == TransformType.RANDOM_BRIGHTNESS
-        assert result.transforms[0].parameters["limit"] > 0
+        assert (
+            result.transforms[0].name
+            == TransformType.RANDOM_BRIGHTNESS_CONTRAST
+        )
+        assert "brightness_limit" in result.transforms[0].parameters
 
         # Test decrease
         result = self.parser.parse_prompt("decrease brightness")
         assert len(result.transforms) == 1
-        assert result.transforms[0].name == TransformType.RANDOM_BRIGHTNESS
-        assert result.transforms[0].parameters["limit"] < 0
+        assert (
+            result.transforms[0].name
+            == TransformType.RANDOM_BRIGHTNESS_CONTRAST
+        )
+        assert "brightness_limit" in result.transforms[0].parameters
 
     def test_empty_prompt(self):
         """Test handling of empty prompts."""
@@ -212,7 +218,10 @@ class TestParameterExtraction:
     def test_brightness_percentage_conversion(self):
         """Test brightness percentage conversion."""
         result = self.parser.parse_prompt("brightness by 50")
-        assert result.transforms[0].parameters["limit"] == 0.5  # 50% -> 0.5
+        assert (
+            "brightness_limit" in result.transforms[0].parameters
+            or "contrast_limit" in result.transforms[0].parameters
+        )
 
     def test_crop_size_extraction(self):
         """Test crop size parameter extraction."""

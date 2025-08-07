@@ -141,9 +141,9 @@ class TestMCPToolsWithHooks:
     def test_validate_prompt_tool_with_hooks(self):
         """Test validate_prompt_tool using hooks."""
         # Import here to avoid circular imports
-        from main import validate_prompt_tool
+        from src.albumentations_mcp.server import validate_prompt
 
-        result = validate_prompt_tool("add blur and increase contrast")
+        result = validate_prompt("add blur and increase contrast")
 
         assert result["valid"] is True
         assert result["transforms_found"] == 2
@@ -157,7 +157,7 @@ class TestMCPToolsWithHooks:
 
     def test_get_pipeline_status_tool(self):
         """Test get_pipeline_status tool."""
-        from main import get_pipeline_status
+        from src.albumentations_mcp.server import get_pipeline_status
 
         result = get_pipeline_status()
 

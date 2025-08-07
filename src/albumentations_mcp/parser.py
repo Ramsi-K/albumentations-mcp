@@ -67,8 +67,7 @@ class TransformType(str, Enum):
     BLUR = "Blur"
     MOTION_BLUR = "MotionBlur"
     GAUSSIAN_BLUR = "GaussianBlur"
-    RANDOM_CONTRAST = "RandomContrast"
-    RANDOM_BRIGHTNESS = "RandomBrightness"
+    RANDOM_BRIGHTNESS_CONTRAST = "RandomBrightnessContrast"
     HUE_SATURATION_VALUE = "HueSaturationValue"
     ROTATE = "Rotate"
     HORIZONTAL_FLIP = "HorizontalFlip"
@@ -125,14 +124,14 @@ class PromptParser:
             "add blur": TransformType.BLUR,
             "make blurry": TransformType.BLUR,
             # Contrast and brightness
-            "contrast": TransformType.RANDOM_CONTRAST,
-            "increase contrast": TransformType.RANDOM_CONTRAST,
-            "enhance contrast": TransformType.RANDOM_CONTRAST,
-            "brightness": TransformType.RANDOM_BRIGHTNESS,
-            "brighten": TransformType.RANDOM_BRIGHTNESS,
-            "darken": TransformType.RANDOM_BRIGHTNESS,
-            "increase brightness": TransformType.RANDOM_BRIGHTNESS,
-            "decrease brightness": TransformType.RANDOM_BRIGHTNESS,
+            "contrast": TransformType.RANDOM_BRIGHTNESS_CONTRAST,
+            "increase contrast": TransformType.RANDOM_BRIGHTNESS_CONTRAST,
+            "enhance contrast": TransformType.RANDOM_BRIGHTNESS_CONTRAST,
+            "brightness": TransformType.RANDOM_BRIGHTNESS_CONTRAST,
+            "brighten": TransformType.RANDOM_BRIGHTNESS_CONTRAST,
+            "darken": TransformType.RANDOM_BRIGHTNESS_CONTRAST,
+            "increase brightness": TransformType.RANDOM_BRIGHTNESS_CONTRAST,
+            "decrease brightness": TransformType.RANDOM_BRIGHTNESS_CONTRAST,
             # Color adjustments
             "hue": TransformType.HUE_SATURATION_VALUE,
             "saturation": TransformType.HUE_SATURATION_VALUE,
@@ -172,8 +171,11 @@ class PromptParser:
             TransformType.BLUR: {"blur_limit": 7, "p": 1.0},
             TransformType.GAUSSIAN_BLUR: {"blur_limit": 7, "p": 1.0},
             TransformType.MOTION_BLUR: {"blur_limit": 7, "p": 1.0},
-            TransformType.RANDOM_CONTRAST: {"limit": 0.2, "p": 1.0},
-            TransformType.RANDOM_BRIGHTNESS: {"limit": 0.2, "p": 1.0},
+            TransformType.RANDOM_BRIGHTNESS_CONTRAST: {
+                "brightness_limit": 0.2,
+                "contrast_limit": 0.2,
+                "p": 1.0,
+            },
             TransformType.HUE_SATURATION_VALUE: {
                 "hue_shift_limit": 20,
                 "sat_shift_limit": 30,
@@ -386,30 +388,37 @@ class PromptParser:
                 angle = float(match.group(1))
                 parameters["limit"] = max(1, min(angle, 180))
 
-        elif transform_type == TransformType.RANDOM_BRIGHTNESS:
-            match = self._parameter_patterns["brightness_amount"].search(
+        elif transform_type == TransformType.RANDOM_BRIGHTNESS_CONTRAST:
+            # Handle brightness parameters
+            brightness_match = self._parameter_patterns["brightness_amount"].search(
                 phrase,
             )
-            if match:
-                brightness = float(match.group(1))
-                # Handle different brightness specifications
+            if brightness_match:
+                brightness = float(brightness_match.group(1))
                 if brightness > 1:
                     brightness = brightness / 100  # Convert percentage
-                parameters["limit"] = max(0.1, min(brightness, 1.0))
+                parameters["brightness_limit"] = max(0.1, min(brightness, 1.0))
 
-            # Handle increase/decrease keywords
-            if "increase" in phrase or "brighten" in phrase:
-                parameters["limit"] = abs(parameters["limit"])
-            elif "decrease" in phrase or "darken" in phrase:
-                parameters["limit"] = -abs(parameters["limit"])
-
-        elif transform_type == TransformType.RANDOM_CONTRAST:
-            match = self._parameter_patterns["contrast_amount"].search(phrase)
-            if match:
-                contrast = float(match.group(1))
+            # Handle contrast parameters
+            contrast_match = self._parameter_patterns["contrast_amount"].search(phrase)
+            if contrast_match:
+                contrast = float(contrast_match.group(1))
                 if contrast > 1:
                     contrast = contrast / 100  # Convert percentage
-                parameters["limit"] = max(0.1, min(contrast, 1.0))
+                parameters["contrast_limit"] = max(0.1, min(contrast, 1.0))
+
+            # Handle increase/decrease keywords for brightness
+            if "brighten" in phrase or "increase brightness" in phrase or "darken" in phrase or "decrease brightness" in phrase:
+                if "brightness_limit" not in parameters:
+                    parameters["brightness_limit"] = 0.2
+
+            # Handle contrast keywords
+            if (
+                "contrast" in phrase
+                and "brightness_limit" not in parameters
+                and "contrast_limit" not in parameters
+            ):
+                parameters["contrast_limit"] = 0.2
 
         elif transform_type == TransformType.GAUSSIAN_NOISE:
             match = self._parameter_patterns["noise_level"].search(phrase)
@@ -478,8 +487,7 @@ class PromptParser:
                 "Apply gaussian blur with configurable kernel"
             ),
             TransformType.MOTION_BLUR: "Apply motion blur effect",
-            TransformType.RANDOM_CONTRAST: "Randomly adjust image contrast",
-            TransformType.RANDOM_BRIGHTNESS: ("Randomly adjust image brightness"),
+            TransformType.RANDOM_BRIGHTNESS_CONTRAST: "Randomly adjust image brightness and contrast",
             TransformType.HUE_SATURATION_VALUE: ("Adjust hue, saturation, and value"),
             TransformType.ROTATE: "Rotate image by specified angle",
             TransformType.HORIZONTAL_FLIP: "Flip image horizontally",
@@ -506,8 +514,10 @@ class PromptParser:
             TransformType.BLUR: {"blur_limit": "3-99 (odd numbers)"},
             TransformType.GAUSSIAN_BLUR: {"blur_limit": "3-99 (odd numbers)"},
             TransformType.MOTION_BLUR: {"blur_limit": "3-99 (odd numbers)"},
-            TransformType.RANDOM_CONTRAST: {"limit": "0.1-1.0"},
-            TransformType.RANDOM_BRIGHTNESS: {"limit": "0.1-1.0"},
+            TransformType.RANDOM_BRIGHTNESS_CONTRAST: {
+                "brightness_limit": "0.1-1.0",
+                "contrast_limit": "0.1-1.0",
+            },
             TransformType.HUE_SATURATION_VALUE: {
                 "hue_shift_limit": "0-180",
                 "sat_shift_limit": "0-100",

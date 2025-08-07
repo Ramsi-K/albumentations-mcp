@@ -39,7 +39,9 @@ class AugmentationPipeline:
         logger.info("Default hooks registered")
 
     async def parse_prompt_with_hooks(
-        self, prompt: str, session_id: str | None = None,
+        self,
+        prompt: str,
+        session_id: str | None = None,
     ) -> dict[str, Any]:
         """Parse prompt using the complete hook system."""
         if session_id is None:
@@ -124,7 +126,9 @@ class AugmentationPipeline:
         }
 
     def _format_error_response(
-        self, context: HookContext, error: str,
+        self,
+        context: HookContext,
+        error: str,
     ) -> dict[str, Any]:
         """Format error pipeline response."""
         return {
@@ -160,7 +164,8 @@ def get_pipeline() -> AugmentationPipeline:
 
 
 async def parse_prompt_with_hooks(
-    prompt: str, session_id: str | None = None,
+    prompt: str,
+    session_id: str | None = None,
 ) -> dict[str, Any]:
     """Convenience function to parse prompt with hooks."""
     return await get_pipeline().parse_prompt_with_hooks(prompt, session_id)

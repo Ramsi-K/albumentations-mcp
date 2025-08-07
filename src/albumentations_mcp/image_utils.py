@@ -33,10 +33,8 @@ class ImageConversionError(Exception):
     """Raised when image conversion fails."""
 
 
-
 class ImageValidationError(Exception):
     """Raised when image validation fails."""
-
 
 
 def _sanitize_base64_input(image_b64: str) -> str:

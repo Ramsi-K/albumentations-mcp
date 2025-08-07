@@ -28,12 +28,51 @@ def augment_image(image_b64: str, prompt: str) -> str:
     Returns:
         Base64-encoded augmented image
     """
-    # TODO: Implement in task 2-4
-    # Convert base64 to PIL Image
-    # Parse prompt and create transforms
-    # Apply transforms
-    # Convert back to base64
-    return image_b64  # Placeholder - return original for now
+    import asyncio
+
+    from .image_utils import ImageConversionError, base64_to_pil, pil_to_base64
+    from .processor import get_processor
+
+    try:
+        # Convert base64 to PIL Image
+        image = base64_to_pil(image_b64)
+
+        # Parse prompt using hook-integrated pipeline
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            parse_result = loop.run_until_complete(parse_prompt_with_hooks(prompt))
+        finally:
+            loop.close()
+
+        if not parse_result["success"] or not parse_result["transforms"]:
+            # If parsing failed, return original image
+            return image_b64
+
+        # Apply transforms using processor
+        processor = get_processor()
+        processing_result = processor.process_image(image, parse_result["transforms"])
+
+        if processing_result.success and processing_result.augmented_image:
+            # Convert augmented image back to base64
+            return pil_to_base64(processing_result.augmented_image)
+        # If processing failed, return original image
+        return image_b64
+
+    except ImageConversionError as e:
+        # Log error but return original to avoid breaking MCP protocol
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.error(f"Image conversion error in augment_image: {e}")
+        return image_b64
+    except Exception as e:
+        # Log error but return original to avoid breaking MCP protocol
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.error(f"Unexpected error in augment_image: {e}")
+        return image_b64
 
 
 @mcp.tool()
@@ -74,7 +113,7 @@ def list_available_transforms() -> dict:
 
 
 @mcp.tool()
-def validate_prompt_tool(prompt: str) -> dict:
+def validate_prompt(prompt: str) -> dict:
     """Validate and preview what transforms would be applied for a given prompt.
 
     Args:

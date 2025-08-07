@@ -48,9 +48,9 @@ Production-ready PyPI package for natural language image augmentation via MCP pr
   - Test package installation and CLI command functionality
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 11.1, 11.2, 11.3, 11.4_
 
-- [ ] 5. Implement MCP tools with @mcp.tool() decorators
+- [x] 5. Implement MCP tools with @mcp.tool() decorators
 
-  - [ ] 5.1 Create augment_image tool
+  - [x] 5.1 Create augment_image tool
 
     - Use `@mcp.tool()` decorator in `server.py`
     - Accept `image_b64: str` and `prompt: str`
@@ -58,14 +58,15 @@ Production-ready PyPI package for natural language image augmentation via MCP pr
     - Return augmented image as Base64 string
     - _Requirements: 1.1, 1.2, 1.3, 7.1, 7.2, 7.5_
 
-  - [ ] 5.2 Add list_available_transforms tool
+  - [x] 5.2 Add list_available_transforms tool
 
     - Use `@mcp.tool()` decorator
     - Return list of transforms with descriptions
     - Include parameter ranges and examples
     - _Requirements: 2.1, 2.2_
 
-  - [ ] 5.3 Create validate_prompt tool
+  - [x] 5.3 Create validate_prompt tool
+
     - Use `@mcp.tool()` decorator
     - Parse prompt and return what would be applied
     - Show parameters and warnings

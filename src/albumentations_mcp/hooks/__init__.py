@@ -145,7 +145,9 @@ class HookRegistry:
                 if not result.should_continue:
                     logger.info(f"Hook {hook.name} requested pipeline stop")
                     return HookResult(
-                        success=True, context=context, should_continue=False,
+                        success=True,
+                        context=context,
+                        should_continue=False,
                     )
 
             except Exception as e:
