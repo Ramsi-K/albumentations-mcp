@@ -38,12 +38,25 @@ def augment_image(image_b64: str, prompt: str) -> str:
         image = base64_to_pil(image_b64)
 
         # Parse prompt using hook-integrated pipeline
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
         try:
-            parse_result = loop.run_until_complete(parse_prompt_with_hooks(prompt))
-        finally:
-            loop.close()
+            # Try to get the current event loop
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If loop is running, we need to use a different approach
+                import concurrent.futures
+
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(
+                        asyncio.run, parse_prompt_with_hooks(prompt)
+                    )
+                    parse_result = future.result()
+            else:
+                parse_result = loop.run_until_complete(
+                    parse_prompt_with_hooks(prompt)
+                )
+        except RuntimeError:
+            # No event loop, create one
+            parse_result = asyncio.run(parse_prompt_with_hooks(prompt))
 
         if not parse_result["success"] or not parse_result["transforms"]:
             # If parsing failed, return original image
@@ -51,7 +64,9 @@ def augment_image(image_b64: str, prompt: str) -> str:
 
         # Apply transforms using processor
         processor = get_processor()
-        processing_result = processor.process_image(image, parse_result["transforms"])
+        processing_result = processor.process_image(
+            image, parse_result["transforms"]
+        )
 
         if processing_result.success and processing_result.augmented_image:
             # Convert augmented image back to base64
@@ -124,12 +139,25 @@ def validate_prompt(prompt: str) -> dict:
     """
     try:
         # Use hook-integrated pipeline for validation
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
         try:
-            result = loop.run_until_complete(parse_prompt_with_hooks(prompt))
-        finally:
-            loop.close()
+            # Try to get the current event loop
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If loop is running, we need to use a different approach
+                import concurrent.futures
+
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(
+                        asyncio.run, parse_prompt_with_hooks(prompt)
+                    )
+                    result = future.result()
+            else:
+                result = loop.run_until_complete(
+                    parse_prompt_with_hooks(prompt)
+                )
+        except RuntimeError:
+            # No event loop, create one
+            result = asyncio.run(parse_prompt_with_hooks(prompt))
 
         # Convert pipeline result to validation format
         return {

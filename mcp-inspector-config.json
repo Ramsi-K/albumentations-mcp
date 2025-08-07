@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "albumentations-mcp": {
+      "command": "uv",
+      "args": ["run", "python", "main.py"],
+      "env": {},
+      "disabled": false
+    }
+  }
+}
