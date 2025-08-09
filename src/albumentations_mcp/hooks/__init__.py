@@ -36,11 +36,11 @@ class HookContext(BaseModel):
     original_prompt: str = Field(..., description="Original user prompt")
     image_data: bytes | None = Field(None, description="Original image data")
     parsed_transforms: list[dict[str, Any]] | None = Field(
-        None, description="Parsed transform specifications"
+        None, description="Parsed transform specifications",
     )
     augmented_image: bytes | None = Field(None, description="Processed image data")
     metadata: dict[str, Any] = Field(
-        default_factory=dict, description="Context metadata"
+        default_factory=dict, description="Context metadata",
     )
     errors: list[str] = Field(default_factory=list, description="Error messages")
     warnings: list[str] = Field(default_factory=list, description="Warning messages")

@@ -18,15 +18,23 @@ mcp = FastMCP("albumentations-mcp")
 
 
 @mcp.tool()
-def augment_image(image_b64: str, prompt: str) -> str:
+def augment_image(image_b64: str, prompt: str, seed: int | None = None) -> str:
     """Apply image augmentations based on natural language prompt.
 
     Args:
         image_b64: Base64-encoded image data
         prompt: Natural language description of desired augmentations
+        seed: Optional random seed for reproducible results.
+              When provided, ensures identical results across runs with same inputs.
+              When omitted, Albumentations uses system randomness for varied results.
 
     Returns:
         Base64-encoded augmented image
+
+    Note:
+        Reproducibility requires identical inputs (image, prompt, seed).
+        The seed affects all random transforms like blur amounts, rotation angles,
+        crop positions, noise levels, etc.
     """
     import asyncio
 
@@ -47,12 +55,13 @@ def augment_image(image_b64: str, prompt: str) -> str:
 
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     future = executor.submit(
-                        asyncio.run, parse_prompt_with_hooks(prompt)
+                        asyncio.run,
+                        parse_prompt_with_hooks(prompt),
                     )
                     parse_result = future.result()
             else:
                 parse_result = loop.run_until_complete(
-                    parse_prompt_with_hooks(prompt)
+                    parse_prompt_with_hooks(prompt),
                 )
         except RuntimeError:
             # No event loop, create one
@@ -62,10 +71,12 @@ def augment_image(image_b64: str, prompt: str) -> str:
             # If parsing failed, return original image
             return image_b64
 
-        # Apply transforms using processor
+        # Apply transforms using processor with optional seed
         processor = get_processor()
         processing_result = processor.process_image(
-            image, parse_result["transforms"]
+            image,
+            parse_result["transforms"],
+            seed=seed,
         )
 
         if processing_result.success and processing_result.augmented_image:
@@ -86,6 +97,14 @@ def augment_image(image_b64: str, prompt: str) -> str:
                         "skipped_transforms": processing_result.skipped_transforms,
                         "processing_time": processing_result.execution_time,
                         "pipeline_version": "1.0.0",
+                        # Include seed metadata from processing result
+                        **{
+                            k: v
+                            for k, v in processing_result.metadata.items()
+                            if k.startswith("seed_")
+                            or k in ["effective_seed", "reproducible"]
+                        },
+                        "reproducible": seed is not None,
                     },
                 )
 
@@ -129,14 +148,14 @@ def augment_image(image_b64: str, prompt: str) -> str:
 
                     logger = logging.getLogger(__name__)
                     logger.debug(
-                        f"Visual verification completed for session {session_id}"
+                        f"Visual verification completed for session {session_id}",
                     )
                 else:
                     import logging
 
                     logger = logging.getLogger(__name__)
                     logger.warning(
-                        f"Visual verification failed for session {session_id}"
+                        f"Visual verification failed for session {session_id}",
                     )
 
             except Exception as e:
@@ -257,6 +276,44 @@ def validate_prompt(prompt: str) -> dict:
             "warnings": [f"Validation error: {e!s}"],
             "suggestions": ["Please check your prompt and try again"],
             "message": f"Validation failed: {e!s}",
+        }
+
+
+@mcp.tool()
+def set_default_seed(seed: int | None = None) -> dict:
+    """Set default seed for consistent reproducibility across all augment_image calls.
+
+    This seed will be used for all future augment_image calls when no per-transform
+    seed is provided. Persists until changed or cleared (for duration of MCP server process).
+
+    Args:
+        seed: Default seed value (0 to 4294967295), or None to clear default seed
+
+    Returns:
+        Dictionary with operation status and current default seed
+    """
+    try:
+        from .seed_manager import set_global_seed, get_global_seed
+
+        # Set the default seed (using global_seed internally)
+        set_global_seed(seed)
+
+        return {
+            "success": True,
+            "default_seed": get_global_seed(),
+            "message": (
+                f"Default seed set to {seed}"
+                if seed is not None
+                else "Default seed cleared"
+            ),
+            "note": "This seed will be used for all future augment_image calls unless overridden by per-transform seed",
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "default_seed": None,
+            "error": str(e),
+            "message": f"Failed to set default seed: {e}",
         }
 
 

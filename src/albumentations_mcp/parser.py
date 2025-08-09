@@ -58,7 +58,7 @@ from __future__ import annotations
 import logging
 import re
 from enum import Enum
-from typing import Any, List
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -88,7 +88,7 @@ class TransformConfig(BaseModel):
 
     name: TransformType = Field(..., description="Name of the Albumentations transform")
     parameters: dict[str, Any] = Field(
-        default_factory=dict, description="Transform parameters"
+        default_factory=dict, description="Transform parameters",
     )
     probability: float = Field(
         default=1.0,
@@ -115,8 +115,8 @@ class TransformConfig(BaseModel):
 class ParseResult(BaseModel):
     """Result of parsing a natural language prompt."""
 
-    transforms: List[TransformConfig] = Field(
-        ..., description="List of parsed transform configurations"
+    transforms: list[TransformConfig] = Field(
+        ..., description="List of parsed transform configurations",
     )
     original_prompt: str = Field(..., description="Original input prompt")
     confidence: float = Field(
@@ -125,9 +125,9 @@ class ParseResult(BaseModel):
         le=1.0,
         description="Confidence score for parsing accuracy",
     )
-    warnings: List[str] = Field(default_factory=list, description="Parsing warnings")
-    suggestions: List[str] = Field(
-        default_factory=list, description="Suggestions for improvement"
+    warnings: list[str] = Field(default_factory=list, description="Parsing warnings")
+    suggestions: list[str] = Field(
+        default_factory=list, description="Suggestions for improvement",
     )
 
 
@@ -136,7 +136,7 @@ class TransformConfig(BaseModel):
 
     name: TransformType = Field(..., description="Name of the Albumentations transform")
     parameters: dict[str, Any] = Field(
-        default_factory=dict, description="Transform parameters"
+        default_factory=dict, description="Transform parameters",
     )
     probability: float = Field(
         default=1.0,
@@ -163,8 +163,8 @@ class TransformConfig(BaseModel):
 class ParseResult(BaseModel):
     """Result of parsing a natural language prompt."""
 
-    transforms: List[TransformConfig] = Field(
-        ..., description="List of parsed transform configurations"
+    transforms: list[TransformConfig] = Field(
+        ..., description="List of parsed transform configurations",
     )
     original_prompt: str = Field(..., description="Original input prompt")
     confidence: float = Field(
@@ -173,9 +173,9 @@ class ParseResult(BaseModel):
         le=1.0,
         description="Confidence score for parsing accuracy",
     )
-    warnings: List[str] = Field(default_factory=list, description="Parsing warnings")
-    suggestions: List[str] = Field(
-        default_factory=list, description="Suggestions for improvement"
+    warnings: list[str] = Field(default_factory=list, description="Parsing warnings")
+    suggestions: list[str] = Field(
+        default_factory=list, description="Suggestions for improvement",
     )
 
 

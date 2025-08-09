@@ -35,8 +35,8 @@ and generating structured reports for the VLM to review transformation success.
 
 import logging
 
-from . import BaseHook, HookContext, HookResult
 from ..verification import get_verification_manager
+from . import BaseHook, HookContext, HookResult
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +83,9 @@ class PostTransformVerifyHook(BaseHook):
             # Save images for LLM review
             try:
                 file_paths = verification_manager.save_images_for_review(
-                    original_image, augmented_image, session_id
+                    original_image,
+                    augmented_image,
+                    session_id,
                 )
                 logger.info(
                     f"Saved verification images for session {session_id}"
@@ -91,7 +93,7 @@ class PostTransformVerifyHook(BaseHook):
 
             except Exception as e:
                 logger.error(f"Failed to save verification images: {e}")
-                context.errors.append(f"Image saving failed: {str(e)}")
+                context.errors.append(f"Image saving failed: {e!s}")
                 return HookResult(
                     success=True, context=context
                 )  # Non-blocking failure
@@ -105,13 +107,20 @@ class PostTransformVerifyHook(BaseHook):
                         "processing_time", 0
                     ),
                     "transforms_applied": len(
-                        context.metadata.get("applied_transforms", [])
+                        context.metadata.get("applied_transforms", []),
                     ),
                     "transforms_skipped": len(
-                        context.metadata.get("skipped_transforms", [])
+                        context.metadata.get("skipped_transforms", []),
                     ),
                     "pipeline_version": context.metadata.get(
-                        "pipeline_version", "unknown"
+                        "pipeline_version",
+                        "unknown",
+                    ),
+                    # Include seed information for debugging
+                    "seed_used": context.metadata.get("seed_used", False),
+                    "seed_value": context.metadata.get("seed_value", None),
+                    "reproducible": context.metadata.get(
+                        "reproducible", False
                     ),
                 }
 
@@ -130,13 +139,17 @@ class PostTransformVerifyHook(BaseHook):
                 # Generate the verification report
                 report_content = (
                     verification_manager.generate_verification_report(
-                        file_paths, prompt, session_id, metadata
+                        file_paths,
+                        prompt,
+                        session_id,
+                        metadata,
                     )
                 )
 
                 # Save the report to file
                 report_path = verification_manager.save_verification_report(
-                    report_content, session_id
+                    report_content,
+                    session_id,
                 )
 
                 # Add verification info to context metadata
@@ -152,7 +165,7 @@ class PostTransformVerifyHook(BaseHook):
 
             except Exception as e:
                 logger.error(f"Failed to generate verification report: {e}")
-                context.errors.append(f"Report generation failed: {str(e)}")
+                context.errors.append(f"Report generation failed: {e!s}")
 
                 # Clean up images if report generation failed
                 try:
@@ -161,7 +174,7 @@ class PostTransformVerifyHook(BaseHook):
                     )
                 except Exception as cleanup_error:
                     logger.warning(
-                        f"Failed to cleanup files after report error: {cleanup_error}"
+                        f"Failed to cleanup files after report error: {cleanup_error}",
                     )
 
                 return HookResult(
@@ -169,13 +182,13 @@ class PostTransformVerifyHook(BaseHook):
                 )  # Non-blocking failure
 
             logger.debug(
-                f"Visual verification completed successfully for session {session_id}"
+                f"Visual verification completed successfully for session {session_id}",
             )
             return HookResult(success=True, context=context)
 
         except Exception as e:
             logger.error(f"Visual verification hook failed: {e}")
-            context.errors.append(f"Hook execution failed: {str(e)}")
+            context.errors.append(f"Hook execution failed: {e!s}")
             return HookResult(
                 success=True, context=context
             )  # Non-blocking failure

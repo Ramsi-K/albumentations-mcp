@@ -2,47 +2,12 @@
 
 This module provides the core image processing functionality that applies
 Albumentations transforms to images based on parsed natural language prompts.
-
-# File Summary
-Core image processing engine that takes parsed transform specifications
-and applies them to images using the Albumentations library. Handles
-transform pipeline creation, execution, and error recovery.
-
-# TODO Tree
-- [x] Core Processing Infrastructure
-  - [x] Import dependencies (albumentations, numpy, PIL, logging)
-  - [x] Define ProcessingResult Pydantic model
-  - [x] Create ImageProcessor class
-  - [x] Define ProcessingError exception
-- [x] Transform Pipeline Creation
-  - [x] Convert parsed transforms to Albumentations objects
-  - [x] Create Compose pipeline with proper ordering
-  - [x] Handle transform parameter validation
-  - [x] Add error recovery for invalid transforms
-- [x] Image Processing Logic
-  - [x] Apply transform pipeline to images
-  - [x] Handle different image formats and modes
-  - [x] Preserve image quality where possible
-  - [x] Generate processing metadata
-- [x] Error Handling & Recovery
-  - [x] Graceful fallback for failed transforms
-  - [x] Return original image on critical failures
-  - [x] Comprehensive error logging
-- [x] Quality Assurance
-  - [x] Input validation for images and transforms
-  - [x] Output validation and quality checks
-  - [x] Performance monitoring and timing
-
-# Code Review Notes
-- PERFORMANCE: Consider caching compiled transform pipelines
-- SECURITY: Validate all transform parameters to prevent injection
-- MEMORY: Ensure proper cleanup of large image arrays
-- ERROR HANDLING: Add circuit breaker for repeated failures
+Uses Albumentations' native seeding for reproducibility.
 """
 
 import logging
 import time
-from typing import Any, Tuple
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -67,8 +32,12 @@ class ProcessingResult(BaseModel):
 
     model_config = {"arbitrary_types_allowed": True}
 
-    success: bool = Field(..., description="Whether processing completed successfully")
-    augmented_image: Image.Image | None = Field(None, description="Processed image")
+    success: bool = Field(
+        ..., description="Whether processing completed successfully"
+    )
+    augmented_image: Image.Image | None = Field(
+        None, description="Processed image"
+    )
     applied_transforms: list[dict[str, Any]] = Field(
         default_factory=list, description="Successfully applied transforms"
     )
@@ -78,8 +47,12 @@ class ProcessingResult(BaseModel):
     metadata: dict[str, Any] = Field(
         default_factory=dict, description="Processing metadata"
     )
-    execution_time: float = Field(..., ge=0, description="Processing time in seconds")
-    error_message: str | None = Field(None, description="Error message if failed")
+    execution_time: float = Field(
+        ..., ge=0, description="Processing time in seconds"
+    )
+    error_message: str | None = Field(
+        None, description="Error message if failed"
+    )
 
 
 class ImageProcessor:
@@ -93,12 +66,14 @@ class ImageProcessor:
         self,
         image: Image.Image,
         transforms: list[dict[str, Any]],
+        seed: int | None = None,
     ) -> ProcessingResult:
         """Process image with given transform specifications.
 
         Args:
             image: PIL Image to process
             transforms: List of transform specifications from parser
+            seed: Optional seed for reproducible results
 
         Returns:
             ProcessingResult with augmented image and metadata
@@ -115,8 +90,16 @@ class ImageProcessor:
             # Convert PIL to numpy for Albumentations
             image_array = pil_to_numpy(image)
 
-            # Create transform pipeline
-            pipeline, pipeline_metadata = self._create_pipeline(transforms)
+            # Get effective seed using simple seed manager
+            from .seed_manager import get_effective_seed, get_seed_metadata
+
+            effective_seed = get_effective_seed(seed)
+            seed_metadata = get_seed_metadata(effective_seed, seed)
+
+            # Create pipeline with Albumentations native seeding
+            pipeline, pipeline_metadata = self._create_pipeline(
+                transforms, effective_seed
+            )
             applied_transforms.extend(pipeline_metadata["applied"])
             skipped_transforms.extend(pipeline_metadata["skipped"])
 
@@ -134,15 +117,15 @@ class ImageProcessor:
                         "processing_time": execution_time,
                         "transforms_applied": 0,
                         "transforms_skipped": len(skipped_transforms),
+                        **seed_metadata,
                     },
                     execution_time=execution_time,
                 )
 
-            # Apply transforms
+            # Apply transforms - Albumentations handles seeding internally
             try:
                 augmented = pipeline(image=image_array)["image"]
                 augmented_image = numpy_to_pil(augmented)
-
                 execution_time = time.time() - start_time
 
                 return ProcessingResult(
@@ -157,13 +140,13 @@ class ImageProcessor:
                         "transforms_applied": len(applied_transforms),
                         "transforms_skipped": len(skipped_transforms),
                         "pipeline_hash": hash(str(transforms)),
+                        **seed_metadata,
                     },
                     execution_time=execution_time,
                 )
 
             except Exception as e:
                 logger.error(f"Transform pipeline execution failed: {e}")
-                # Return original image on pipeline failure
                 execution_time = time.time() - start_time
                 return ProcessingResult(
                     success=False,
@@ -175,6 +158,7 @@ class ImageProcessor:
                         "output_size": original_size,
                         "processing_time": execution_time,
                         "error": str(e),
+                        **seed_metadata,
                     },
                     execution_time=execution_time,
                     error_message=f"Pipeline execution failed: {e}",
@@ -183,12 +167,19 @@ class ImageProcessor:
         except Exception as e:
             execution_time = time.time() - start_time
             logger.error(f"Image processing failed: {e}")
+
+            # Simple fallback metadata
             return ProcessingResult(
                 success=False,
                 augmented_image=None,
                 applied_transforms=[],
                 skipped_transforms=transforms,
-                metadata={"processing_time": execution_time, "error": str(e)},
+                metadata={
+                    "processing_time": execution_time,
+                    "error": str(e),
+                    "seed_used": seed is not None,
+                    "effective_seed": seed,
+                },
                 execution_time=execution_time,
                 error_message=f"Processing failed: {e}",
             )
@@ -196,11 +187,13 @@ class ImageProcessor:
     def _create_pipeline(
         self,
         transforms: list[dict[str, Any]],
+        seed: int | None = None,
     ) -> tuple[A.Compose | None, dict[str, Any]]:
         """Create Albumentations pipeline from transform specifications.
 
         Args:
             transforms: List of transform specifications
+            seed: Optional seed for reproducible results
 
         Returns:
             Tuple of (pipeline, metadata) where pipeline may be None if no valid transforms
@@ -230,7 +223,11 @@ class ImageProcessor:
             }
 
         try:
-            pipeline = A.Compose(valid_transforms)
+            # Use Albumentations' built-in seed support
+            if seed is not None:
+                pipeline = A.Compose(valid_transforms, seed=seed)
+            else:
+                pipeline = A.Compose(valid_transforms)
             return pipeline, {
                 "applied": applied_transforms,
                 "skipped": skipped_transforms,
@@ -267,7 +264,9 @@ class ImageProcessor:
             transform_class = getattr(A, transform_name)
 
             # Validate and clean parameters
-            clean_params = self._validate_parameters(transform_name, parameters)
+            clean_params = self._validate_parameters(
+                transform_name, parameters
+            )
 
             # Create transform instance
             transform = transform_class(**clean_params)
@@ -338,7 +337,10 @@ class ImageProcessor:
         elif transform_name == "GaussNoise":
             if "var_limit" in clean_params:
                 var_limit = clean_params["var_limit"]
-                if isinstance(var_limit, (tuple, list)) and len(var_limit) == 2:
+                if (
+                    isinstance(var_limit, (tuple, list))
+                    and len(var_limit) == 2
+                ):
                     # Ensure noise variance is within valid range
                     min_var, max_var = var_limit
                     clean_params["var_limit"] = (
@@ -378,6 +380,7 @@ def get_processor() -> ImageProcessor:
 def process_image(
     image: Image.Image,
     transforms: list[dict[str, Any]],
+    seed: int | None = None,
 ) -> ProcessingResult:
     """Convenience function to process image with transforms."""
-    return get_processor().process_image(image, transforms)
+    return get_processor().process_image(image, transforms, seed=seed)
