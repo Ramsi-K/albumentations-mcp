@@ -15,7 +15,7 @@ resolution-markers = [
 
 [[package]]
 name = "albucore"
-version = "0.0.24"
+version = "0.0.33"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -24,28 +24,9 @@ dependencies = [
     { name = "simsimd" },
     { name = "stringzilla" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/13/69/d4cbcf2a5768bf91cd14ffef783520458431e5d2b22fbc08418d3ba09a88/albucore-0.0.24.tar.gz", hash = "sha256:f2cab5431fadf94abf87fd0c89d9f59046e49fe5de34afea8f89bc8390253746", size = 16981, upload-time = "2025-03-09T18:46:51.409Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a1/8d/30c8ab7a7de9a5fa11fcd0d6f2475c87e9aa78b861bc2eacbcdf59e2a49e/albucore-0.0.33.tar.gz", hash = "sha256:de320e50587ceb5286125ed4abfdf802a2a7de00c8ce5b042b63e015574b4f76", size = 20562, upload-time = "2025-06-24T22:40:49.71Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0a/e2/91f145e1f32428e9e1f21f46a7022ffe63d11f549ee55c3b9265ff5207fc/albucore-0.0.24-py3-none-any.whl", hash = "sha256:adef6e434e50e22c2ee127b7a3e71f2e35fa088bcf54431e18970b62d97d0005", size = 15372, upload-time = "2025-03-09T18:46:50.177Z" },
-]
-
-[[package]]
-name = "albumentations"
-version = "2.0.8"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "albucore" },
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "numpy", version = "2.3.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "opencv-python-headless" },
-    { name = "pydantic" },
-    { name = "pyyaml" },
-    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "scipy", version = "1.16.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/f4/f4/85eb56c3217b53bcfc2d12e840a0b18ca60902086321cafa5a730f9c0470/albumentations-2.0.8.tar.gz", hash = "sha256:4da95e658e490de3c34af8fcdffed09e36aa8a4edd06ca9f9e7e3ea0b0b16856", size = 354460, upload-time = "2025-05-27T21:23:17.415Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/8e/64/013409c451a44b61310fb757af4527f3de57fc98a00f40448de28b864290/albumentations-2.0.8-py3-none-any.whl", hash = "sha256:c4c4259aaf04a7386ad85c7fdcb73c6c7146ca3057446b745cc035805acb1017", size = 369423, upload-time = "2025-05-27T21:23:15.609Z" },
+    { url = "https://files.pythonhosted.org/packages/1c/f0/3537fa2ae1c3af09503e5e7f30614edcb0518851e3cd5a84eea749ff02da/albucore-0.0.33-py3-none-any.whl", hash = "sha256:49b4cc573fcbded24b8729f752694b5abb876dbdc56df530b62db44d4d079de8", size = 18260, upload-time = "2025-06-24T22:40:48.871Z" },
 ]
 
 [[package]]
@@ -53,7 +34,7 @@ name = "albumentations-mcp"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "albumentations" },
+    { name = "albumentationsx" },
     { name = "mcp" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -73,7 +54,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "albumentations", specifier = ">=2.0.8" },
+    { name = "albumentationsx", specifier = ">=2.0.9" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.3.0" },
     { name = "mcp", specifier = ">=1.12.3" },
@@ -86,6 +67,25 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
 ]
 provides-extras = ["dev"]
+
+[[package]]
+name = "albumentationsx"
+version = "2.0.9"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "albucore" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.3.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "opencv-python-headless" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy", version = "1.16.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/77/47/b50d194dd2e0215b02075ffe31dbcd309ae9b5538d68ce9ed0e3ef99d265/albumentationsx-2.0.9.tar.gz", hash = "sha256:8e2235754544a5049c84581a7475224997acb2c044cd6c174af25e69cffc6920", size = 397444, upload-time = "2025-06-25T01:21:30.801Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fa/ee/005c2be03c7de1f3477fb1e730b461a6c0bf1f38a82283c9e3f95464334b/albumentationsx-2.0.9-py3-none-any.whl", hash = "sha256:b9eec9b537e1b239c3825aea48f0615b866e4f3296931cc83f63880c87cc217e", size = 404380, upload-time = "2025-06-25T01:21:28.781Z" },
+]
 
 [[package]]
 name = "annotated-types"
