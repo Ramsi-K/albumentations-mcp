@@ -69,7 +69,8 @@
         "mcp_filesystem_search_files",
         "mcp_filesystem_get_file_info",
         "mcp_filesystem_list_allowed_directories",
-        "create_directory"
+        "create_directory",
+        "directory_tree"
       ]
     }
   }
