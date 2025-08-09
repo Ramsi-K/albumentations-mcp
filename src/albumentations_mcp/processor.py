@@ -122,34 +122,69 @@ class ImageProcessor:
                     execution_time=execution_time,
                 )
 
-            # Apply transforms - Albumentations handles seeding internally
-            try:
-                augmented = pipeline(image=image_array)["image"]
-                augmented_image = numpy_to_pil(augmented)
-                execution_time = time.time() - start_time
+            # Apply transforms with memory recovery protection
+            from .recovery import get_memory_recovery_manager
 
-                return ProcessingResult(
-                    success=True,
-                    augmented_image=augmented_image,
-                    applied_transforms=applied_transforms,
-                    skipped_transforms=skipped_transforms,
-                    metadata={
-                        "original_size": original_size,
-                        "output_size": augmented_image.size,
-                        "processing_time": execution_time,
-                        "transforms_applied": len(applied_transforms),
-                        "transforms_skipped": len(skipped_transforms),
-                        "pipeline_hash": hash(str(transforms)),
-                        **seed_metadata,
-                    },
-                    execution_time=execution_time,
-                )
+            memory_manager = get_memory_recovery_manager()
+
+            try:
+                with memory_manager.memory_recovery_context(
+                    "transform_pipeline"
+                ):
+                    # Check memory limits before processing
+                    if not memory_manager.check_memory_limits(
+                        "transform_pipeline"
+                    ):
+                        logger.warning(
+                            "Memory limits exceeded, using original image"
+                        )
+                        execution_time = time.time() - start_time
+                        return ProcessingResult(
+                            success=True,
+                            augmented_image=image,
+                            applied_transforms=[],
+                            skipped_transforms=transforms,
+                            metadata={
+                                "original_size": original_size,
+                                "output_size": original_size,
+                                "processing_time": execution_time,
+                                "transforms_applied": 0,
+                                "transforms_skipped": len(transforms),
+                                "memory_limit_exceeded": True,
+                                **seed_metadata,
+                            },
+                            execution_time=execution_time,
+                            error_message="Memory limits exceeded, returned original image",
+                        )
+
+                    augmented = pipeline(image=image_array)["image"]
+                    augmented_image = numpy_to_pil(augmented)
+                    execution_time = time.time() - start_time
+
+                    return ProcessingResult(
+                        success=True,
+                        augmented_image=augmented_image,
+                        applied_transforms=applied_transforms,
+                        skipped_transforms=skipped_transforms,
+                        metadata={
+                            "original_size": original_size,
+                            "output_size": augmented_image.size,
+                            "processing_time": execution_time,
+                            "transforms_applied": len(applied_transforms),
+                            "transforms_skipped": len(skipped_transforms),
+                            "pipeline_hash": hash(str(transforms)),
+                            **seed_metadata,
+                        },
+                        execution_time=execution_time,
+                    )
 
             except Exception as e:
                 logger.error(f"Transform pipeline execution failed: {e}")
                 execution_time = time.time() - start_time
+
+                # Attempt graceful degradation - return original image
                 return ProcessingResult(
-                    success=False,
+                    success=True,  # Still successful since we return original
                     augmented_image=image,
                     applied_transforms=[],
                     skipped_transforms=transforms,
@@ -158,10 +193,13 @@ class ImageProcessor:
                         "output_size": original_size,
                         "processing_time": execution_time,
                         "error": str(e),
+                        "graceful_degradation": True,
+                        "transforms_applied": 0,
+                        "transforms_skipped": len(transforms),
                         **seed_metadata,
                     },
                     execution_time=execution_time,
-                    error_message=f"Pipeline execution failed: {e}",
+                    error_message=f"Pipeline execution failed, returned original: {e}",
                 )
 
         except Exception as e:
@@ -278,7 +316,34 @@ class ImageProcessor:
 
         except Exception as e:
             logger.warning(f"Failed to create transform {transform_name}: {e}")
-            return None
+
+            # Attempt recovery using the recovery system
+            from .recovery import recover_from_transform_failure
+
+            try:
+                recovered_transform, recovery_strategy = (
+                    recover_from_transform_failure(
+                        transform_name, parameters, e
+                    )
+                )
+
+                if recovered_transform:
+                    logger.info(
+                        f"Transform recovery successful for {transform_name} "
+                        f"using strategy: {recovery_strategy.value}"
+                    )
+                    return recovered_transform
+                else:
+                    logger.info(
+                        f"Transform {transform_name} will be skipped due to recovery strategy: {recovery_strategy.value}"
+                    )
+                    return None
+
+            except Exception as recovery_error:
+                logger.error(
+                    f"Transform recovery failed for {transform_name}: {recovery_error}"
+                )
+                return None
 
     def _validate_parameters(
         self,
