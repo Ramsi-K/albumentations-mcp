@@ -31,19 +31,30 @@ class ProcessingResult(BaseModel):
 
     model_config = {"arbitrary_types_allowed": True}
 
-    success: bool = Field(..., description="Whether processing completed successfully")
-    augmented_image: Image.Image | None = Field(None, description="Processed image")
+    success: bool = Field(
+        ..., description="Whether processing completed successfully"
+    )
+    augmented_image: Image.Image | None = Field(
+        None, description="Processed image"
+    )
     applied_transforms: list[dict[str, Any]] = Field(
-        default_factory=list, description="Successfully applied transforms",
+        default_factory=list,
+        description="Successfully applied transforms",
     )
     skipped_transforms: list[dict[str, Any]] = Field(
-        default_factory=list, description="Transforms that were skipped",
+        default_factory=list,
+        description="Transforms that were skipped",
     )
     metadata: dict[str, Any] = Field(
-        default_factory=dict, description="Processing metadata",
+        default_factory=dict,
+        description="Processing metadata",
     )
-    execution_time: float = Field(..., ge=0, description="Processing time in seconds")
-    error_message: str | None = Field(None, description="Error message if failed")
+    execution_time: float = Field(
+        ..., ge=0, description="Processing time in seconds"
+    )
+    error_message: str | None = Field(
+        None, description="Error message if failed"
+    )
 
 
 class ImageProcessor:
@@ -52,6 +63,8 @@ class ImageProcessor:
     def __init__(self):
         """Initialize the image processor."""
         self._transform_cache = {}  # Cache for compiled transforms
+        self._pipeline_cache = {}  # Cache for compiled pipelines
+        self._max_cache_size = 100  # Limit cache size to prevent memory leaks
 
     def process_image(
         self,
@@ -89,7 +102,8 @@ class ImageProcessor:
 
             # Create pipeline with Albumentations native seeding
             pipeline, pipeline_metadata = self._create_pipeline(
-                transforms, effective_seed,
+                transforms,
+                effective_seed,
             )
             applied_transforms.extend(pipeline_metadata["applied"])
             skipped_transforms.extend(pipeline_metadata["skipped"])
@@ -119,10 +133,16 @@ class ImageProcessor:
             memory_manager = get_memory_recovery_manager()
 
             try:
-                with memory_manager.memory_recovery_context("transform_pipeline"):
+                with memory_manager.memory_recovery_context(
+                    "transform_pipeline"
+                ):
                     # Check memory limits before processing
-                    if not memory_manager.check_memory_limits("transform_pipeline"):
-                        logger.warning("Memory limits exceeded, using original image")
+                    if not memory_manager.check_memory_limits(
+                        "transform_pipeline"
+                    ):
+                        logger.warning(
+                            "Memory limits exceeded, using original image"
+                        )
                         execution_time = time.time() - start_time
                         return ProcessingResult(
                             success=True,
@@ -221,13 +241,27 @@ class ImageProcessor:
         Returns:
             Tuple of (pipeline, metadata) where pipeline may be None if no valid transforms
         """
+        # Create cache key for pipeline caching (excluding seed for broader reuse)
+        cache_key = hash(
+            str(sorted(transforms, key=lambda x: x.get("name", "")))
+        )
+
+        # Check pipeline cache first
+        if cache_key in self._pipeline_cache:
+            cached_pipeline, cached_metadata = self._pipeline_cache[cache_key]
+            # Apply seed to cached pipeline if needed
+            if seed is not None and hasattr(cached_pipeline, "seed"):
+                cached_pipeline.seed = seed
+            return cached_pipeline, cached_metadata.copy()
+
         valid_transforms = []
         applied_transforms = []
         skipped_transforms = []
 
+        # Process transforms with early exit on critical failures
         for transform_spec in transforms:
             try:
-                transform_obj = self._create_transform(transform_spec)
+                transform_obj = self._create_transform_cached(transform_spec)
                 if transform_obj:
                     valid_transforms.append(transform_obj)
                     applied_transforms.append(transform_spec)
@@ -246,18 +280,49 @@ class ImageProcessor:
             }
 
         try:
-            # Use Albumentations' built-in seed support
-            if seed is not None:
-                pipeline = A.Compose(valid_transforms, seed=seed)
-            else:
-                pipeline = A.Compose(valid_transforms)
-            return pipeline, {
+            # Create pipeline without seed for caching
+            pipeline = A.Compose(valid_transforms)
+            metadata = {
                 "applied": applied_transforms,
                 "skipped": skipped_transforms,
             }
+
+            # Cache the pipeline if cache isn't full
+            if len(self._pipeline_cache) < self._max_cache_size:
+                self._pipeline_cache[cache_key] = (pipeline, metadata)
+
+            # Apply seed if provided
+            if seed is not None:
+                pipeline = A.Compose(valid_transforms, seed=seed)
+
+            return pipeline, metadata
         except Exception as e:
             logger.error(f"Failed to create transform pipeline: {e}")
             return None, {"applied": [], "skipped": transforms}
+
+    def _create_transform_cached(
+        self,
+        transform_spec: dict[str, Any],
+    ) -> A.BasicTransform | None:
+        """Create transform with caching for better performance."""
+        transform_name = transform_spec.get("name")
+        parameters = transform_spec.get("parameters", {})
+
+        # Create cache key
+        cache_key = (transform_name, tuple(sorted(parameters.items())))
+
+        # Check cache first
+        if cache_key in self._transform_cache:
+            return self._transform_cache[cache_key]
+
+        # Create transform
+        transform_obj = self._create_transform(transform_spec)
+
+        # Cache if successful and cache isn't full
+        if transform_obj and len(self._transform_cache) < self._max_cache_size:
+            self._transform_cache[cache_key] = transform_obj
+
+        return transform_obj
 
     def _create_transform(
         self,
@@ -287,7 +352,9 @@ class ImageProcessor:
             transform_class = getattr(A, transform_name)
 
             # Validate and clean parameters
-            clean_params = self._validate_parameters(transform_name, parameters)
+            clean_params = self._validate_parameters(
+                transform_name, parameters
+            )
 
             # Create transform instance
             transform = transform_class(**clean_params)
@@ -304,8 +371,12 @@ class ImageProcessor:
             from .recovery import recover_from_transform_failure
 
             try:
-                recovered_transform, recovery_strategy = recover_from_transform_failure(
-                    transform_name, parameters, e,
+                recovered_transform, recovery_strategy = (
+                    recover_from_transform_failure(
+                        transform_name,
+                        parameters,
+                        e,
+                    )
                 )
 
                 if recovered_transform:
@@ -382,7 +453,10 @@ class ImageProcessor:
         elif transform_name == "GaussNoise":
             if "var_limit" in clean_params:
                 var_limit = clean_params["var_limit"]
-                if isinstance(var_limit, (tuple, list)) and len(var_limit) == 2:
+                if (
+                    isinstance(var_limit, (tuple, list))
+                    and len(var_limit) == 2
+                ):
                     # Ensure noise variance is within valid range
                     min_var, max_var = var_limit
                     clean_params["var_limit"] = (
@@ -405,6 +479,20 @@ class ImageProcessor:
                 clean_params["p"] = max(0.0, min(1.0, float(p)))
 
         return clean_params
+
+    def clear_caches(self) -> None:
+        """Clear transform and pipeline caches to free memory."""
+        self._transform_cache.clear()
+        self._pipeline_cache.clear()
+        logger.debug("Cleared processor caches")
+
+    def get_cache_stats(self) -> dict[str, int]:
+        """Get cache statistics for monitoring."""
+        return {
+            "transform_cache_size": len(self._transform_cache),
+            "pipeline_cache_size": len(self._pipeline_cache),
+            "max_cache_size": self._max_cache_size,
+        }
 
 
 # Global processor instance

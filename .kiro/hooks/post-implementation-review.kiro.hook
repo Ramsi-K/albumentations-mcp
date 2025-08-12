@@ -2,20 +2,8 @@
   "enabled": true,
   "name": "Post-Implementation Review",
   "description": "Comprehensive review after any code is written or modified",
-  "version": "1",
+  "version": "2",
   "when": [
-    {
-      "type": "afterTaskCompletion",
-      "patterns": ["**/*"]
-    },
-    {
-      "type": "fileSaved",
-      "patterns": ["src/**/*.py", "tests/**/*.py"]
-    },
-    {
-      "type": "fileEdited",
-      "patterns": ["src/**/*.py", "tests/**/*.py"]
-    },
     {
       "type": "manual"
     }

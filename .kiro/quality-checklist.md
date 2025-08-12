@@ -1,6 +1,6 @@
 # Quality Checklist Template
 
-**Use this checklist for every task since Kiro hooks are not working properly**
+**Use this checklist for every task since Kiro hooks may not be working properly**
 
 ## Pre-Implementation (Before writing any code)
 
@@ -27,6 +27,18 @@
 - [ ] **Security**: No injection vulnerabilities, safe regex patterns
 - [ ] **Performance**: Efficient algorithms, no obvious bottlenecks
 
+## Code Refactoring Guidelines
+
+**Only refactor code that truly needs improvement. If something works well and is readable, leave it as is.**
+
+- [ ] **Code Duplication**: Look for repeated patterns that could be extracted to utilities
+- [ ] **Function Complexity**: Identify functions >10 cyclomatic complexity that could be simplified
+- [ ] **Error Handling**: Standardize error handling patterns and logging
+- [ ] **Type Hints**: Update to modern Python type annotations (dict vs Dict, list vs List)
+- [ ] **Documentation**: Improve docstrings only if they're unclear or missing important information
+- [ ] **Performance**: Only optimize if there are clear performance issues
+- [ ] **Security**: Address actual security vulnerabilities, not theoretical ones
+
 ## Post-Implementation (After code is written)
 
 - [ ] **Quality Tools**: Run ruff, black, mypy
@@ -46,7 +58,7 @@
 ## Task Completion
 
 - [ ] **All Tests Passing**: Run full test suite
-- [ ] **Quality Metrics**: Address linting issues
+- [ ] **Quality Metrics**: Address critical linting issues (ignore minor style preferences)
 - [ ] **Commit Message**: Generate proper conventional commit message
 - [ ] **Code Review Notes**: Document any technical debt or future improvements
 
@@ -72,9 +84,23 @@ uv run pytest tests/ -v
 uv run black src/ tests/ && uv run ruff check src/ tests/ --fix && uv run mypy src/ && uv run pytest tests/ -v
 ```
 
+## Hook System Status
+
+**Current Status**: Kiro hooks may not be executing properly due to IDE configuration issues.
+
+**Attempted Fixes**:
+
+- Simplified hook trigger conditions (removed complex patterns)
+- Updated hook versions
+- Created test hooks with minimal configuration
+- Reduced trigger conflicts between hooks
+
+**Fallback Strategy**: Use this manual checklist for quality assurance until hooks are working.
+
 ## Notes
 
-- This checklist replaces the non-working Kiro hooks
+- This checklist serves as a fallback for non-working Kiro hooks
 - Check off items as you complete them
 - Add task-specific items as needed
+- Focus on meaningful improvements, not cosmetic changes
 - Keep this updated as project evolves

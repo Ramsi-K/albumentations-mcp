@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "name": "Code Refactoring Review",
+  "description": "Focused review for code refactoring and quality improvements",
+  "version": "1",
+  "when": [
+    {
+      "type": "manual"
+    }
+  ],
+  "then": {
+    "type": "askAgent",
+    "prompt": "Perform a focused code refactoring review:\n\n1. **Code Duplication**: Identify repeated patterns that could be extracted to utilities\n2. **Function Complexity**: Find functions that are too complex and could be simplified\n3. **Error Handling**: Check for inconsistent error handling patterns\n4. **Type Hints**: Ensure modern Python type annotations are used\n5. **Documentation**: Review docstring quality and completeness\n\n**Guidelines**: Only suggest changes that truly improve the code. If something works well and is readable, leave it as is. Focus on meaningful improvements, not cosmetic changes."
+  }
+}

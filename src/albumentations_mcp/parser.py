@@ -86,7 +86,9 @@ class TransformType(str, Enum):
 class TransformConfig(BaseModel):
     """Configuration for a single transform."""
 
-    name: TransformType = Field(..., description="Name of the Albumentations transform")
+    name: TransformType = Field(
+        ..., description="Name of the Albumentations transform"
+    )
     parameters: dict[str, Any] = Field(
         default_factory=dict,
         description="Transform parameters",
@@ -108,7 +110,9 @@ class TransformConfig(BaseModel):
             "MotionBlur",
             "GaussianBlur",
         ]:
-            if "blur_limit" in v and (v["blur_limit"] < 3 or v["blur_limit"] > 100):
+            if "blur_limit" in v and (
+                v["blur_limit"] < 3 or v["blur_limit"] > 100
+            ):
                 raise ValueError("blur_limit must be between 3 and 100")
         return v
 
@@ -127,7 +131,9 @@ class ParseResult(BaseModel):
         le=1.0,
         description="Confidence score for parsing accuracy",
     )
-    warnings: list[str] = Field(default_factory=list, description="Parsing warnings")
+    warnings: list[str] = Field(
+        default_factory=list, description="Parsing warnings"
+    )
     suggestions: list[str] = Field(
         default_factory=list,
         description="Suggestions for improvement",
@@ -137,7 +143,9 @@ class ParseResult(BaseModel):
 class TransformConfig(BaseModel):
     """Configuration for a single transform."""
 
-    name: TransformType = Field(..., description="Name of the Albumentations transform")
+    name: TransformType = Field(
+        ..., description="Name of the Albumentations transform"
+    )
     parameters: dict[str, Any] = Field(
         default_factory=dict,
         description="Transform parameters",
@@ -159,7 +167,9 @@ class TransformConfig(BaseModel):
             "MotionBlur",
             "GaussianBlur",
         ]:
-            if "blur_limit" in v and (v["blur_limit"] < 3 or v["blur_limit"] > 100):
+            if "blur_limit" in v and (
+                v["blur_limit"] < 3 or v["blur_limit"] > 100
+            ):
                 raise ValueError("blur_limit must be between 3 and 100")
         return v
 
@@ -178,7 +188,9 @@ class ParseResult(BaseModel):
         le=1.0,
         description="Confidence score for parsing accuracy",
     )
-    warnings: list[str] = Field(default_factory=list, description="Parsing warnings")
+    warnings: list[str] = Field(
+        default_factory=list, description="Parsing warnings"
+    )
     suggestions: list[str] = Field(
         default_factory=list,
         description="Suggestions for improvement",
@@ -197,6 +209,22 @@ class PromptParser:
         self._transform_mappings = self._build_transform_mappings()
         self._default_parameters = self._build_default_parameters()
         self._parameter_patterns = self._build_parameter_patterns()
+
+        # Performance optimizations
+        self._phrase_cache = {}  # Cache for phrase matching results
+        self._split_cache = {}  # Cache for prompt splitting results
+        self._max_cache_size = 1000  # Limit cache size
+
+        # Pre-compile regex patterns for better performance
+        self._compiled_patterns = {}
+        for name, pattern in self._parameter_patterns.items():
+            if isinstance(pattern, str):
+                self._compiled_patterns[name] = re.compile(
+                    pattern, re.IGNORECASE
+                )
+            else:
+                # Pattern is already compiled
+                self._compiled_patterns[name] = pattern
 
     def _build_transform_mappings(self) -> dict[str, TransformType]:
         """Build mapping from natural language phrases to transforms."""
@@ -468,7 +496,9 @@ class PromptParser:
                 blur_value = float(match.group(1))
                 # Ensure odd number for blur_limit
                 blur_limit = (
-                    int(blur_value) if int(blur_value) % 2 == 1 else int(blur_value) + 1
+                    int(blur_value)
+                    if int(blur_value) % 2 == 1
+                    else int(blur_value) + 1
                 )
                 parameters["blur_limit"] = max(3, min(blur_limit, 99))
 
@@ -480,7 +510,9 @@ class PromptParser:
 
         elif transform_type == TransformType.RANDOM_BRIGHTNESS_CONTRAST:
             # Handle brightness parameters
-            brightness_match = self._parameter_patterns["brightness_amount"].search(
+            brightness_match = self._parameter_patterns[
+                "brightness_amount"
+            ].search(
                 phrase,
             )
             if brightness_match:
@@ -490,7 +522,9 @@ class PromptParser:
                 parameters["brightness_limit"] = max(0.1, min(brightness, 1.0))
 
             # Handle contrast parameters
-            contrast_match = self._parameter_patterns["contrast_amount"].search(phrase)
+            contrast_match = self._parameter_patterns[
+                "contrast_amount"
+            ].search(phrase)
             if contrast_match:
                 contrast = float(contrast_match.group(1))
                 if contrast > 1:
@@ -583,12 +617,16 @@ class PromptParser:
             ),
             TransformType.MOTION_BLUR: "Apply motion blur effect",
             TransformType.RANDOM_BRIGHTNESS_CONTRAST: "Randomly adjust image brightness and contrast",
-            TransformType.HUE_SATURATION_VALUE: ("Adjust hue, saturation, and value"),
+            TransformType.HUE_SATURATION_VALUE: (
+                "Adjust hue, saturation, and value"
+            ),
             TransformType.ROTATE: "Rotate image by specified angle",
             TransformType.HORIZONTAL_FLIP: "Flip image horizontally",
             TransformType.VERTICAL_FLIP: "Flip image vertically",
             TransformType.GAUSSIAN_NOISE: "Add gaussian noise to image",
-            TransformType.RANDOM_CROP: ("Randomly crop image to specified size"),
+            TransformType.RANDOM_CROP: (
+                "Randomly crop image to specified size"
+            ),
             TransformType.RANDOM_RESIZE_CROP: "Randomly crop and resize image",
             TransformType.NORMALIZE: "Normalize image pixel values",
             TransformType.CLAHE: (
@@ -677,6 +715,33 @@ class PromptParser:
                 ],
                 "message": f"Parsing failed: {e!s}",
             }
+
+    def clear_caches(self) -> None:
+        """Clear parser caches to free memory."""
+        self._phrase_cache.clear()
+        self._split_cache.clear()
+        logger.debug("Cleared parser caches")
+
+    def get_cache_stats(self) -> dict[str, int]:
+        """Get cache statistics for monitoring."""
+        return {
+            "phrase_cache_size": len(self._phrase_cache),
+            "split_cache_size": len(self._split_cache),
+            "max_cache_size": self._max_cache_size,
+        }
+
+    def _manage_cache_size(self) -> None:
+        """Manage cache size to prevent memory leaks."""
+        if len(self._phrase_cache) > self._max_cache_size:
+            # Remove oldest 20% of entries
+            items_to_remove = len(self._phrase_cache) // 5
+            for _ in range(items_to_remove):
+                self._phrase_cache.pop(next(iter(self._phrase_cache)))
+
+        if len(self._split_cache) > self._max_cache_size:
+            items_to_remove = len(self._split_cache) // 5
+            for _ in range(items_to_remove):
+                self._split_cache.pop(next(iter(self._split_cache)))
 
 
 # Global parser instance

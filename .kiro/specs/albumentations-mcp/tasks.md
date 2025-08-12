@@ -240,6 +240,82 @@ Production-ready PyPI package for natural language image augmentation via MCP pr
     - Include preset documentation and examples
     - _Requirements: 1.1, 1.4, 2.1, 2.2_
 
+- [x] 14. Code Review and Quality Improvements
+
+  **Note**: This is a methodical, step-by-step refactoring process. Only refactor code that truly needs improvement - if something works well and is readable, leave it as is. The goal is targeted improvements, not wholesale changes.
+
+  - [x] 14.1 Fix Kiro IDE hooks (if possible)
+
+    - Investigate why `.kiro/hooks/*.kiro.hook` files are not executing
+    - Test hook trigger conditions and syntax
+    - Try alternative hook configurations or formats
+    - Document findings - this may be an IDE setup issue that cannot be resolved
+    - Create manual quality checklist as fallback if hooks cannot be fixed
+    - _Note: This is exploratory - hooks may not work due to IDE configuration issues_
+
+  - [x] 14.2 Code duplication analysis
+
+    - Search for repeated code patterns across all modules
+    - Identify common utility functions that could be extracted
+    - Look for similar validation logic, error handling patterns, logging calls
+    - Create `src/albumentations_mcp/utils.py` if significant duplication found
+    - Focus on: image validation, parameter sanitization, error formatting, file operations
+    - _Requirements: 4.1, 4.2_
+
+  - [x] 14.3 Function complexity review
+
+    - Identify functions with high cyclomatic complexity (>10)
+    - Break down large functions into smaller, focused utilities
+    - Look for functions doing multiple responsibilities
+    - Extract complex conditional logic into helper functions
+    - Focus on: parser.py, processor.py, validation.py, hooks modules
+    - _Requirements: 4.1, 4.2_
+
+  - [x] 14.4 Error handling consistency
+
+    - Review exception handling patterns across modules
+    - Standardize error message formats and logging levels
+    - Ensure proper exception chaining with `raise ... from e`
+    - Add missing error context and recovery information
+    - Focus on: graceful degradation, user-friendly error messages
+    - _Requirements: 7.4, 7.5_
+
+  - [x] 14.5 Type hints and documentation review
+
+    - Update to modern Python type hints (dict vs Dict, list vs List)
+    - Ensure all public functions have proper docstrings
+    - Add missing type hints for complex return types
+    - Review and improve existing docstring quality
+    - Focus on: API clarity, parameter descriptions, return value documentation
+    - _Requirements: 4.1, 4.2_
+
+  - [x] 14.6 Performance and memory optimization
+
+    - Identify potential memory leaks or inefficient operations
+    - Review large data structure handling (images, transform lists)
+    - Look for unnecessary object creation or copying
+    - Optimize hot paths in image processing pipeline
+    - Focus on: image processing, hook execution, file I/O operations
+    - _Requirements: 7.1, 7.2_
+
+  - [x] 14.7 Security and input validation review
+
+    - Review all user input validation and sanitization
+    - Check for potential injection vulnerabilities
+    - Ensure safe file path handling and temporary file cleanup
+    - Review regex patterns for ReDoS vulnerabilities
+    - Focus on: Base64 handling, file operations, parameter validation
+    - _Requirements: 7.1, 7.2_
+
+  - [x] 14.8 Testing gaps analysis
+
+    - Identify untested or under-tested code paths
+    - Add tests for edge cases and error conditions
+    - Improve test coverage for new preset and CLI functionality
+    - Add integration tests for complete workflows
+    - Focus on: preset system, CLI demo, error recovery, hook integration
+    - _Requirements: 4.1, 4.2_
+
 - [ ] 14. MCP Protocol Integration Testing
 
   - [x] 14.1 Test with MCP Inspector

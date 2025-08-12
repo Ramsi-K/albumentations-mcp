@@ -1,22 +1,11 @@
 {
   "enabled": true,
   "name": "Pre-Implementation Check",
-  "description": "Comprehensive pre-implementation analysis that triggers on any development activity",
-  "version": "1",
+  "description": "Comprehensive pre-implementation analysis",
+  "version": "2",
   "when": [
     {
-      "type": "beforeTaskExecution",
-      "patterns": ["**/*"]
-    },
-    {
-      "type": "fileCreated",
-      "patterns": ["src/**/*", "tests/**/*"]
-    },
-    {
       "type": "manual"
-    },
-    {
-      "type": "onDemand"
     }
   ],
   "then": {
