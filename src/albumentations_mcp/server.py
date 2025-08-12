@@ -12,27 +12,35 @@ from mcp.server.fastmcp import FastMCP
 
 from .parser import get_available_transforms
 from .pipeline import get_pipeline, parse_prompt_with_hooks
+from .presets import get_available_presets, get_preset, preset_to_transforms
 
 # Initialize FastMCP server
 mcp = FastMCP("albumentations-mcp")
 
 
 @mcp.tool()
-def augment_image(image_b64: str, prompt: str, seed: int | None = None) -> str:
-    """Apply image augmentations based on natural language prompt.
+def augment_image(
+    image_b64: str,
+    prompt: str = "",
+    seed: int | None = None,
+    preset: str | None = None,
+) -> str:
+    """Apply image augmentations based on natural language prompt or preset.
 
     Args:
         image_b64: Base64-encoded image data
-        prompt: Natural language description of desired augmentations
+        prompt: Natural language description of desired augmentations (optional if preset is used)
         seed: Optional random seed for reproducible results.
               When provided, ensures identical results across runs with same inputs.
               When omitted, Albumentations uses system randomness for varied results.
+        preset: Optional preset name (segmentation, portrait, lowlight) to use instead of prompt
 
     Returns:
         Base64-encoded augmented image
 
     Note:
-        Reproducibility requires identical inputs (image, prompt, seed).
+        Either prompt or preset must be provided, but not both.
+        Reproducibility requires identical inputs (image, prompt/preset, seed).
         The seed affects all random transforms like blur amounts, rotation angles,
         crop positions, noise levels, etc.
     """
@@ -42,30 +50,70 @@ def augment_image(image_b64: str, prompt: str, seed: int | None = None) -> str:
     from .processor import get_processor
 
     try:
+        # Validate input parameters
+        if not prompt and not preset:
+            return image_b64  # Return original if no prompt or preset
+
+        if prompt and preset:
+            # Log warning but prefer preset
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.warning("Both prompt and preset provided, using preset")
+
         # Convert base64 to PIL Image
         image = base64_to_pil(image_b64)
 
-        # Parse prompt using hook-integrated pipeline
-        try:
-            # Try to get the current event loop
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If loop is running, we need to use a different approach
-                import concurrent.futures
+        # Handle preset or parse prompt
+        if preset:
+            # Use preset configuration
+            preset_config = get_preset(preset)
+            if not preset_config:
+                # Return original image if preset not found
+                import logging
 
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(
-                        asyncio.run,
+                logger = logging.getLogger(__name__)
+                logger.error(f"Unknown preset: {preset}")
+                return image_b64
+
+            transforms = preset_to_transforms(preset)
+            if not transforms:
+                return image_b64
+
+            # Create a mock parse result for consistency
+            parse_result = {
+                "success": True,
+                "transforms": transforms,
+                "message": f"Using preset: {preset}",
+                "warnings": [],
+                "session_id": f"preset_{preset}_{int(__import__('time').time())}",
+                "metadata": {
+                    "preset_used": preset,
+                    "preset_config": preset_config,
+                },
+            }
+        else:
+            # Parse prompt using hook-integrated pipeline
+            try:
+                # Try to get the current event loop
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # If loop is running, we need to use a different approach
+                    import concurrent.futures
+
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        future = executor.submit(
+                            asyncio.run,
+                            parse_prompt_with_hooks(prompt),
+                        )
+                        parse_result = future.result()
+                else:
+                    parse_result = loop.run_until_complete(
                         parse_prompt_with_hooks(prompt),
                     )
-                    parse_result = future.result()
-            else:
-                parse_result = loop.run_until_complete(
-                    parse_prompt_with_hooks(prompt),
-                )
-        except RuntimeError:
-            # No event loop, create one
-            parse_result = asyncio.run(parse_prompt_with_hooks(prompt))
+            except RuntimeError:
+                # No event loop, create one
+                parse_result = asyncio.run(parse_prompt_with_hooks(prompt))
 
         if not parse_result["success"] or not parse_result["transforms"]:
             # If parsing failed, return original image
@@ -82,8 +130,9 @@ def augment_image(image_b64: str, prompt: str, seed: int | None = None) -> str:
         if processing_result.success and processing_result.augmented_image:
             # Execute visual verification hook if enabled
             try:
-                from .hooks import HookContext, HookStage, execute_stage
                 import uuid
+
+                from .hooks import HookContext, HookStage, execute_stage
 
                 # Create context for verification hook
                 session_id = str(uuid.uuid4())[:8]
@@ -116,9 +165,7 @@ def augment_image(image_b64: str, prompt: str, seed: int | None = None) -> str:
                         # If loop is running, use thread executor
                         import concurrent.futures
 
-                        with (
-                            concurrent.futures.ThreadPoolExecutor() as executor
-                        ):
+                        with concurrent.futures.ThreadPoolExecutor() as executor:
                             future = executor.submit(
                                 asyncio.run,
                                 execute_stage(
@@ -132,7 +179,7 @@ def augment_image(image_b64: str, prompt: str, seed: int | None = None) -> str:
                             execute_stage(
                                 HookStage.POST_TRANSFORM_VERIFY,
                                 verification_context,
-                            )
+                            ),
                         )
                 except RuntimeError:
                     # No event loop, create one
@@ -140,7 +187,7 @@ def augment_image(image_b64: str, prompt: str, seed: int | None = None) -> str:
                         execute_stage(
                             HookStage.POST_TRANSFORM_VERIFY,
                             verification_context,
-                        )
+                        ),
                     )
 
                 if verification_result.success:
@@ -244,13 +291,11 @@ def validate_prompt(prompt: str) -> dict:
 
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     future = executor.submit(
-                        asyncio.run, parse_prompt_with_hooks(prompt)
+                        asyncio.run, parse_prompt_with_hooks(prompt),
                     )
                     result = future.result()
             else:
-                result = loop.run_until_complete(
-                    parse_prompt_with_hooks(prompt)
-                )
+                result = loop.run_until_complete(parse_prompt_with_hooks(prompt))
         except RuntimeError:
             # No event loop, create one
             result = asyncio.run(parse_prompt_with_hooks(prompt))
@@ -293,7 +338,7 @@ def set_default_seed(seed: int | None = None) -> dict:
         Dictionary with operation status and current default seed
     """
     try:
-        from .seed_manager import set_global_seed, get_global_seed
+        from .seed_manager import get_global_seed, set_global_seed
 
         # Set the default seed (using global_seed internally)
         set_global_seed(seed)
@@ -314,6 +359,44 @@ def set_default_seed(seed: int | None = None) -> dict:
             "default_seed": None,
             "error": str(e),
             "message": f"Failed to set default seed: {e}",
+        }
+
+
+@mcp.tool()
+def list_available_presets() -> dict:
+    """List all available preset configurations.
+
+    Returns:
+        Dictionary containing available presets and their descriptions
+    """
+    try:
+        presets_info = get_available_presets()
+
+        # Format for MCP response
+        presets_list = []
+        for name, config in presets_info.items():
+            presets_list.append(
+                {
+                    "name": name,
+                    "display_name": config["name"],
+                    "description": config["description"],
+                    "use_cases": config.get("use_cases", []),
+                    "transforms_count": len(config["transforms"]),
+                    "metadata": config.get("metadata", {}),
+                },
+            )
+
+        return {
+            "presets": presets_list,
+            "total_count": len(presets_list),
+            "message": f"Found {len(presets_list)} available presets",
+        }
+    except Exception as e:
+        return {
+            "presets": [],
+            "total_count": 0,
+            "error": str(e),
+            "message": f"Error retrieving presets: {e!s}",
         }
 
 

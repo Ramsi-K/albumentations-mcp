@@ -4,13 +4,12 @@ This module provides minimal seed management for session-level reproducibility
 without reimplementing Albumentations' native seeding functionality.
 """
 
-from typing import Optional
 
 # Global session seed storage
-_global_seed: Optional[int] = None
+_global_seed: int | None = None
 
 
-def set_global_seed(seed: Optional[int]) -> None:
+def set_global_seed(seed: int | None) -> None:
     """Set global seed for the session.
 
     Args:
@@ -20,7 +19,7 @@ def set_global_seed(seed: Optional[int]) -> None:
     _global_seed = seed
 
 
-def get_global_seed() -> Optional[int]:
+def get_global_seed() -> int | None:
     """Get current global seed.
 
     Returns:
@@ -29,7 +28,7 @@ def get_global_seed() -> Optional[int]:
     return _global_seed
 
 
-def get_effective_seed(transform_seed: Optional[int]) -> Optional[int]:
+def get_effective_seed(transform_seed: int | None) -> int | None:
     """Get the effective seed to use for transforms.
 
     Priority: transform_seed > global_seed > None (random)
@@ -46,7 +45,7 @@ def get_effective_seed(transform_seed: Optional[int]) -> Optional[int]:
 
 
 def get_seed_metadata(
-    effective_seed: Optional[int], transform_seed: Optional[int]
+    effective_seed: int | None, transform_seed: int | None,
 ) -> dict:
     """Get seed metadata for tracking and reproducibility.
 

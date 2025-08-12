@@ -99,10 +99,8 @@ class TransformRecoveryError(RecoveryError):
     """Raised when transform recovery fails."""
 
 
-
 class MemoryRecoveryError(RecoveryError):
     """Raised when memory recovery fails."""
-
 
 
 @dataclass
@@ -214,7 +212,8 @@ class TransformRecoveryManager:
                 recovered_transform = self._try_safe_defaults(context, image_shape)
                 if recovered_transform:
                     self._record_successful_recovery(
-                        context, RecoveryStrategy.USE_SAFE_DEFAULTS,
+                        context,
+                        RecoveryStrategy.USE_SAFE_DEFAULTS,
                     )
                     return (
                         recovered_transform,
@@ -224,11 +223,13 @@ class TransformRecoveryManager:
             # Strategy 2: Progressive parameter reduction
             if context.attempt_count < context.max_attempts:
                 recovered_transform = self._try_progressive_fallback(
-                    context, image_shape,
+                    context,
+                    image_shape,
                 )
                 if recovered_transform:
                     self._record_successful_recovery(
-                        context, RecoveryStrategy.PROGRESSIVE_FALLBACK,
+                        context,
+                        RecoveryStrategy.PROGRESSIVE_FALLBACK,
                     )
                     return (
                         recovered_transform,
@@ -240,7 +241,9 @@ class TransformRecoveryManager:
                 f"Skipping transform {transform_name} after recovery attempts failed",
             )
             self._record_recovery_attempt(
-                context, RecoveryStrategy.SKIP_TRANSFORM, success=True,
+                context,
+                RecoveryStrategy.SKIP_TRANSFORM,
+                success=True,
             )
             return None, RecoveryStrategy.SKIP_TRANSFORM
 
@@ -286,7 +289,9 @@ class TransformRecoveryManager:
             transform = transform_class(**safe_params)
 
             self._record_recovery_attempt(
-                context, RecoveryStrategy.USE_SAFE_DEFAULTS, success=True,
+                context,
+                RecoveryStrategy.USE_SAFE_DEFAULTS,
+                success=True,
             )
             logger.info(
                 f"Successfully created {context.transform_name} with safe defaults: {safe_params}",
@@ -327,7 +332,8 @@ class TransformRecoveryManager:
 
                     for param, (min_val, max_val) in safe_ranges.items():
                         if isinstance(min_val, (int, float)) and isinstance(
-                            max_val, (int, float),
+                            max_val,
+                            (int, float),
                         ):
                             # Reduce the range by the factor
                             reduced_range = (max_val - min_val) * factor
@@ -337,7 +343,8 @@ class TransformRecoveryManager:
                             if param.endswith("_limit") and param != "p":
                                 if "blur" in param:
                                     progressive_params[param] = max(
-                                        3, int(progressive_params[param]),
+                                        3,
+                                        int(progressive_params[param]),
                                     )
                                     if progressive_params[param] % 2 == 0:
                                         progressive_params[param] += 1
@@ -351,10 +358,12 @@ class TransformRecoveryManager:
                     ]:
                         height, width = image_shape[:2]
                         progressive_params["height"] = min(
-                            progressive_params.get("height", 224), height // 2,
+                            progressive_params.get("height", 224),
+                            height // 2,
                         )
                         progressive_params["width"] = min(
-                            progressive_params.get("width", 224), width // 2,
+                            progressive_params.get("width", 224),
+                            width // 2,
                         )
 
                     # Try creating transform
@@ -378,7 +387,9 @@ class TransformRecoveryManager:
                     continue
 
             self._record_recovery_attempt(
-                context, RecoveryStrategy.PROGRESSIVE_FALLBACK, success=False,
+                context,
+                RecoveryStrategy.PROGRESSIVE_FALLBACK,
+                success=False,
             )
             return None
 
@@ -430,7 +441,9 @@ class TransformRecoveryManager:
             ] += 1
 
     def _record_successful_recovery(
-        self, context: RecoveryContext, strategy: RecoveryStrategy,
+        self,
+        context: RecoveryContext,
+        strategy: RecoveryStrategy,
     ) -> None:
         """Record successful recovery for statistics."""
         self.recovery_stats["successful_recoveries"] += 1
@@ -497,7 +510,9 @@ class MemoryRecoveryManager:
             final_memory = self._get_memory_usage_mb()
             peak_memory = max(initial_memory, final_memory)
 
-            self.memory_stats["peak_usage_mb"] = max(self.memory_stats["peak_usage_mb"], peak_memory)
+            self.memory_stats["peak_usage_mb"] = max(
+                self.memory_stats["peak_usage_mb"], peak_memory,
+            )
 
             # Log memory usage if significant
             memory_delta = final_memory - initial_memory
@@ -586,7 +601,10 @@ class PipelineRecoveryManager:
         }
 
     def execute_pipeline_with_recovery(
-        self, pipeline_func: Callable, *args, **kwargs,
+        self,
+        pipeline_func: Callable,
+        *args,
+        **kwargs,
     ) -> tuple[Any, list[dict[str, Any]]]:
         """Execute pipeline function with comprehensive recovery.
 
@@ -682,7 +700,10 @@ def recover_from_transform_failure(
 ) -> tuple[A.BasicTransform | None, RecoveryStrategy]:
     """Convenience function for transform failure recovery."""
     return get_transform_recovery_manager().recover_transform_failure(
-        transform_name, parameters, error, image_shape,
+        transform_name,
+        parameters,
+        error,
+        image_shape,
     )
 
 

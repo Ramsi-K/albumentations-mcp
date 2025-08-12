@@ -222,9 +222,9 @@ Production-ready PyPI package for natural language image augmentation via MCP pr
     - Graceful degradation strategies
     - _Requirements: 7.4, 7.5_
 
-- [ ] 13. Add CLI demo and development tools
+- [x] 13. Add CLI demo and development tools
 
-  - [ ] 13.1 Create CLI demo interface
+  - [x] 13.1 Create CLI demo interface
 
     - Add `python -m albumentations_mcp.demo` command
     - Support `--image examples/cat.jpg --prompt "add blur"`
@@ -232,7 +232,7 @@ Production-ready PyPI package for natural language image augmentation via MCP pr
     - Create example images and demo scripts
     - _Requirements: 1.1, 1.2, 2.1, 2.2_
 
-  - [ ] 13.2 Add preset pipeline support
+  - [x] 13.2 Add preset pipeline support
 
     - Create preset configurations: "segmentation", "portrait", "lowlight"
     - Add `--preset` parameter to CLI and MCP tools

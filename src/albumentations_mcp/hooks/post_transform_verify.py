@@ -72,9 +72,7 @@ class PostTransformVerifyHook(BaseHook):
             # Validate required inputs
             if not original_image or not augmented_image:
                 logger.warning("Visual verification skipped: missing images")
-                context.warnings.append(
-                    "Visual verification skipped: missing images"
-                )
+                context.warnings.append("Visual verification skipped: missing images")
                 return HookResult(success=True, context=context)
 
             # Get verification manager
@@ -87,25 +85,19 @@ class PostTransformVerifyHook(BaseHook):
                     augmented_image,
                     session_id,
                 )
-                logger.info(
-                    f"Saved verification images for session {session_id}"
-                )
+                logger.info(f"Saved verification images for session {session_id}")
 
             except Exception as e:
                 logger.error(f"Failed to save verification images: {e}")
                 context.errors.append(f"Image saving failed: {e!s}")
-                return HookResult(
-                    success=True, context=context
-                )  # Non-blocking failure
+                return HookResult(success=True, context=context)  # Non-blocking failure
 
             # Generate verification report
             try:
                 # Collect metadata for the report
                 metadata = {
                     "session_id": session_id,
-                    "processing_time": context.metadata.get(
-                        "processing_time", 0
-                    ),
+                    "processing_time": context.metadata.get("processing_time", 0),
                     "transforms_applied": len(
                         context.metadata.get("applied_transforms", []),
                     ),
@@ -119,31 +111,23 @@ class PostTransformVerifyHook(BaseHook):
                     # Include seed information for debugging
                     "seed_used": context.metadata.get("seed_used", False),
                     "seed_value": context.metadata.get("seed_value", None),
-                    "reproducible": context.metadata.get(
-                        "reproducible", False
-                    ),
+                    "reproducible": context.metadata.get("reproducible", False),
                 }
 
                 # Add transform details if available
-                applied_transforms = context.metadata.get(
-                    "applied_transforms", []
-                )
+                applied_transforms = context.metadata.get("applied_transforms", [])
                 if applied_transforms:
                     transform_names = [
                         t.get("name", "unknown") for t in applied_transforms
                     ]
-                    metadata["applied_transform_names"] = ", ".join(
-                        transform_names
-                    )
+                    metadata["applied_transform_names"] = ", ".join(transform_names)
 
                 # Generate the verification report
-                report_content = (
-                    verification_manager.generate_verification_report(
-                        file_paths,
-                        prompt,
-                        session_id,
-                        metadata,
-                    )
+                report_content = verification_manager.generate_verification_report(
+                    file_paths,
+                    prompt,
+                    session_id,
+                    metadata,
                 )
 
                 # Save the report to file
@@ -155,13 +139,9 @@ class PostTransformVerifyHook(BaseHook):
                 # Add verification info to context metadata
                 context.metadata["verification_files"] = file_paths
                 context.metadata["verification_report_path"] = report_path
-                context.metadata["verification_report_content"] = (
-                    report_content
-                )
+                context.metadata["verification_report_content"] = report_content
 
-                logger.info(
-                    f"Generated verification report for session {session_id}"
-                )
+                logger.info(f"Generated verification report for session {session_id}")
 
             except Exception as e:
                 logger.error(f"Failed to generate verification report: {e}")
@@ -169,17 +149,13 @@ class PostTransformVerifyHook(BaseHook):
 
                 # Clean up images if report generation failed
                 try:
-                    verification_manager.cleanup_temp_files(
-                        list(file_paths.values())
-                    )
+                    verification_manager.cleanup_temp_files(list(file_paths.values()))
                 except Exception as cleanup_error:
                     logger.warning(
                         f"Failed to cleanup files after report error: {cleanup_error}",
                     )
 
-                return HookResult(
-                    success=True, context=context
-                )  # Non-blocking failure
+                return HookResult(success=True, context=context)  # Non-blocking failure
 
             logger.debug(
                 f"Visual verification completed successfully for session {session_id}",
@@ -189,9 +165,7 @@ class PostTransformVerifyHook(BaseHook):
         except Exception as e:
             logger.error(f"Visual verification hook failed: {e}")
             context.errors.append(f"Hook execution failed: {e!s}")
-            return HookResult(
-                success=True, context=context
-            )  # Non-blocking failure
+            return HookResult(success=True, context=context)  # Non-blocking failure
 
 
 # Create hook instance for registration

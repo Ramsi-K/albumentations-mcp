@@ -209,7 +209,8 @@ def validate_base64_image(image_b64: str, strict: bool = True) -> dict[str, Any]
             validation_result["error"] = error
             if strict:
                 raise ResourceLimitError(
-                    error, {"file_size": file_size, "max_size": MAX_FILE_SIZE},
+                    error,
+                    {"file_size": file_size, "max_size": MAX_FILE_SIZE},
                 )
             return validation_result
 
@@ -473,7 +474,9 @@ def validate_prompt(prompt: str, strict: bool = True) -> dict[str, Any]:
 
 
 def validate_transform_parameters(
-    transform_name: str, parameters: dict[str, Any], strict: bool = True,
+    transform_name: str,
+    parameters: dict[str, Any],
+    strict: bool = True,
 ) -> dict[str, Any]:
     """Validate transform parameters with edge case handling.
 

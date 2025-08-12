@@ -91,7 +91,10 @@ class VisualVerificationManager:
             self.verification_dir.mkdir(parents=True, exist_ok=True)
 
     def save_images_for_review(
-        self, original: Image.Image, augmented: Image.Image, session_id: str,
+        self,
+        original: Image.Image,
+        augmented: Image.Image,
+        session_id: str,
     ) -> dict[str, str]:
         """
         Save original and augmented images to temporary files for LLM review.
@@ -355,11 +358,15 @@ def get_verification_manager() -> VisualVerificationManager:
 
 
 def save_images_for_llm_review(
-    original: Image.Image, augmented: Image.Image, session_id: str,
+    original: Image.Image,
+    augmented: Image.Image,
+    session_id: str,
 ) -> dict[str, str]:
     """Convenience function to save images for LLM review."""
     return get_verification_manager().save_images_for_review(
-        original, augmented, session_id,
+        original,
+        augmented,
+        session_id,
     )
 
 
@@ -371,5 +378,8 @@ def generate_llm_verification_report(
 ) -> str:
     """Convenience function to generate verification report."""
     return get_verification_manager().generate_verification_report(
-        image_paths, prompt, session_id, metadata,
+        image_paths,
+        prompt,
+        session_id,
+        metadata,
     )
