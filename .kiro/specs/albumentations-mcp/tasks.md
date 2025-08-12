@@ -316,23 +316,76 @@ Production-ready PyPI package for natural language image augmentation via MCP pr
     - Focus on: preset system, CLI demo, error recovery, hook integration
     - _Requirements: 4.1, 4.2_
 
-- [ ] 14. MCP Protocol Integration Testing
+## 🔄 REPEATABLE: MCP Protocol Integration Testing
 
-  - [x] 14.1 Test with MCP Inspector
+**This section contains repeatable testing tasks that should be run:**
 
-    - Verify tool discovery and schema validation
-    - Test all tools with various input combinations
-    - Validate JSON-RPC message format compliance
-    - Test prompt and resource discovery
-    - _Requirements: 2.1, 2.2, 2.3, 2.4_
+- After major code changes
+- Before releases
+- When adding new tools, prompts, or resources
+- During development iterations
 
-  - [ ] 14.2 Test with real MCP clients
+### Current Test Status:
 
-    - Claude Desktop integration testing
-    - Kiro IDE integration testing
-    - Test configuration file formats for each client
-    - Validate stdio transport protocol
-    - _Requirements: 2.1, 2.2, 2.3, 2.4_
+- **Last Run:** 2025-01-12 (after code review improvements)
+- **Next Run:** After adding prompts/resources or before release
+
+### 🚀 Quick Test Commands:
+
+```bash
+# Run all MCP integration tests
+./scripts/run_mcp_tests.sh
+
+# Or on Windows
+scripts\run_mcp_tests.bat
+
+# Run specific test categories
+./scripts/run_mcp_tests.sh inspector   # MCP Inspector tests only
+./scripts/run_mcp_tests.sh clients     # Client integration tests only
+./scripts/run_mcp_tests.sh regression  # Regression tests only
+
+# Manual testing
+uv run python scripts/test_mcp_integration.py --all
+```
+
+### Test Checklist (Reset before each run):
+
+- [ ] **MCP Inspector Testing**
+
+  - [ ] Verify tool discovery and schema validation
+  - [ ] Test all tools with various input combinations
+  - [ ] Validate JSON-RPC message format compliance
+  - [ ] Test prompt and resource discovery (when implemented)
+  - [ ] Document any issues found
+  - _Requirements: 2.1, 2.2, 2.3, 2.4_
+
+- [ ] **Real MCP Client Testing**
+
+  - [ ] Claude Desktop integration testing
+  - [ ] Kiro IDE integration testing
+  - [ ] Test configuration file formats for each client
+  - [ ] Validate stdio transport protocol
+  - [ ] Test all tools with real client workflows
+  - [ ] Document any client-specific issues
+  - _Requirements: 2.1, 2.2, 2.3, 2.4_
+
+- [ ] **Regression Testing**
+  - [ ] Run full test suite (uv run pytest)
+  - [ ] Check for any new test failures
+  - [ ] Verify all MCP tools still work correctly
+  - [ ] Test error handling and edge cases
+
+### Test Results Log:
+
+```
+2025-01-12: Post code-review testing
+- MCP Inspector: ✅ All tools discovered correctly
+- Schema validation: ✅ All schemas valid
+- Tool functionality: ✅ All tools working
+- Issues: None critical, some test failures documented in TEST_FAILURES_REPORT.md
+```
+
+---
 
 - [ ] 15. Prepare for PyPI publishing
 

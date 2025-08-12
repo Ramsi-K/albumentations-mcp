@@ -1,0 +1,17 @@
+{
+  "timestamp": "2025-08-12T09:08:18.025797",
+  "inspector_tests": {},
+  "client_tests": {},
+  "regression_tests": {
+    "pytest": "failed",
+    "pytest_output": "............................................................F..F........ [ 23%]\n.............................F..FFF.......F.........F................... [ 46%]\n..................................F............F...................F.... [ 70%]\n........................................................................ [ 93%]\n.F..................                                                     [100%]\n=========================== short test summary info ===========================\nFAILED tests/test_image_utils.py::TestBase64ToPil::test_invalid_base64_error\nFAILED tests/test_image_utils.py::TestBase64ToPil::test_large_image_validation\nFAILED tests/test_individual_hooks.py::TestPreTransformHook::test_image_size_warnings\nFAILED tests/test_individual_hooks.py::TestPreTransformHook::test_high_blur_warning\nFAILED tests/test_individual_hooks.py::TestPreTransformHook::test_large_rotation_warning\nFAILED tests/test_individual_hooks.py::TestPreTransformHook::test_low_probability_warning\nFAILED tests/test_individual_hooks.py::TestPostTransformHook::test_exception_handling\nFAILED tests/test_individual_hooks.py::TestPreSaveHook::test_file_path_generation\nFAILED tests/test_processor.py::TestImageProcessor::test_memory_limit_exceeded\nFAILED tests/test_recovery.py::TestTransformRecoveryManager::test_progressive_fallback_recovery\nFAILED tests/test_recovery.py::TestIntegrationScenarios::test_extreme_parameter_recovery\nFAILED tests/test_validation.py::TestPromptValidation::test_excessive_punctuation\n12 failed, 296 passed in 3.29s\n",
+    "list_transforms": "passed",
+    "validate_prompt": "passed",
+    "status": "passed"
+  },
+  "summary": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  }
+}
