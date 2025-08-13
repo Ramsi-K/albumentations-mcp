@@ -65,6 +65,157 @@ class PostSaveHook(BaseHook):
             logger.error(error_msg, exc_info=True)
             return HookResult(success=False, error=error_msg, context=context)
 
+    def _save_files(
+        self, context: HookContext, file_paths: dict[str, str]
+    ) -> None:
+        """Actually save the files to disk."""
+        import json
+        from pathlib import Path
+
+        # Save augmented image
+        if "augmented_image" in file_paths and hasattr(
+            context, "augmented_image"
+        ):
+            try:
+                from ..image_utils import base64_to_pil
+
+                if isinstance(context.augmented_image, bytes):
+                    # Convert bytes to PIL and save
+                    image = base64_to_pil(context.augmented_image.decode())
+                    image.save(file_paths["augmented_image"])
+                    logger.info(
+                        f"Saved augmented image: {file_paths['augmented_image']}"
+                    )
+            except Exception as e:
+                logger.error(f"Failed to save augmented image: {e}")
+
+        # Save original image
+        if "original_image" in file_paths and hasattr(context, "image_data"):
+            try:
+                from ..image_utils import base64_to_pil
+
+                if isinstance(context.image_data, bytes):
+                    # Convert bytes to PIL and save
+                    image = base64_to_pil(context.image_data.decode())
+                    image.save(file_paths["original_image"])
+                    logger.info(
+                        f"Saved original image: {file_paths['original_image']}"
+                    )
+            except Exception as e:
+                logger.error(f"Failed to save original image: {e}")
+
+        # Save metadata JSON
+        if "metadata" in file_paths:
+            try:
+                metadata = {
+                    "session_id": context.session_id,
+                    "original_prompt": context.original_prompt,
+                    "transforms": context.parsed_transforms,
+                    "metadata": context.metadata,
+                    "warnings": context.warnings,
+                    "errors": context.errors,
+                }
+                with open(file_paths["metadata"], "w") as f:
+                    json.dump(metadata, f, indent=2, default=str)
+                logger.info(f"Saved metadata: {file_paths['metadata']}")
+            except Exception as e:
+                logger.error(f"Failed to save metadata: {e}")
+
+        # Save visual evaluation report
+        if (
+            "visual_eval" in file_paths
+            and "verification_report_content" in context.metadata
+        ):
+            try:
+                with open(file_paths["visual_eval"], "w") as f:
+                    f.write(context.metadata["verification_report_content"])
+                logger.info(
+                    f"Saved visual evaluation: {file_paths['visual_eval']}"
+                )
+            except Exception as e:
+                logger.error(f"Failed to save visual evaluation: {e}")
+
+        # Save transform specification
+        if "transform_spec" in file_paths:
+            try:
+                transform_spec = {
+                    "session_id": context.session_id,
+                    "transforms": context.parsed_transforms,
+                    "transformation_summary": context.metadata.get(
+                        "transformation_summary", {}
+                    ),
+                }
+                with open(file_paths["transform_spec"], "w") as f:
+                    json.dump(transform_spec, f, indent=2, default=str)
+                logger.info(
+                    f"Saved transform spec: {file_paths['transform_spec']}"
+                )
+            except Exception as e:
+                logger.error(f"Failed to save transform spec: {e}")
+
+        # Save quality report
+        if "quality_report" in file_paths:
+            try:
+                quality_report = {
+                    "session_id": context.session_id,
+                    "quality_metrics": context.metadata.get(
+                        "quality_metrics", {}
+                    ),
+                    "processing_statistics": context.metadata.get(
+                        "processing_statistics", {}
+                    ),
+                }
+                with open(file_paths["quality_report"], "w") as f:
+                    json.dump(quality_report, f, indent=2, default=str)
+                logger.info(
+                    f"Saved quality report: {file_paths['quality_report']}"
+                )
+            except Exception as e:
+                logger.error(f"Failed to save quality report: {e}")
+
+        # Save processing log
+        if "processing_log" in file_paths:
+            try:
+                log_content = f"""Processing Log - Session {context.session_id}
+Generated: {context.metadata.get('timestamp', 'Unknown')}
+Prompt: {context.original_prompt}
+
+=== PROCESSING RESULTS ===
+Transforms Applied: {len(context.metadata.get('processing_result', {}).get('applied_transforms', []))}
+Transforms Skipped: {len(context.metadata.get('processing_result', {}).get('skipped_transforms', []))}
+Execution Time: {context.metadata.get('processing_result', {}).get('execution_time', 'Unknown')}s
+Success: {context.metadata.get('processing_result', {}).get('success', False)}
+
+=== WARNINGS ===
+{chr(10).join(context.warnings) if context.warnings else 'None'}
+
+=== ERRORS ===
+{chr(10).join(context.errors) if context.errors else 'None'}
+"""
+                with open(file_paths["processing_log"], "w") as f:
+                    f.write(log_content)
+                logger.info(
+                    f"Saved processing log: {file_paths['processing_log']}"
+                )
+            except Exception as e:
+                logger.error(f"Failed to save processing log: {e}")
+
+        # Save classification report (placeholder for now)
+        if "classification_report" in file_paths:
+            try:
+                classification_report = {
+                    "session_id": context.session_id,
+                    "note": "Classification consistency checking not yet implemented",
+                    "planned_for": "v0.2.0",
+                }
+                with open(file_paths["classification_report"], "w") as f:
+                    json.dump(classification_report, f, indent=2, default=str)
+                logger.info(
+                    f"Saved classification report: {file_paths['classification_report']}"
+                )
+            except Exception as e:
+                logger.error(f"Failed to save classification report: {e}")
+
     def _log_completion_status(self, context: HookContext) -> dict[str, Any]:
         """Log detailed completion status and file locations."""
         completion_info = {
@@ -82,10 +233,13 @@ class PostSaveHook(BaseHook):
             completion_info["completion_timestamp"] = time.time()
 
             # Get file paths from metadata
-            file_paths = context.metadata.get("output_files", {})
+            file_paths = context.metadata.get("file_paths", {})
             completion_info["total_files"] = len(file_paths)
 
-            # Check which files were actually created
+            # Actually save the files first!
+            self._save_files(context, file_paths)
+
+            # Then check which files were actually created
             for file_type, file_path in file_paths.items():
                 if Path(file_path).exists():
                     file_info = {

@@ -41,11 +41,11 @@ wheels = [
 
 [[package]]
 name = "albumentations-mcp"
-version = "0.1.0b1"
+version = "0.1.0b4"
 source = { editable = "." }
 dependencies = [
     { name = "albumentations" },
-    { name = "mcp" },
+    { name = "mcp", extra = ["cli"] },
     { name = "numpy" },
     { name = "opencv-python-headless" },
     { name = "pillow" },
@@ -66,7 +66,7 @@ dev = [
 requires-dist = [
     { name = "albumentations", specifier = ">=1.3.0" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
-    { name = "mcp", specifier = ">=1.12.3" },
+    { name = "mcp", extras = ["cli"], specifier = ">=1.12.3" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "numpy", specifier = ">=1.26.0" },
     { name = "opencv-python-headless", specifier = ">=4.8.0" },
@@ -293,6 +293,18 @@ wheels = [
 ]
 
 [[package]]
+name = "markdown-it-py"
+version = "4.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "mdurl" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5b/f5/4ec618ed16cc4f8fb3b701563655a69816155e79e24a17b651541804721d/markdown_it_py-4.0.0.tar.gz", hash = "sha256:cb0a2b4aa34f932c007117b194e945bd74e0ec24133ceb5bac59009cda1cb9f3", size = 73070, upload-time = "2025-08-11T12:57:52.854Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/94/54/e7d793b573f298e1c9013b8c4dade17d481164aa517d1d7148619c2cedbf/markdown_it_py-4.0.0-py3-none-any.whl", hash = "sha256:87327c59b172c5011896038353a81343b6754500a08cd7a4973bb48c6d578147", size = 87321, upload-time = "2025-08-11T12:57:51.923Z" },
+]
+
+[[package]]
 name = "mcp"
 version = "1.12.3"
 source = { registry = "https://pypi.org/simple" }
@@ -312,6 +324,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/4d/19/9955e2df5384ff5dd25d38f8e88aaf89d2d3d9d39f27e7383eaf0b293836/mcp-1.12.3.tar.gz", hash = "sha256:ab2e05f5e5c13e1dc90a4a9ef23ac500a6121362a564447855ef0ab643a99fed", size = 427203, upload-time = "2025-07-31T18:36:36.795Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8f/8b/0be74e3308a486f1d127f3f6767de5f9f76454c9b4183210c61cc50999b6/mcp-1.12.3-py3-none-any.whl", hash = "sha256:5483345bf39033b858920a5b6348a303acacf45b23936972160ff152107b850e", size = 158810, upload-time = "2025-07-31T18:36:34.915Z" },
+]
+
+[package.optional-dependencies]
+cli = [
+    { name = "python-dotenv" },
+    { name = "typer" },
+]
+
+[[package]]
+name = "mdurl"
+version = "0.1.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba", size = 8729, upload-time = "2022-08-14T12:40:10.846Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8", size = 9979, upload-time = "2022-08-14T12:40:09.779Z" },
 ]
 
 [[package]]
@@ -745,6 +772,19 @@ wheels = [
 ]
 
 [[package]]
+name = "rich"
+version = "14.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "markdown-it-py" },
+    { name = "pygments" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fe/75/af448d8e52bf1d8fa6a9d089ca6c07ff4453d86c65c145d0a300bb073b9b/rich-14.1.0.tar.gz", hash = "sha256:e497a48b844b0320d45007cdebfeaeed8db2a4f4bcf49f15e455cfc4af11eaa8", size = 224441, upload-time = "2025-07-25T07:32:58.125Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e3/30/3c4d035596d3cf444529e0b2953ad0466f6049528a879d27534700580395/rich-14.1.0-py3-none-any.whl", hash = "sha256:536f5f1785986d6dbdea3c75205c473f970777b4a0d6c6dd1b696aa05a3fa04f", size = 243368, upload-time = "2025-07-25T07:32:56.73Z" },
+]
+
+[[package]]
 name = "rpds-py"
 version = "0.26.0"
 source = { registry = "https://pypi.org/simple" }
@@ -902,6 +942,15 @@ wheels = [
 ]
 
 [[package]]
+name = "shellingham"
+version = "1.5.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/58/15/8b3609fd3830ef7b27b655beb4b4e9c62313a4e8da8c676e142cc210d58e/shellingham-1.5.4.tar.gz", hash = "sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de", size = 10310, upload-time = "2023-10-24T04:13:40.426Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686", size = 9755, upload-time = "2023-10-24T04:13:38.866Z" },
+]
+
+[[package]]
 name = "simsimd"
 version = "6.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1025,6 +1074,21 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/19/bd/6de50e3b969ba417825ddd8cb6f36d34981cacb90d026769b5dca2d7e5fb/stringzilla-3.12.5-cp313-cp313-win32.whl", hash = "sha256:98d22acd6c06864df30df0860307fb6fb6ca98af0bdd0d0877fc182bf580afbd", size = 68637, upload-time = "2025-04-18T21:33:42.687Z" },
     { url = "https://files.pythonhosted.org/packages/a4/08/849dc695e49d017bc314b2e65a79c5ff1c140fc3f99b13df1e240597c8e1/stringzilla-3.12.5-cp313-cp313-win_amd64.whl", hash = "sha256:a921412385671db26dc4b078529ac6001c93445f06ff71e339a315c0e261d459", size = 80138, upload-time = "2025-04-18T21:33:44.243Z" },
     { url = "https://files.pythonhosted.org/packages/53/a1/d8d7144490b49598cdb166f4389614b251b35c531aeb5a29f424a3e42df4/stringzilla-3.12.5-cp313-cp313-win_arm64.whl", hash = "sha256:101d94f351d918144389ff316ff61efb06f645702078c48d7c4e0973b788fab9", size = 69748, upload-time = "2025-04-18T21:33:45.757Z" },
+]
+
+[[package]]
+name = "typer"
+version = "0.16.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "rich" },
+    { name = "shellingham" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c5/8c/7d682431efca5fd290017663ea4588bf6f2c6aad085c7f108c5dbc316e70/typer-0.16.0.tar.gz", hash = "sha256:af377ffaee1dbe37ae9440cb4e8f11686ea5ce4e9bae01b84ae7c63b87f1dd3b", size = 102625, upload-time = "2025-05-26T14:30:31.824Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/76/42/3efaf858001d2c2913de7f354563e3a3a2f0decae3efe98427125a8f441e/typer-0.16.0-py3-none-any.whl", hash = "sha256:1f79bed11d4d02d4310e3c1b7ba594183bcedb0ac73b27a9e5f28f6fb5b98855", size = 46317, upload-time = "2025-05-26T14:30:30.523Z" },
 ]
 
 [[package]]

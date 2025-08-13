@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "albumentations-mcp"
-version = "0.1.0b1"
+version = "0.1.0b2"
 description = "MCP-compliant image augmentation server using Albumentations"
 readme = "README.md"
 requires-python = ">=3.12"  # set to 3.12 since tools target 3.12
@@ -27,7 +27,7 @@ dependencies = [
   "Pillow>=10.0.0",
   "numpy>=1.26.0",
   "pydantic>=2.0.0",
-  "mcp>=1.12.3",  # confirm this is the correct SDK name/version
+  "mcp[cli]>=1.12.3", # confirm this is the correct SDK name/version
 ]
 
 [project.optional-dependencies]

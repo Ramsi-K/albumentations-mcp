@@ -36,7 +36,7 @@ def augment_image(
         preset: Optional preset name (segmentation, portrait, lowlight) to use instead of prompt
 
     Returns:
-        Base64-encoded augmented image
+        Success message with file path where augmented image was saved
 
     Note:
         Either prompt or preset must be provided, but not both.
@@ -146,16 +146,31 @@ def augment_image(
             )
 
         if pipeline_result["success"]:
-            return pipeline_result["augmented_image"]
+            # Always return success message - files should be saved by hooks
+            file_paths = pipeline_result["metadata"].get("file_paths", {})
+            session_id = pipeline_result.get("session_id", "unknown")
+
+            if file_paths and "augmented_image" in file_paths:
+                return f"✅ Image successfully augmented and saved!\n\n📁 Files saved:\n• Augmented image: {file_paths['augmented_image']}\n• Session ID: {session_id}\n\nUse the file path to access your augmented image."
+            else:
+                # Even if file saving failed, return success message with the actual transforms applied
+                applied_transforms = (
+                    pipeline_result["metadata"]
+                    .get("processing_result", {})
+                    .get("applied_transforms", [])
+                )
+                transform_names = [
+                    t.get("name", "Unknown") for t in applied_transforms
+                ]
+                return f"✅ Image successfully augmented!\n\n🔧 Transforms applied: {', '.join(transform_names) if transform_names else 'None'}\n• Session ID: {session_id}\n\nNote: File saving may have failed, but transformation was successful."
         else:
-            # Pipeline failed, return original image
+            # Pipeline failed
             import logging
 
             logger = logging.getLogger(__name__)
-            logger.error(
-                f"Pipeline processing failed: {pipeline_result.get('message', 'Unknown error')}"
-            )
-            return image_b64
+            error_msg = pipeline_result.get("message", "Unknown error")
+            logger.error(f"Pipeline processing failed: {error_msg}")
+            return f"❌ Image augmentation failed: {error_msg}"
 
     except ImageConversionError as e:
         # Log error but return original to avoid breaking MCP protocol

@@ -44,7 +44,9 @@ class TransformType(str, Enum):
 class TransformConfig(BaseModel):
     """Configuration for a single transform."""
 
-    name: TransformType = Field(..., description="Name of the Albumentations transform")
+    name: TransformType = Field(
+        ..., description="Name of the Albumentations transform"
+    )
     parameters: dict[str, Any] = Field(
         default_factory=dict,
         description="Transform parameters",
@@ -66,7 +68,9 @@ class TransformConfig(BaseModel):
             "MotionBlur",
             "GaussianBlur",
         ]:
-            if "blur_limit" in v and (v["blur_limit"] < 3 or v["blur_limit"] > 100):
+            if "blur_limit" in v and (
+                v["blur_limit"] < 3 or v["blur_limit"] > 100
+            ):
                 raise ValueError("blur_limit must be between 3 and 100")
         return v
 
@@ -85,7 +89,9 @@ class ParseResult(BaseModel):
         le=1.0,
         description="Confidence score for parsing accuracy",
     )
-    warnings: list[str] = Field(default_factory=list, description="Parsing warnings")
+    warnings: list[str] = Field(
+        default_factory=list, description="Parsing warnings"
+    )
     suggestions: list[str] = Field(
         default_factory=list,
         description="Suggestions for improvement",
@@ -95,7 +101,9 @@ class ParseResult(BaseModel):
 class TransformConfig(BaseModel):
     """Configuration for a single transform."""
 
-    name: TransformType = Field(..., description="Name of the Albumentations transform")
+    name: TransformType = Field(
+        ..., description="Name of the Albumentations transform"
+    )
     parameters: dict[str, Any] = Field(
         default_factory=dict,
         description="Transform parameters",
@@ -117,7 +125,9 @@ class TransformConfig(BaseModel):
             "MotionBlur",
             "GaussianBlur",
         ]:
-            if "blur_limit" in v and (v["blur_limit"] < 3 or v["blur_limit"] > 100):
+            if "blur_limit" in v and (
+                v["blur_limit"] < 3 or v["blur_limit"] > 100
+            ):
                 raise ValueError("blur_limit must be between 3 and 100")
         return v
 
@@ -136,7 +146,9 @@ class ParseResult(BaseModel):
         le=1.0,
         description="Confidence score for parsing accuracy",
     )
-    warnings: list[str] = Field(default_factory=list, description="Parsing warnings")
+    warnings: list[str] = Field(
+        default_factory=list, description="Parsing warnings"
+    )
     suggestions: list[str] = Field(
         default_factory=list,
         description="Suggestions for improvement",
@@ -165,7 +177,9 @@ class PromptParser:
         self._compiled_patterns = {}
         for name, pattern in self._parameter_patterns.items():
             if isinstance(pattern, str):
-                self._compiled_patterns[name] = re.compile(pattern, re.IGNORECASE)
+                self._compiled_patterns[name] = re.compile(
+                    pattern, re.IGNORECASE
+                )
             else:
                 # Pattern is already compiled
                 self._compiled_patterns[name] = pattern
@@ -221,6 +235,19 @@ class PromptParser:
             "clahe": TransformType.CLAHE,
             "histogram equalization": TransformType.CLAHE,
             "enhance": TransformType.CLAHE,
+            "sharpen": TransformType.CLAHE,  # Use CLAHE for sharpening effect
+            "sharpening": TransformType.CLAHE,
+            # Grayscale
+            "grayscale": TransformType.TO_GRAY,
+            "gray scale": TransformType.TO_GRAY,
+            "grey scale": TransformType.TO_GRAY,
+            "greyscale": TransformType.TO_GRAY,
+            "to gray": TransformType.TO_GRAY,
+            "to grey": TransformType.TO_GRAY,
+            "make gray": TransformType.TO_GRAY,
+            "make grey": TransformType.TO_GRAY,
+            "turn gray": TransformType.TO_GRAY,
+            "turn grey": TransformType.TO_GRAY,
         }
 
     def _build_default_parameters(self) -> dict[TransformType, dict[str, Any]]:
@@ -440,7 +467,9 @@ class PromptParser:
                 blur_value = float(match.group(1))
                 # Ensure odd number for blur_limit
                 blur_limit = (
-                    int(blur_value) if int(blur_value) % 2 == 1 else int(blur_value) + 1
+                    int(blur_value)
+                    if int(blur_value) % 2 == 1
+                    else int(blur_value) + 1
                 )
                 parameters["blur_limit"] = max(3, min(blur_limit, 99))
 
@@ -452,7 +481,9 @@ class PromptParser:
 
         elif transform_type == TransformType.RANDOM_BRIGHTNESS_CONTRAST:
             # Handle brightness parameters
-            brightness_match = self._parameter_patterns["brightness_amount"].search(
+            brightness_match = self._parameter_patterns[
+                "brightness_amount"
+            ].search(
                 phrase,
             )
             if brightness_match:
@@ -462,7 +493,9 @@ class PromptParser:
                 parameters["brightness_limit"] = max(0.1, min(brightness, 1.0))
 
             # Handle contrast parameters
-            contrast_match = self._parameter_patterns["contrast_amount"].search(phrase)
+            contrast_match = self._parameter_patterns[
+                "contrast_amount"
+            ].search(phrase)
             if contrast_match:
                 contrast = float(contrast_match.group(1))
                 if contrast > 1:
@@ -555,12 +588,16 @@ class PromptParser:
             ),
             TransformType.MOTION_BLUR: "Apply motion blur effect",
             TransformType.RANDOM_BRIGHTNESS_CONTRAST: "Randomly adjust image brightness and contrast",
-            TransformType.HUE_SATURATION_VALUE: ("Adjust hue, saturation, and value"),
+            TransformType.HUE_SATURATION_VALUE: (
+                "Adjust hue, saturation, and value"
+            ),
             TransformType.ROTATE: "Rotate image by specified angle",
             TransformType.HORIZONTAL_FLIP: "Flip image horizontally",
             TransformType.VERTICAL_FLIP: "Flip image vertically",
             TransformType.GAUSSIAN_NOISE: "Add gaussian noise to image",
-            TransformType.RANDOM_CROP: ("Randomly crop image to specified size"),
+            TransformType.RANDOM_CROP: (
+                "Randomly crop image to specified size"
+            ),
             TransformType.RANDOM_RESIZE_CROP: "Randomly crop and resize image",
             TransformType.NORMALIZE: "Normalize image pixel values",
             TransformType.CLAHE: (
