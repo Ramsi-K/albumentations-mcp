@@ -3,44 +3,10 @@
 This module contains shared utility functions that are used across multiple
 modules to reduce code duplication and improve maintainability.
 
-# File Summary
 Centralized utility functions for common patterns like logging,
 error handling, validation, file operations, and singleton management.
 Reduces code duplication across validation, recovery, processor, and hook modules.
 
-# TODO Tree
-- [x] Logging Utilities
-  - [x] Structured logging helpers with consistent formatting
-  - [x] Error logging with context and exception info
-  - [x] Debug logging with session tracking
-  - [x] Warning logging with categorization
-- [x] Error Handling Utilities
-  - [x] Exception handling patterns with consistent error messages
-  - [x] Error context preservation and chaining
-  - [x] Graceful degradation helpers
-  - [x] Error recovery attempt tracking
-- [x] Validation Utilities
-  - [x] Common validation patterns for strings, dicts, lists
-  - [x] Type checking helpers with detailed error messages
-  - [x] Parameter sanitization and cleaning
-  - [x] Range validation for numeric values
-- [x] File Operation Utilities
-  - [x] Safe file operations with error handling
-  - [x] Directory creation and management
-  - [x] Temporary file cleanup patterns
-  - [x] Path validation and sanitization
-- [x] Singleton Management
-  - [x] Global instance management pattern
-  - [x] Thread-safe singleton creation
-  - [x] Instance lifecycle management
-  - [x] Configuration-based instance creation
-
-# Code Review Notes
-- CONSISTENCY: Standardizes common patterns across modules
-- MAINTAINABILITY: Centralizes shared logic for easier updates
-- TESTING: Easier to test common patterns in isolation
-- PERFORMANCE: Reduces code duplication and import overhead
-- RELIABILITY: Consistent error handling and validation
 """
 
 import functools
@@ -48,8 +14,9 @@ import logging
 import os
 import re
 import threading
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, TypeVar, Union
+from typing import Any, TypeVar
 
 # Type variables for generic functions
 T = TypeVar("T")
@@ -173,7 +140,10 @@ def handle_exception_with_fallback(
         return operation_func()
     except Exception as e:
         log_error_with_context(
-            e, error_message, session_id=session_id, operation=operation
+            e,
+            error_message,
+            session_id=session_id,
+            operation=operation,
         )
         return fallback_func()
 
@@ -253,8 +223,7 @@ def raise_with_context(
 
     if original_error:
         raise exception from original_error
-    else:
-        raise exception
+    raise exception
 
 
 def handle_validation_error(
@@ -348,16 +317,14 @@ def validate_string_input(
         ValueError: If validation fails
     """
     if not isinstance(value, str):
-        raise ValueError(
-            f"{name} must be a string, got {type(value).__name__}"
-        )
+        raise ValueError(f"{name} must be a string, got {type(value).__name__}")
 
     if not allow_empty and not value:
         raise ValueError(f"{name} cannot be empty")
 
     if max_length is not None and len(value) > max_length:
         raise ValueError(
-            f"{name} too long: {len(value)} characters (max: {max_length})"
+            f"{name} too long: {len(value)} characters (max: {max_length})",
         )
 
     return value
@@ -382,9 +349,7 @@ def validate_dict_input(
         ValueError: If validation fails
     """
     if not isinstance(value, dict):
-        raise ValueError(
-            f"{name} must be a dictionary, got {type(value).__name__}"
-        )
+        raise ValueError(f"{name} must be a dictionary, got {type(value).__name__}")
 
     if not allow_empty and not value:
         raise ValueError(f"{name} cannot be empty")
@@ -419,19 +384,17 @@ def validate_list_input(
         raise ValueError(f"{name} cannot be empty")
 
     if max_length is not None and len(value) > max_length:
-        raise ValueError(
-            f"{name} too long: {len(value)} items (max: {max_length})"
-        )
+        raise ValueError(f"{name} too long: {len(value)} items (max: {max_length})")
 
     return value
 
 
 def validate_numeric_range(
-    value: Union[int, float],
+    value: float,
     name: str,
-    min_value: Union[int, float] | None = None,
-    max_value: Union[int, float] | None = None,
-) -> Union[int, float]:
+    min_value: float | None = None,
+    max_value: float | None = None,
+) -> int | float:
     """Validate numeric value within range.
 
     Args:
@@ -517,7 +480,7 @@ def safe_file_operation(
         return default
 
 
-def ensure_directory_exists(directory_path: Union[str, Path]) -> bool:
+def ensure_directory_exists(directory_path: str | Path) -> bool:
     """Ensure directory exists, create if necessary.
 
     Args:
@@ -534,7 +497,7 @@ def ensure_directory_exists(directory_path: Union[str, Path]) -> bool:
         return False
 
 
-def cleanup_file(file_path: Union[str, Path], log_errors: bool = True) -> bool:
+def cleanup_file(file_path: str | Path, log_errors: bool = True) -> bool:
     """Safely remove file with error handling.
 
     Args:
@@ -642,9 +605,7 @@ def singleton_getter(
 
         frame = inspect.currentframe().f_back
         module_globals = frame.f_globals
-        return create_singleton(
-            instance_var_name, factory_func, module_globals
-        )
+        return create_singleton(instance_var_name, factory_func, module_globals)
 
     return getter
 
@@ -745,13 +706,11 @@ def get_env_var(
 
     if var_type == bool:
         return value.lower() in ("true", "1", "yes", "on")
-    elif var_type in (int, float):
+    if var_type in (int, float):
         try:
             return var_type(value)
         except ValueError:
-            logger.warning(
-                f"Invalid {var_type.__name__} value for {name}: {value}"
-            )
+            logger.warning(f"Invalid {var_type.__name__} value for {name}: {value}")
             return default
     else:
         return var_type(value)
@@ -769,12 +728,11 @@ def format_bytes(size_bytes: int) -> str:
     """
     if size_bytes < 1024:
         return f"{size_bytes} B"
-    elif size_bytes < 1024 * 1024:
+    if size_bytes < 1024 * 1024:
         return f"{size_bytes / 1024:.1f} KB"
-    elif size_bytes < 1024 * 1024 * 1024:
+    if size_bytes < 1024 * 1024 * 1024:
         return f"{size_bytes / (1024 * 1024):.1f} MB"
-    else:
-        return f"{size_bytes / (1024 * 1024 * 1024):.1f} GB"
+    return f"{size_bytes / (1024 * 1024 * 1024):.1f} GB"
 
 
 def estimate_memory_usage(width: int, height: int, channels: int = 3) -> int:

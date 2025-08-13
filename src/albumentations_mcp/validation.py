@@ -4,51 +4,10 @@ This module provides robust validation for all inputs to the albumentations-mcp
 system, including Base64 images, natural language prompts, and transform parameters.
 Handles edge cases like corrupted data, memory limits, and malformed inputs.
 
-# File Summary
 Centralized validation system that protects against invalid inputs,
 memory exhaustion, and security vulnerabilities. Provides detailed
 error messages and graceful degradation strategies.
 
-# TODO Tree
-- [x] Core Validation Infrastructure
-  - [x] Import dependencies (base64, io, logging, os, re, typing)
-  - [x] Define validation exceptions hierarchy
-  - [x] Create configuration constants with environment overrides
-  - [x] Set up structured logging
-- [x] Base64 Image Validation
-  - [x] Validate Base64 encoding format
-  - [x] Check for data URL prefixes and strip them
-  - [x] Detect corrupted/truncated Base64 data
-  - [x] Validate decoded image size limits
-  - [x] Check for decompression bomb attacks
-- [x] Natural Language Prompt Validation
-  - [x] Check prompt length limits
-  - [x] Validate character encoding (UTF-8)
-  - [x] Detect potentially malicious patterns
-  - [x] Handle empty/whitespace-only prompts
-  - [x] Protect against ReDoS attacks
-- [x] Memory and Resource Limits
-  - [x] Image size validation (width, height, pixels)
-  - [x] File size limits for Base64 data
-  - [x] Memory usage estimation
-  - [x] Processing timeout limits
-- [x] Security Validation
-  - [x] Input sanitization
-  - [x] Path traversal prevention
-  - [x] Command injection prevention
-  - [x] Resource exhaustion protection
-- [x] Error Recovery Strategies
-  - [x] Graceful degradation for invalid inputs
-  - [x] Fallback values for corrupted parameters
-  - [x] Safe defaults for edge cases
-  - [x] Detailed error reporting
-
-# Code Review Notes
-- SECURITY: All inputs are sanitized and validated
-- PERFORMANCE: Early validation prevents expensive processing
-- MEMORY: Strict limits prevent memory exhaustion
-- LOGGING: Comprehensive logging for debugging
-- RECOVERY: Graceful fallbacks for all error cases
 """
 
 import base64
@@ -68,8 +27,6 @@ from .errors import (
     ResourceLimitError,
     SecurityValidationError,
     ValidationError,
-    ValidationResult,
-    handle_strict_validation,
 )
 
 logger = logging.getLogger(__name__)
@@ -78,14 +35,10 @@ logger = logging.getLogger(__name__)
 MAX_PROMPT_LENGTH = int(os.getenv("MAX_PROMPT_LENGTH", "10000"))
 MAX_IMAGE_WIDTH = int(os.getenv("MAX_IMAGE_WIDTH", "8192"))
 MAX_IMAGE_HEIGHT = int(os.getenv("MAX_IMAGE_HEIGHT", "8192"))
-MAX_IMAGE_PIXELS = int(
-    os.getenv("MAX_IMAGE_PIXELS", "89478485")
-)  # PIL default
+MAX_IMAGE_PIXELS = int(os.getenv("MAX_IMAGE_PIXELS", "89478485"))  # PIL default
 MAX_FILE_SIZE_MB = int(os.getenv("MAX_FILE_SIZE_MB", "50"))
 MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024
-PROCESSING_TIMEOUT_SECONDS = int(
-    os.getenv("PROCESSING_TIMEOUT_SECONDS", "300")
-)
+PROCESSING_TIMEOUT_SECONDS = int(os.getenv("PROCESSING_TIMEOUT_SECONDS", "300"))
 
 # Supported image formats
 SUPPORTED_FORMATS = {"PNG", "JPEG", "JPG", "WEBP", "TIFF", "BMP", "GIF"}
@@ -133,18 +86,13 @@ for pattern in SUSPICIOUS_PATTERNS:
         logger.warning(f"Skipping problematic regex pattern {pattern}: {e}")
 
 # Additional security constants
-MAX_SECURITY_CHECK_LENGTH = (
-    100000  # Limit input length for security checks (100KB)
-)
+MAX_SECURITY_CHECK_LENGTH = 100000  # Limit input length for security checks (100KB)
 SECURITY_TIMEOUT_SECONDS = 1.0  # Timeout for regex operations
-
 
 # Exception classes are now imported from errors.py module
 
 
-def validate_base64_image(
-    image_b64: str, strict: bool = True
-) -> dict[str, Any]:
+def validate_base64_image(image_b64: str, strict: bool = True) -> dict[str, Any]:
     """Validate Base64 image data with comprehensive edge case handling.
 
     Args:
@@ -176,9 +124,7 @@ def validate_base64_image(
         _validate_security(image_b64)
 
         # Step 3: Sanitize and decode Base64 input
-        decoded_data = _sanitize_and_decode_base64(
-            image_b64, validation_result, strict
-        )
+        decoded_data = _sanitize_and_decode_base64(image_b64, validation_result, strict)
         if decoded_data is None:
             return validation_result
 
@@ -187,18 +133,14 @@ def validate_base64_image(
             return validation_result
 
         # Step 5: Validate image format and structure
-        if not _validate_image_structure(
-            decoded_data, validation_result, strict
-        ):
+        if not _validate_image_structure(decoded_data, validation_result, strict):
             return validation_result
 
         # Step 6: Memory usage estimation and final checks
         _add_memory_estimation(validation_result)
 
         validation_result["valid"] = True
-        logger.debug(
-            f"Image validation passed: {validation_result['metadata']}"
-        )
+        logger.debug(f"Image validation passed: {validation_result['metadata']}")
 
     except (
         SecurityValidationError,
@@ -219,7 +161,9 @@ def validate_base64_image(
 
 
 def _validate_basic_input(
-    image_b64: str, validation_result: dict[str, Any], strict: bool
+    image_b64: str,
+    validation_result: dict[str, Any],
+    strict: bool,
 ) -> bool:
     """Validate basic input requirements."""
     if not image_b64 or not isinstance(image_b64, str):
@@ -232,7 +176,9 @@ def _validate_basic_input(
 
 
 def _sanitize_and_decode_base64(
-    image_b64: str, validation_result: dict[str, Any], strict: bool
+    image_b64: str,
+    validation_result: dict[str, Any],
+    strict: bool,
 ) -> bytes | None:
     """Sanitize Base64 input and decode to bytes."""
     try:
@@ -266,16 +212,16 @@ def _sanitize_and_decode_base64(
 
 
 def _validate_file_size(
-    decoded_data: bytes, validation_result: dict[str, Any], strict: bool
+    decoded_data: bytes,
+    validation_result: dict[str, Any],
+    strict: bool,
 ) -> bool:
     """Validate file size limits."""
     file_size = len(decoded_data)
     validation_result["metadata"]["file_size_bytes"] = file_size
 
     if file_size > MAX_FILE_SIZE:
-        error = (
-            f"Image file too large: {file_size} bytes (max: {MAX_FILE_SIZE})"
-        )
+        error = f"Image file too large: {file_size} bytes (max: {MAX_FILE_SIZE})"
         validation_result["error"] = error
         if strict:
             raise ResourceLimitError(
@@ -287,7 +233,9 @@ def _validate_file_size(
 
 
 def _validate_image_structure(
-    decoded_data: bytes, validation_result: dict[str, Any], strict: bool
+    decoded_data: bytes,
+    validation_result: dict[str, Any],
+    strict: bool,
 ) -> bool:
     """Validate image format and structure."""
     try:
@@ -303,9 +251,7 @@ def _validate_image_structure(
                 _collect_image_metadata(img, validation_result)
 
                 # Validate dimensions and pixel count
-                if not _validate_image_dimensions(
-                    img, validation_result, strict
-                ):
+                if not _validate_image_dimensions(img, validation_result, strict):
                     return False
 
                 # Add format and quality warnings
@@ -330,7 +276,8 @@ def _validate_image_structure(
 
 
 def _collect_image_metadata(
-    img: Image.Image, validation_result: dict[str, Any]
+    img: Image.Image,
+    validation_result: dict[str, Any],
 ) -> None:
     """Collect image metadata."""
     validation_result["metadata"].update(
@@ -347,7 +294,9 @@ def _collect_image_metadata(
 
 
 def _validate_image_dimensions(
-    img: Image.Image, validation_result: dict[str, Any], strict: bool
+    img: Image.Image,
+    validation_result: dict[str, Any],
+    strict: bool,
 ) -> bool:
     """Validate image dimensions and pixel count."""
     width, height = img.size
@@ -393,7 +342,9 @@ def _validate_image_dimensions(
 
 
 def _add_image_warnings(
-    img: Image.Image, validation_result: dict[str, Any], file_size: int
+    img: Image.Image,
+    validation_result: dict[str, Any],
+    file_size: int,
 ) -> None:
     """Add warnings for image format and quality issues."""
     # Validate image format
@@ -546,9 +497,7 @@ def validate_prompt(prompt: str, strict: bool = True) -> dict[str, Any]:
             )
 
         validation_result["valid"] = True
-        logger.debug(
-            f"Prompt validation passed: {validation_result['metadata']}"
-        )
+        logger.debug(f"Prompt validation passed: {validation_result['metadata']}")
 
     except (
         SecurityValidationError,
@@ -612,9 +561,7 @@ def validate_transform_parameters(
         sanitized = {}
         for key, value in parameters.items():
             if not isinstance(key, str):
-                validation_result["warnings"].append(
-                    f"Non-string parameter key: {key}"
-                )
+                validation_result["warnings"].append(f"Non-string parameter key: {key}")
                 continue
 
             # Validate parameter values
@@ -693,14 +640,13 @@ def _sanitize_base64_input(image_b64: str) -> str:
 
 def _validate_security(input_data: str) -> None:
     """Validate input for security issues with comprehensive protection."""
-    import signal
     import time
 
     # Early length check to prevent DoS
     if len(input_data) > MAX_SECURITY_CHECK_LENGTH:
         raise SecurityValidationError(
             f"Input too large for security check: {len(input_data)} chars "
-            f"(max: {MAX_SECURITY_CHECK_LENGTH})"
+            f"(max: {MAX_SECURITY_CHECK_LENGTH})",
         )
 
     # Check for null bytes and control characters
@@ -708,9 +654,7 @@ def _validate_security(input_data: str) -> None:
         raise SecurityValidationError("Null bytes detected in input")
 
     # Check for excessive control characters
-    control_chars = sum(
-        1 for c in input_data if ord(c) < 32 and c not in "\t\n\r"
-    )
+    control_chars = sum(1 for c in input_data if ord(c) < 32 and c not in "\t\n\r")
     if control_chars > len(input_data) * 0.1:  # More than 10% control chars
         raise SecurityValidationError("Excessive control characters detected")
 
@@ -719,15 +663,13 @@ def _validate_security(input_data: str) -> None:
     for pattern in SUSPICIOUS_REGEX:
         # Check if we're taking too long
         if time.time() - start_time > SECURITY_TIMEOUT_SECONDS:
-            logger.warning(
-                "Security validation timeout, skipping remaining patterns"
-            )
+            logger.warning("Security validation timeout, skipping remaining patterns")
             break
 
         try:
             if pattern.search(input_data):
                 raise SecurityValidationError(
-                    f"Suspicious pattern detected: {pattern.pattern[:50]}..."
+                    f"Suspicious pattern detected: {pattern.pattern[:50]}...",
                 )
         except SecurityValidationError:
             # Re-raise security validation errors
@@ -756,7 +698,7 @@ def _validate_security(input_data: str) -> None:
     for char in suspicious_chars:
         if input_data.count(char) > 20:  # Arbitrary threshold
             raise SecurityValidationError(
-                f"Excessive suspicious character '{char}' detected"
+                f"Excessive suspicious character '{char}' detected",
             )
 
     # Check for encoding attacks
@@ -768,9 +710,7 @@ def _validate_security(input_data: str) -> None:
         ]
         for variant in encoded_variants:
             if variant != input_data and len(variant) > len(input_data) * 1.5:
-                raise SecurityValidationError(
-                    "Potential encoding attack detected"
-                )
+                raise SecurityValidationError("Potential encoding attack detected")
     except (UnicodeError, UnicodeDecodeError):
         raise SecurityValidationError("Invalid character encoding detected")
 
@@ -859,9 +799,7 @@ def get_safe_default_parameters(transform_name: str) -> dict[str, Any]:
     return safe_defaults.get(transform_name, {"p": 0.5})
 
 
-def validate_file_path(
-    file_path: str, allowed_dirs: list[str] | None = None
-) -> str:
+def validate_file_path(file_path: str, allowed_dirs: list[str] | None = None) -> str:
     """Validate file path for security issues.
 
     Args:
@@ -897,7 +835,7 @@ def validate_file_path(
         for part in path_obj.parts:
             if part.startswith(".") and part not in [".", ".."]:
                 raise SecurityValidationError(
-                    f"Hidden file/directory not allowed: {part}"
+                    f"Hidden file/directory not allowed: {part}",
                 )
 
             # Check for reserved names on Windows
@@ -926,19 +864,16 @@ def validate_file_path(
                 "LPT9",
             }
             if part.upper() in reserved_names:
-                raise SecurityValidationError(
-                    f"Reserved filename not allowed: {part}"
-                )
+                raise SecurityValidationError(f"Reserved filename not allowed: {part}")
 
         # Check allowed directories if specified
         if allowed_dirs:
             path_str = str(path_obj)
             if not any(
-                path_str.startswith(allowed_dir)
-                for allowed_dir in allowed_dirs
+                path_str.startswith(allowed_dir) for allowed_dir in allowed_dirs
             ):
                 raise SecurityValidationError(
-                    f"Path not in allowed directories: {path_str}"
+                    f"Path not in allowed directories: {path_str}",
                 )
 
         return normalized_path

@@ -6,31 +6,9 @@ This hook saves original and augmented images to temporary files and generates
 a verification report that can be reviewed by the same LLM (Kiro, Claude Desktop)
 that's using the MCP tools.
 
-# File Summary
 Hook that implements LLM-based visual verification by saving images to files
 and generating structured reports for the VLM to review transformation success.
 
-# TODO Tree
-- [x] Hook Implementation
-  - [x] Import dependencies and verification manager
-  - [x] Implement execute function with proper signature
-  - [x] Handle image saving and report generation
-  - [x] Add error handling and graceful failure
-- [x] Integration with Pipeline
-  - [x] Extract images and metadata from context
-  - [x] Generate unique session identifiers
-  - [x] Save verification results to context
-  - [x] Return proper hook result format
-- [x] Quality Assurance
-  - [x] Input validation and error handling
-  - [x] Logging for debugging and monitoring
-  - [x] Non-blocking operation (graceful failure)
-
-# Code Review Notes
-- PERFORMANCE: Hook should be fast and non-blocking
-- ERROR HANDLING: Must not break pipeline if verification fails
-- MEMORY: Efficient handling of image data
-- LOGGING: Clear logging for debugging verification issues
 """
 
 import logging

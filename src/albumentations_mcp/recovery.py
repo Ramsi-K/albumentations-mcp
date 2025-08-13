@@ -5,49 +5,10 @@ failures, parameter validation errors, and resource exhaustion scenarios.
 Implements graceful degradation to ensure the system continues functioning
 even when individual transforms fail.
 
-# File Summary
 Error recovery system that handles transform failures, parameter
 validation errors, and resource exhaustion. Provides fallback
 strategies and graceful degradation to maintain system stability.
 
-# TODO Tree
-- [x] Core Recovery Infrastructure
-  - [x] Import dependencies (logging, time, typing, contextlib)
-  - [x] Define recovery exceptions and error types
-  - [x] Create recovery strategy enumeration
-  - [x] Set up structured logging for recovery events
-- [x] Transform Failure Recovery
-  - [x] Parameter out of range handling with safe fallbacks
-  - [x] Albumentations library error catching and recovery
-  - [x] Transform-specific error handling strategies
-  - [x] Pipeline continuation after individual failures
-- [x] Memory Management
-  - [x] Memory exhaustion detection and recovery
-  - [x] Resource cleanup after failures
-  - [x] Memory usage monitoring and limits
-  - [x] Garbage collection triggers
-- [x] Graceful Degradation Strategies
-  - [x] Progressive fallback mechanisms
-  - [x] Safe default parameter substitution
-  - [x] Transform skipping with user notification
-  - [x] Original image preservation as last resort
-- [x] Recovery Context Management
-  - [x] Recovery attempt tracking and limits
-  - [x] Error aggregation and reporting
-  - [x] Performance impact monitoring
-  - [x] Recovery success rate metrics
-- [x] Integration Points
-  - [x] Processor integration for transform failures
-  - [x] Pipeline integration for batch recovery
-  - [x] Hook system integration for recovery events
-  - [x] Validation system integration
-
-# Code Review Notes
-- RELIABILITY: Multiple fallback layers ensure system stability
-- PERFORMANCE: Recovery mechanisms minimize performance impact
-- MONITORING: Comprehensive logging for debugging and metrics
-- SAFETY: All recovery paths preserve original data
-- TESTING: Extensive test coverage for all failure scenarios
 """
 
 import gc
@@ -136,32 +97,33 @@ class TransformRecoveryManager:
         }
 
         # Safe parameter ranges for common transforms
+        # Format: parameter_name: (min_value, max_value) or single_value for non-range params
         self.safe_parameter_ranges = {
             "Blur": {
-                "blur_limit": 9,  # Single odd value for safe blur
+                "blur_limit": (3, 9),  # Range for safe blur
                 "p": 0.5,
             },
             "GaussianBlur": {
-                "blur_limit": 9,
+                "blur_limit": (3, 9),
                 "p": 0.5,
             },
             "MotionBlur": {
-                "blur_limit": 9,
+                "blur_limit": (3, 9),
                 "p": 0.5,
             },
             "RandomBrightnessContrast": {
-                "brightness_limit": 0.1,
-                "contrast_limit": 0.1,
+                "brightness_limit": (0.05, 0.1),
+                "contrast_limit": (0.05, 0.1),
                 "p": 0.5,
             },
             "HueSaturationValue": {
-                "hue_shift_limit": 15,
-                "sat_shift_limit": 20,
-                "val_shift_limit": 15,
+                "hue_shift_limit": (5, 15),
+                "sat_shift_limit": (10, 20),
+                "val_shift_limit": (5, 15),
                 "p": 0.5,
             },
             "Rotate": {
-                "limit": 20,  # Conservative rotation
+                "limit": (10, 20),  # Conservative rotation range
                 "p": 0.5,
             },
             "GaussNoise": {
@@ -273,7 +235,12 @@ class TransformRecoveryManager:
 
             # Use safe default values
             for param, safe_value in safe_ranges.items():
-                safe_params[param] = safe_value
+                if isinstance(safe_value, tuple) and len(safe_value) == 2:
+                    # For range parameters, use the maximum safe value
+                    safe_params[param] = safe_value[1]
+                else:
+                    # For single values, use as-is
+                    safe_params[param] = safe_value
 
             # Adjust parameters based on image shape if available
             if image_shape and context.transform_name in [
@@ -330,26 +297,31 @@ class TransformRecoveryManager:
                 try:
                     progressive_params = {}
 
-                    for param, (min_val, max_val) in safe_ranges.items():
-                        if isinstance(min_val, (int, float)) and isinstance(
-                            max_val,
-                            (int, float),
-                        ):
-                            # Reduce the range by the factor
-                            reduced_range = (max_val - min_val) * factor
-                            progressive_params[param] = min_val + reduced_range / 2
+                    for param, safe_value in safe_ranges.items():
+                        if isinstance(safe_value, tuple) and len(safe_value) == 2:
+                            min_val, max_val = safe_value
+                            if isinstance(min_val, (int, float)) and isinstance(
+                                max_val,
+                                (int, float),
+                            ):
+                                # Reduce the range by the factor
+                                reduced_range = (max_val - min_val) * factor
+                                progressive_params[param] = min_val + reduced_range / 2
 
-                            # Handle special cases
-                            if param.endswith("_limit") and param != "p":
-                                if "blur" in param:
-                                    progressive_params[param] = max(
-                                        3,
-                                        int(progressive_params[param]),
-                                    )
-                                    if progressive_params[param] % 2 == 0:
-                                        progressive_params[param] += 1
+                                # Handle special cases
+                                if param.endswith("_limit") and param != "p":
+                                    if "blur" in param:
+                                        progressive_params[param] = max(
+                                            3,
+                                            int(progressive_params[param]),
+                                        )
+                                        if progressive_params[param] % 2 == 0:
+                                            progressive_params[param] += 1
+                            else:
+                                progressive_params[param] = min_val
                         else:
-                            progressive_params[param] = min_val
+                            # Single value parameter (like 'p')
+                            progressive_params[param] = safe_value
 
                     # Adjust for image shape
                     if image_shape and context.transform_name in [
@@ -511,7 +483,8 @@ class MemoryRecoveryManager:
             peak_memory = max(initial_memory, final_memory)
 
             self.memory_stats["peak_usage_mb"] = max(
-                self.memory_stats["peak_usage_mb"], peak_memory,
+                self.memory_stats["peak_usage_mb"],
+                peak_memory,
             )
 
             # Log memory usage if significant

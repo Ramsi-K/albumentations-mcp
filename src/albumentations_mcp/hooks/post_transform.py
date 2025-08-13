@@ -36,6 +36,14 @@ class PostTransformHook(BaseHook):
                 f"Post-transform metadata for session {context.session_id}",
             )
 
+            # Validate context structure first
+            if context.parsed_transforms is not None and not isinstance(
+                context.parsed_transforms, list,
+            ):
+                raise ValueError(
+                    f"parsed_transforms must be a list, got {type(context.parsed_transforms)}",
+                )
+
             # Generate processing statistics
             processing_stats = self._generate_processing_stats(context)
 

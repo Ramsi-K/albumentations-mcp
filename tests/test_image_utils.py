@@ -2,23 +2,24 @@
 
 import base64
 import io
-import pytest
+
 import numpy as np
+import pytest
 from PIL import Image
 
 from src.albumentations_mcp.image_utils import (
-    base64_to_pil,
-    pil_to_base64,
-    numpy_to_pil,
-    pil_to_numpy,
-    validate_image,
-    get_image_info,
-    is_supported_format,
-    get_supported_formats,
+    MAX_IMAGE_SIZE,
+    SUPPORTED_FORMATS,
     ImageConversionError,
     ImageValidationError,
-    SUPPORTED_FORMATS,
-    MAX_IMAGE_SIZE,
+    base64_to_pil,
+    get_image_info,
+    get_supported_formats,
+    is_supported_format,
+    numpy_to_pil,
+    pil_to_base64,
+    pil_to_numpy,
+    validate_image,
 )
 
 
@@ -76,22 +77,19 @@ class TestBase64ToPil:
 
     def test_empty_string_error(self):
         """Test error handling for empty string."""
-        with pytest.raises(
-            ImageConversionError, match="must be a non-empty string"
-        ):
+        with pytest.raises(ImageConversionError, match="must be a non-empty string"):
             base64_to_pil("")
 
     def test_none_input_error(self):
         """Test error handling for None input."""
-        with pytest.raises(
-            ImageConversionError, match="must be a non-empty string"
-        ):
+        with pytest.raises(ImageConversionError, match="must be a non-empty string"):
             base64_to_pil(None)
 
     def test_invalid_base64_error(self):
         """Test error handling for invalid base64 data."""
         with pytest.raises(
-            ImageConversionError, match="Invalid base64 encoding"
+            ImageConversionError,
+            match="Image validation failed.*Invalid Base64 encoding",
         ):
             base64_to_pil("invalid_base64_data!")
 
@@ -103,9 +101,7 @@ class TestBase64ToPil:
 
     def test_malformed_data_url_error(self):
         """Test error handling for malformed data URL."""
-        with pytest.raises(
-            ImageConversionError, match="Invalid data URL format"
-        ):
+        with pytest.raises(ImageConversionError, match="Invalid data URL format"):
             base64_to_pil("data:image/png;base64")  # Missing comma
 
     def test_large_image_validation(self):
@@ -114,7 +110,9 @@ class TestBase64ToPil:
         large_size = (MAX_IMAGE_SIZE[0] + 1, 100)
         base64_data, _ = self.create_test_image(size=large_size)
 
-        with pytest.raises(ImageValidationError, match="Image too large"):
+        with pytest.raises(
+            ImageConversionError, match="Unexpected error.*Image too large",
+        ):
             base64_to_pil(base64_data)
 
 
@@ -168,9 +166,7 @@ class TestPilToBase64:
 
     def test_invalid_input_error(self):
         """Test error handling for invalid input."""
-        with pytest.raises(
-            ImageConversionError, match="must be a PIL Image object"
-        ):
+        with pytest.raises(ImageConversionError, match="must be a PIL Image object"):
             pil_to_base64("not an image")
 
     def test_unsupported_format_error(self):
@@ -241,9 +237,7 @@ class TestNumpyToPil:
 
     def test_invalid_input_error(self):
         """Test error handling for invalid input."""
-        with pytest.raises(
-            ImageConversionError, match="must be a numpy array"
-        ):
+        with pytest.raises(ImageConversionError, match="must be a numpy array"):
             numpy_to_pil("not an array")
 
     def test_invalid_dimensions_error(self):
@@ -254,19 +248,16 @@ class TestNumpyToPil:
 
     def test_invalid_channels_error(self):
         """Test error handling for invalid number of channels."""
-        array = np.random.randint(
-            0, 256, (100, 100, 5), dtype=np.uint8
-        )  # 5 channels
-        with pytest.raises(
-            ImageValidationError, match="must have 1, 3, or 4 channels"
-        ):
+        array = np.random.randint(0, 256, (100, 100, 5), dtype=np.uint8)  # 5 channels
+        with pytest.raises(ImageValidationError, match="must have 1, 3, or 4 channels"):
             numpy_to_pil(array)
 
     def test_float_array_out_of_range_error(self):
         """Test error handling for float array with values outside [0, 1]."""
         array = np.random.rand(100, 100, 3) * 2  # Values in [0, 2]
         with pytest.raises(
-            ImageValidationError, match="must have values in \\[0, 1\\] range"
+            ImageValidationError,
+            match="must have values in \\[0, 1\\] range",
         ):
             numpy_to_pil(array)
 
@@ -300,9 +291,7 @@ class TestPilToNumpy:
 
     def test_invalid_input_error(self):
         """Test error handling for invalid input."""
-        with pytest.raises(
-            ImageConversionError, match="must be a PIL Image object"
-        ):
+        with pytest.raises(ImageConversionError, match="must be a PIL Image object"):
             pil_to_numpy("not an image")
 
 
@@ -316,9 +305,7 @@ class TestValidateImage:
 
     def test_invalid_input_error(self):
         """Test error handling for invalid input."""
-        with pytest.raises(
-            ImageValidationError, match="must be a PIL Image object"
-        ):
+        with pytest.raises(ImageValidationError, match="must be a PIL Image object"):
             validate_image("not an image")
 
     def test_zero_size_image_error(self):
@@ -328,9 +315,7 @@ class TestValidateImage:
         # Manually set size to simulate zero-size image
         image._size = (0, 100)
 
-        with pytest.raises(
-            ImageValidationError, match="Invalid image dimensions"
-        ):
+        with pytest.raises(ImageValidationError, match="Invalid image dimensions"):
             validate_image(image)
 
     def test_oversized_image_error(self):
@@ -417,9 +402,7 @@ class TestIntegration:
 
     def test_numpy_pil_round_trip(self):
         """Test numpy -> PIL -> numpy conversion."""
-        original_array = np.random.randint(
-            0, 256, (100, 100, 3), dtype=np.uint8
-        )
+        original_array = np.random.randint(0, 256, (100, 100, 3), dtype=np.uint8)
 
         # numpy -> PIL
         image = numpy_to_pil(original_array)

@@ -4,9 +4,9 @@ Simple test to verify hook system functionality.
 """
 
 import pytest
+
 from src.albumentations_mcp.hooks import (
     HookContext,
-    HookStage,
     get_hook_registry,
 )
 

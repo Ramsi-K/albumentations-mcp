@@ -6,41 +6,9 @@ This module provides comprehensive unit tests for each hook in the 8-stage
 extensible pipeline, testing their individual functionality, error handling,
 and graceful failure modes.
 
-# File Summary
 Comprehensive unit tests for all individual hooks including pre_transform,
 post_transform, post_transform_verify, pre_save, and post_save hooks.
 
-# TODO Tree
-- [x] Test Infrastructure
-  - [x] Import all hook classes and dependencies
-  - [x] Create test fixtures and mock data
-  - [x] Set up async test framework
-- [x] Pre-Transform Hook Tests
-  - [x] Test image validation (format, size, quality)
-  - [x] Test transform configuration validation
-  - [x] Test error handling and graceful failure
-- [x] Post-Transform Hook Tests
-  - [x] Test metadata generation and statistics
-  - [x] Test quality metrics calculation
-  - [x] Test transform summary generation
-- [x] Post-Transform-Verify Hook Tests
-  - [x] Test visual verification workflow
-  - [x] Test image saving and report generation
-  - [x] Test graceful failure when verification unavailable
-- [x] Pre-Save Hook Tests
-  - [x] Test filename generation and sanitization
-  - [x] Test directory creation and versioning
-  - [x] Test file path validation
-- [x] Post-Save Hook Tests
-  - [x] Test cleanup operations
-  - [x] Test completion logging
-  - [x] Test resource management
-
-# Code Review Notes
-- PERFORMANCE: Tests should run quickly and not depend on external services
-- COVERAGE: Each hook method should have comprehensive test coverage
-- MOCKING: External dependencies should be properly mocked
-- ASSERTIONS: Clear assertions that validate expected behavior
 """
 
 import base64
@@ -151,7 +119,8 @@ class TestPreTransformHook:
 
         assert result.success is False
         assert any(
-            "Invalid image data" in warning for warning in result.context.warnings
+            "Invalid image data" in warning
+            for warning in result.context.warnings
         )
 
     @pytest.mark.asyncio
@@ -174,7 +143,8 @@ class TestPreTransformHook:
 
         assert result.success is True
         assert any(
-            "very small" in warning.lower() for warning in result.context.warnings
+            "very small" in warning.lower()
+            for warning in result.context.warnings
         )
 
     @pytest.mark.asyncio
@@ -187,7 +157,9 @@ class TestPreTransformHook:
         assert len(config_validation["transform_analysis"]) == 2
 
     @pytest.mark.asyncio
-    async def test_transform_validation_no_transforms(self, hook, sample_image_data):
+    async def test_transform_validation_no_transforms(
+        self, hook, sample_image_data
+    ):
         """Test transform validation with no transforms."""
         context = HookContext(
             session_id="test-session-123",
@@ -221,7 +193,9 @@ class TestPreTransformHook:
         result = await hook.execute(context)
 
         assert result.success is True
-        assert any("High blur limit" in warning for warning in result.context.warnings)
+        assert any(
+            "High blur limit" in warning for warning in result.context.warnings
+        )
 
     @pytest.mark.asyncio
     async def test_large_rotation_warning(self, hook, sample_image_data):
@@ -242,7 +216,9 @@ class TestPreTransformHook:
         result = await hook.execute(context)
 
         assert result.success is True
-        assert any("Large rotation" in warning for warning in result.context.warnings)
+        assert any(
+            "Large rotation" in warning for warning in result.context.warnings
+        )
 
     @pytest.mark.asyncio
     async def test_low_probability_warning(self, hook, sample_image_data):
@@ -264,7 +240,8 @@ class TestPreTransformHook:
 
         assert result.success is True
         assert any(
-            "Very low probability" in warning for warning in result.context.warnings
+            "Very low probability" in warning
+            for warning in result.context.warnings
         )
 
     @pytest.mark.asyncio
@@ -351,7 +328,9 @@ class TestPostTransformHook:
         assert "timing_data" in result.context.metadata
 
     @pytest.mark.asyncio
-    async def test_processing_statistics_generation(self, hook, context_with_results):
+    async def test_processing_statistics_generation(
+        self, hook, context_with_results
+    ):
         """Test processing statistics generation."""
         result = await hook.execute(context_with_results)
 
@@ -364,7 +343,9 @@ class TestPostTransformHook:
         assert stats["processing_status"] == "complete"
 
     @pytest.mark.asyncio
-    async def test_quality_metrics_calculation(self, hook, context_with_results):
+    async def test_quality_metrics_calculation(
+        self, hook, context_with_results
+    ):
         """Test quality metrics calculation."""
         result = await hook.execute(context_with_results)
 
@@ -376,7 +357,9 @@ class TestPostTransformHook:
         assert metrics["mode_preserved"] is True
 
     @pytest.mark.asyncio
-    async def test_transform_summary_generation(self, hook, context_with_results):
+    async def test_transform_summary_generation(
+        self, hook, context_with_results
+    ):
         """Test transformation summary generation."""
         result = await hook.execute(context_with_results)
 
@@ -450,7 +433,9 @@ class TestPostTransformVerifyHook:
         manager.generate_verification_report.return_value = (
             "# Verification Report\n\nTest report content"
         )
-        manager.save_verification_report.return_value = "/tmp/verification_report.md"
+        manager.save_verification_report.return_value = (
+            "/tmp/verification_report.md"
+        )
         manager.cleanup_temp_files.return_value = None
         return manager
 
@@ -481,7 +466,10 @@ class TestPostTransformVerifyHook:
 
     @pytest.mark.asyncio
     async def test_execute_success(
-        self, hook, context_with_images, mock_verification_manager,
+        self,
+        hook,
+        context_with_images,
+        mock_verification_manager,
     ):
         """Test successful execution of visual verification hook."""
         with patch(
@@ -512,15 +500,22 @@ class TestPostTransformVerifyHook:
         result = await hook.execute(context)
 
         assert result.success is True  # Non-blocking failure
-        assert any("missing images" in warning for warning in result.context.warnings)
+        assert any(
+            "missing images" in warning for warning in result.context.warnings
+        )
 
     @pytest.mark.asyncio
     async def test_image_saving_failure(
-        self, hook, context_with_images, mock_verification_manager,
+        self,
+        hook,
+        context_with_images,
+        mock_verification_manager,
     ):
         """Test handling when image saving fails."""
-        mock_verification_manager.save_images_for_review.side_effect = Exception(
-            "Save failed",
+        mock_verification_manager.save_images_for_review.side_effect = (
+            Exception(
+                "Save failed",
+            )
         )
 
         with patch(
@@ -531,16 +526,22 @@ class TestPostTransformVerifyHook:
 
             assert result.success is True  # Non-blocking failure
             assert any(
-                "Image saving failed" in error for error in result.context.errors
+                "Image saving failed" in error
+                for error in result.context.errors
             )
 
     @pytest.mark.asyncio
     async def test_report_generation_failure(
-        self, hook, context_with_images, mock_verification_manager,
+        self,
+        hook,
+        context_with_images,
+        mock_verification_manager,
     ):
         """Test handling when report generation fails."""
-        mock_verification_manager.generate_verification_report.side_effect = Exception(
-            "Report failed",
+        mock_verification_manager.generate_verification_report.side_effect = (
+            Exception(
+                "Report failed",
+            )
         )
 
         with patch(
@@ -551,14 +552,18 @@ class TestPostTransformVerifyHook:
 
             assert result.success is True  # Non-blocking failure
             assert any(
-                "Report generation failed" in error for error in result.context.errors
+                "Report generation failed" in error
+                for error in result.context.errors
             )
             # Should attempt cleanup
             mock_verification_manager.cleanup_temp_files.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_metadata_inclusion(
-        self, hook, context_with_images, mock_verification_manager,
+        self,
+        hook,
+        context_with_images,
+        mock_verification_manager,
     ):
         """Test that metadata is properly included in verification report."""
         with patch(
@@ -568,7 +573,9 @@ class TestPostTransformVerifyHook:
             result = await hook.execute(context_with_images)
 
             # Check that generate_verification_report was called with metadata
-            call_args = mock_verification_manager.generate_verification_report.call_args
+            call_args = (
+                mock_verification_manager.generate_verification_report.call_args
+            )
             metadata = call_args[0][3]  # Fourth argument is metadata
 
             assert metadata["session_id"] == "test-session-123"
@@ -590,7 +597,9 @@ class TestPostTransformVerifyHook:
         result = await hook.execute(context)
 
         assert result.success is True  # Non-blocking failure
-        assert any("Hook execution failed" in error for error in result.context.errors)
+        assert any(
+            "Hook execution failed" in error for error in result.context.errors
+        )
 
 
 class TestPreSaveHook:
@@ -756,7 +765,9 @@ class TestPostSaveHook:
         assert "cleanup_info" in result.context.metadata
 
     @pytest.mark.asyncio
-    async def test_completion_summary_generation(self, hook, context_with_files):
+    async def test_completion_summary_generation(
+        self, hook, context_with_files
+    ):
         """Test completion summary generation."""
         result = await hook.execute(context_with_files)
 
@@ -794,7 +805,9 @@ class TestPostSaveHook:
     async def test_resource_management(self, hook, context_with_files):
         """Test resource management and memory cleanup."""
         # Add some large data to context to test cleanup
-        context_with_files.metadata["large_data"] = "x" * 1000  # Simulate large data
+        context_with_files.metadata["large_data"] = (
+            "x" * 1000
+        )  # Simulate large data
 
         result = await hook.execute(context_with_files)
 

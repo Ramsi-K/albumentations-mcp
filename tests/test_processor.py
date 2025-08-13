@@ -1,8 +1,8 @@
 """Tests for the image processor module."""
 
-import pytest
-from PIL import Image
 from unittest.mock import Mock, patch
+
+from PIL import Image
 
 from src.albumentations_mcp.processor import (
     ImageProcessor,
@@ -23,9 +23,7 @@ class TestProcessingResult:
         result = ProcessingResult(
             success=True,
             augmented_image=image,
-            applied_transforms=[
-                {"name": "Blur", "parameters": {"blur_limit": 3}}
-            ],
+            applied_transforms=[{"name": "Blur", "parameters": {"blur_limit": 3}}],
             skipped_transforms=[],
             metadata={"processing_time": 0.1},
             execution_time=0.1,
@@ -121,7 +119,7 @@ class TestImageProcessor:
         assert result2.success is True
         # Results should be identical with same seed
         assert result1.metadata.get("effective_seed") == result2.metadata.get(
-            "effective_seed"
+            "effective_seed",
         )
 
     @patch("src.albumentations_mcp.processor.validate_image")
@@ -143,7 +141,7 @@ class TestImageProcessor:
         transform = processor._create_transform(transform_spec)
 
         assert transform is not None
-        assert hasattr(transform, "__call__")
+        assert callable(transform)
 
     def test_create_transform_invalid_name(self):
         """Test creating transform with invalid name."""
@@ -186,32 +184,28 @@ class TestImageProcessor:
 
         # Test blur_limit validation
         params = processor._validate_parameters(
-            "Blur", {"blur_limit": 4}
+            "Blur",
+            {"blur_limit": 4},
         )  # Even number
         assert params["blur_limit"] == 5  # Should be made odd
 
         params = processor._validate_parameters(
-            "Blur", {"blur_limit": 101}
+            "Blur",
+            {"blur_limit": 101},
         )  # Too large
         assert params["blur_limit"] == 99  # Should be capped
 
-        params = processor._validate_parameters(
-            "Blur", {"blur_limit": 1}
-        )  # Too small
+        params = processor._validate_parameters("Blur", {"blur_limit": 1})  # Too small
         assert params["blur_limit"] == 3  # Should be minimum
 
     def test_validate_parameters_rotate_transform(self):
         """Test parameter validation for rotate transform."""
         processor = ImageProcessor()
 
-        params = processor._validate_parameters(
-            "Rotate", {"limit": 200}
-        )  # Too large
+        params = processor._validate_parameters("Rotate", {"limit": 200})  # Too large
         assert params["limit"] == 180  # Should be capped
 
-        params = processor._validate_parameters(
-            "Rotate", {"limit": -200}
-        )  # Too small
+        params = processor._validate_parameters("Rotate", {"limit": -200})  # Too small
         assert params["limit"] == -180  # Should be capped
 
     def test_validate_parameters_brightness_contrast(self):
@@ -231,7 +225,8 @@ class TestImageProcessor:
         processor = ImageProcessor()
 
         params = processor._validate_parameters(
-            "GaussNoise", {"var_limit": (300, 400)}  # Too large
+            "GaussNoise",
+            {"var_limit": (300, 400)},  # Too large
         )
 
         assert params["var_limit"][1] == 255.0  # Should be capped
@@ -241,7 +236,8 @@ class TestImageProcessor:
         processor = ImageProcessor()
 
         params = processor._validate_parameters(
-            "RandomCrop", {"height": 0, "width": -5}  # Invalid dimensions
+            "RandomCrop",
+            {"height": 0, "width": -5},  # Invalid dimensions
         )
 
         assert params["height"] == 1  # Should be minimum
@@ -252,12 +248,14 @@ class TestImageProcessor:
         processor = ImageProcessor()
 
         params = processor._validate_parameters(
-            "HorizontalFlip", {"p": 2.0}
+            "HorizontalFlip",
+            {"p": 2.0},
         )  # Too large
         assert params["p"] == 1.0  # Should be capped
 
         params = processor._validate_parameters(
-            "HorizontalFlip", {"p": -0.5}
+            "HorizontalFlip",
+            {"p": -0.5},
         )  # Too small
         assert params["p"] == 0.0  # Should be capped
 
@@ -266,7 +264,8 @@ class TestImageProcessor:
         processor = ImageProcessor()
 
         params = processor._validate_parameters(
-            "HorizontalFlip", {"p": 1.0, "none_param": None}
+            "HorizontalFlip",
+            {"p": 1.0, "none_param": None},
         )
 
         assert "p" in params
@@ -302,6 +301,13 @@ class TestImageProcessor:
         # Mock memory manager to simulate limit exceeded
         mock_manager = Mock()
         mock_manager.check_memory_limits.return_value = False
+        # Mock the context manager
+        mock_manager.memory_recovery_context.return_value.__enter__ = Mock(
+            return_value=None,
+        )
+        mock_manager.memory_recovery_context.return_value.__exit__ = Mock(
+            return_value=None,
+        )
         mock_memory_manager.return_value = mock_manager
 
         processor = ImageProcessor()
@@ -399,7 +405,7 @@ class TestErrorHandling:
         transform = processor._create_transform(transform_spec)
 
         # Recovery might succeed or fail, but shouldn't crash
-        assert transform is None or hasattr(transform, "__call__")
+        assert transform is None or callable(transform)
 
 
 class TestPerformanceOptimizations:

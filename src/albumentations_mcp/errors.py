@@ -3,44 +3,15 @@
 This module provides consistent error handling patterns and exception
 definitions used throughout the albumentations-mcp system.
 
-# File Summary
 Centralized error handling system with consistent exception hierarchy,
 error message formatting, and recovery strategies. Provides standardized
 patterns for validation errors, processing failures, and graceful degradation.
 
-# TODO Tree
-- [x] Exception Hierarchy
-  - [x] Base exception classes with consistent interfaces
-  - [x] Specialized exceptions for different error types
-  - [x] Context preservation and error chaining
-  - [x] Error code enumeration for programmatic handling
-- [x] Error Message Formatting
-  - [x] Consistent error message templates
-  - [x] Context-aware error descriptions
-  - [x] User-friendly error messages
-  - [x] Developer debugging information
-- [x] Error Recovery Patterns
-  - [x] Graceful degradation strategies
-  - [x] Fallback value providers
-  - [x] Error aggregation and reporting
-  - [x] Recovery attempt tracking
-- [x] Validation Error Handling
-  - [x] Strict vs non-strict validation modes
-  - [x] Validation result standardization
-  - [x] Warning collection and reporting
-  - [x] Parameter sanitization helpers
-
-# Code Review Notes
-- CONSISTENCY: All errors follow the same pattern and interface
-- DEBUGGING: Rich context information for troubleshooting
-- RECOVERY: Built-in fallback and recovery mechanisms
-- USABILITY: Clear, actionable error messages for users
-- MAINTAINABILITY: Centralized error handling logic
 """
 
 import logging
 from enum import Enum
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -89,9 +60,9 @@ class BaseAlbumentationsMCPError(Exception):
         self,
         message: str,
         error_code: ErrorCode,
-        context: Optional[Dict[str, Any]] = None,
-        recovery_suggestion: Optional[str] = None,
-        user_message: Optional[str] = None,
+        context: dict[str, Any] | None = None,
+        recovery_suggestion: str | None = None,
+        user_message: str | None = None,
     ):
         """Initialize base error with context and recovery information.
 
@@ -114,10 +85,10 @@ class BaseAlbumentationsMCPError(Exception):
                 "error_code": error_code.value,
                 "error_name": error_code.name,
                 "exception_type": self.__class__.__name__,
-            }
+            },
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert error to dictionary for serialization."""
         return {
             "error": True,
@@ -130,9 +101,7 @@ class BaseAlbumentationsMCPError(Exception):
             "exception_type": self.__class__.__name__,
         }
 
-    def log_error(
-        self, logger_instance: Optional[logging.Logger] = None
-    ) -> None:
+    def log_error(self, logger_instance: logging.Logger | None = None) -> None:
         """Log error with full context."""
         log = logger_instance or logger
         log.error(
@@ -152,8 +121,8 @@ class ValidationError(BaseAlbumentationsMCPError):
     def __init__(
         self,
         message: str,
-        context: Optional[Dict[str, Any]] = None,
-        field_name: Optional[str] = None,
+        context: dict[str, Any] | None = None,
+        field_name: str | None = None,
         field_value: Any = None,
     ):
         super().__init__(
@@ -175,8 +144,8 @@ class ImageValidationError(ValidationError):
     def __init__(
         self,
         message: str,
-        context: Optional[Dict[str, Any]] = None,
-        image_info: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
+        image_info: dict[str, Any] | None = None,
     ):
         super().__init__(message, context)
         self.error_code = ErrorCode.IMAGE_VALIDATION_ERROR
@@ -192,14 +161,12 @@ class PromptValidationError(ValidationError):
     def __init__(
         self,
         message: str,
-        context: Optional[Dict[str, Any]] = None,
-        prompt_info: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
+        prompt_info: dict[str, Any] | None = None,
     ):
         super().__init__(message, context)
         self.error_code = ErrorCode.PROMPT_VALIDATION_ERROR
-        self.recovery_suggestion = (
-            "Simplify prompt or check for invalid characters"
-        )
+        self.recovery_suggestion = "Simplify prompt or check for invalid characters"
 
         if prompt_info:
             self.context["prompt_info"] = prompt_info
@@ -211,8 +178,8 @@ class SecurityValidationError(ValidationError):
     def __init__(
         self,
         message: str,
-        context: Optional[Dict[str, Any]] = None,
-        security_issue: Optional[str] = None,
+        context: dict[str, Any] | None = None,
+        security_issue: str | None = None,
     ):
         super().__init__(message, context)
         self.error_code = ErrorCode.SECURITY_VALIDATION_ERROR
@@ -229,10 +196,10 @@ class ResourceLimitError(BaseAlbumentationsMCPError):
     def __init__(
         self,
         message: str,
-        context: Optional[Dict[str, Any]] = None,
-        limit_type: Optional[str] = None,
-        current_value: Optional[Union[int, float]] = None,
-        limit_value: Optional[Union[int, float]] = None,
+        context: dict[str, Any] | None = None,
+        limit_type: str | None = None,
+        current_value: float | None = None,
+        limit_value: float | None = None,
     ):
         super().__init__(
             message=message,
@@ -256,8 +223,8 @@ class ProcessingError(BaseAlbumentationsMCPError):
     def __init__(
         self,
         message: str,
-        context: Optional[Dict[str, Any]] = None,
-        operation: Optional[str] = None,
+        context: dict[str, Any] | None = None,
+        operation: str | None = None,
     ):
         super().__init__(
             message=message,
@@ -276,7 +243,7 @@ class ImageConversionError(ProcessingError):
     def __init__(
         self,
         message: str,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(message, context, operation="image_conversion")
         self.error_code = ErrorCode.IMAGE_CONVERSION_ERROR
@@ -289,9 +256,9 @@ class TransformError(ProcessingError):
     def __init__(
         self,
         message: str,
-        context: Optional[Dict[str, Any]] = None,
-        transform_name: Optional[str] = None,
-        transform_params: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
+        transform_name: str | None = None,
+        transform_params: dict[str, Any] | None = None,
     ):
         super().__init__(message, context, operation="transform_application")
         self.error_code = ErrorCode.TRANSFORM_ERROR
@@ -309,8 +276,8 @@ class RecoveryError(BaseAlbumentationsMCPError):
     def __init__(
         self,
         message: str,
-        context: Optional[Dict[str, Any]] = None,
-        recovery_strategy: Optional[str] = None,
+        context: dict[str, Any] | None = None,
+        recovery_strategy: str | None = None,
     ):
         super().__init__(
             message=message,
@@ -329,9 +296,9 @@ class ValidationResult:
     def __init__(
         self,
         valid: bool = False,
-        error: Optional[str] = None,
-        warnings: Optional[List[str]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        error: str | None = None,
+        warnings: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
         sanitized_data: Any = None,
     ):
         """Initialize validation result.
@@ -349,7 +316,7 @@ class ValidationResult:
         self.metadata = metadata or {}
         self.sanitized_data = sanitized_data
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "valid": self.valid,
@@ -376,10 +343,10 @@ class ValidationResult:
 def handle_strict_validation(
     condition: bool,
     error_message: str,
-    exception_class: Type[BaseAlbumentationsMCPError],
+    exception_class: type[BaseAlbumentationsMCPError],
     strict: bool = True,
-    result: Optional[ValidationResult] = None,
-    context: Optional[Dict[str, Any]] = None,
+    result: ValidationResult | None = None,
+    context: dict[str, Any] | None = None,
 ) -> bool:
     """Handle validation with strict/non-strict modes.
 
@@ -406,16 +373,15 @@ def handle_strict_validation(
 
     if strict:
         raise exception_class(error_message, context=context)
-    else:
-        logger.warning(f"Validation failed (non-strict): {error_message}")
-        return False
+    logger.warning(f"Validation failed (non-strict): {error_message}")
+    return False
 
 
 def create_error_response(
-    error: Union[BaseAlbumentationsMCPError, Exception, str],
+    error: BaseAlbumentationsMCPError | Exception | str,
     success: bool = False,
     **additional_data: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create standardized error response dictionary.
 
     Args:
@@ -431,7 +397,7 @@ def create_error_response(
         response["success"] = success
         response.update(additional_data)
         return response
-    elif isinstance(error, Exception):
+    if isinstance(error, Exception):
         return {
             "success": success,
             "error": True,
@@ -439,13 +405,12 @@ def create_error_response(
             "exception_type": type(error).__name__,
             **additional_data,
         }
-    else:
-        return {
-            "success": success,
-            "error": True,
-            "message": str(error),
-            **additional_data,
-        }
+    return {
+        "success": success,
+        "error": True,
+        "message": str(error),
+        **additional_data,
+    }
 
 
 def log_error_with_recovery(
@@ -453,7 +418,7 @@ def log_error_with_recovery(
     operation: str,
     recovery_attempted: bool = False,
     recovery_successful: bool = False,
-    session_id: Optional[str] = None,
+    session_id: str | None = None,
 ) -> None:
     """Log error with recovery information.
 
@@ -483,9 +448,7 @@ def log_error_with_recovery(
             extra=context,
         )
     elif recovery_attempted:
-        logger.warning(
-            f"Operation {operation} recovery failed: {error}", extra=context
-        )
+        logger.warning(f"Operation {operation} recovery failed: {error}", extra=context)
     else:
         logger.error(
             f"Operation {operation} failed: {error}",
@@ -505,8 +468,8 @@ EXCEPTION_MAPPING = {
 
 def convert_exception(
     original_error: Exception,
-    context_message: Optional[str] = None,
-    additional_context: Optional[Dict[str, Any]] = None,
+    context_message: str | None = None,
+    additional_context: dict[str, Any] | None = None,
 ) -> BaseAlbumentationsMCPError:
     """Convert standard exceptions to albumentations-mcp exceptions.
 
@@ -533,9 +496,9 @@ def convert_exception(
 
         if new_exception_class == ValidationError:
             return ValidationError(message, context=additional_context)
-        elif new_exception_class == ProcessingError:
+        if new_exception_class == ProcessingError:
             return ProcessingError(message, context=additional_context)
-        elif new_exception_class == ResourceLimitError:
+        if new_exception_class == ResourceLimitError:
             return ResourceLimitError(message, context=additional_context)
 
     # Fallback to generic processing error

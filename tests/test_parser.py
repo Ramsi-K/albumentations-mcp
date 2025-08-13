@@ -1,13 +1,14 @@
 """Tests for the natural language parser module."""
 
 import pytest
+
 from src.albumentations_mcp.parser import (
     PromptParser,
-    parse_prompt,
-    validate_prompt,
-    get_available_transforms,
     PromptParsingError,
     TransformType,
+    get_available_transforms,
+    parse_prompt,
+    validate_prompt,
 )
 
 
@@ -57,19 +58,13 @@ class TestPromptParser:
         # Test increase
         result = self.parser.parse_prompt("increase brightness")
         assert len(result.transforms) == 1
-        assert (
-            result.transforms[0].name
-            == TransformType.RANDOM_BRIGHTNESS_CONTRAST
-        )
+        assert result.transforms[0].name == TransformType.RANDOM_BRIGHTNESS_CONTRAST
         assert "brightness_limit" in result.transforms[0].parameters
 
         # Test decrease
         result = self.parser.parse_prompt("decrease brightness")
         assert len(result.transforms) == 1
-        assert (
-            result.transforms[0].name
-            == TransformType.RANDOM_BRIGHTNESS_CONTRAST
-        )
+        assert result.transforms[0].name == TransformType.RANDOM_BRIGHTNESS_CONTRAST
         assert "brightness_limit" in result.transforms[0].parameters
 
     def test_empty_prompt(self):
@@ -203,9 +198,7 @@ class TestParameterExtraction:
         assert result.transforms[0].parameters["blur_limit"] == 7  # 6 -> 7
 
         result = self.parser.parse_prompt("blur by 5")
-        assert (
-            result.transforms[0].parameters["blur_limit"] == 5
-        )  # Already odd
+        assert result.transforms[0].parameters["blur_limit"] == 5  # Already odd
 
     def test_rotation_angle_limits(self):
         """Test rotation angle parameter limits."""

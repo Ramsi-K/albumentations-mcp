@@ -1,6 +1,7 @@
 """Tests for the standardized error handling system."""
 
 import pytest
+
 from src.albumentations_mcp.errors import (
     BaseAlbumentationsMCPError,
     ErrorCode,

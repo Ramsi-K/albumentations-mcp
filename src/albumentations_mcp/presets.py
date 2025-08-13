@@ -399,15 +399,10 @@ def get_preset_summary() -> dict[str, str]:
     Returns:
         Dictionary mapping preset names to their descriptions
     """
-    return {
-        name: config["description"]
-        for name, config in PRESET_DEFINITIONS.items()
-    }
+    return {name: config["description"] for name, config in PRESET_DEFINITIONS.items()}
 
 
-def apply_preset_to_prompt(
-    preset_name: str, additional_prompt: str = ""
-) -> str:
+def apply_preset_to_prompt(preset_name: str, additional_prompt: str = "") -> str:
     """Generate a natural language prompt that represents a preset.
 
     This is useful for combining presets with additional user prompts.

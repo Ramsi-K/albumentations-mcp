@@ -6,40 +6,10 @@ This module provides functionality to save images for LLM review and generate
 verification reports that can be used by the same VLM (Kiro, Claude Desktop)
 that's already using the MCP tools.
 
-# File Summary
 Visual verification system that saves original and augmented images to temporary
 files and generates structured reports for LLM review. Enables the same VLM
 using the MCP tools to verify transformation success by examining saved images.
 
-# TODO Tree
-- [x] Core Verification Infrastructure
-  - [x] Import dependencies (os, tempfile, datetime, pathlib)
-  - [x] Define VisualVerificationManager class
-  - [x] Create file path utilities and naming conventions
-- [x] Image File Output System
-  - [x] Save images to temporary files with unique names
-  - [x] Generate timestamped filenames for tracking
-  - [x] Handle different image formats (PNG, JPEG)
-  - [x] Create output directory management
-- [x] Verification Report Generation
-  - [x] Generate structured reports for LLM review
-  - [x] Include image file paths and transformation details
-  - [x] Add evaluation prompts and scoring frameworks
-  - [x] Create markdown-formatted output
-- [x] File Management & Cleanup
-  - [x] Cleanup utilities for temporary files
-  - [x] Safe file deletion with error handling
-  - [x] Directory cleanup and management
-- [x] Quality Assurance
-  - [x] Input validation for images and paths
-  - [x] Error handling for file I/O operations
-  - [x] Logging for debugging and monitoring
-
-# Code Review Notes
-- SECURITY: Validate all file paths to prevent directory traversal
-- PERFORMANCE: Use efficient image saving with appropriate compression
-- MEMORY: Ensure proper cleanup of temporary files
-- ERROR HANDLING: Graceful failure when file operations fail
 """
 
 import logging

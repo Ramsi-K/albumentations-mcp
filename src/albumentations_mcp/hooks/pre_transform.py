@@ -41,19 +41,19 @@ class PreTransformHook(BaseHook):
 
             # Validate image data
             image_validation = self._validate_image(context)
-            if not image_validation["valid"]:
-                context.warnings.extend(image_validation["warnings"])
-                if image_validation["critical"]:
-                    return HookResult(
-                        success=False,
-                        error="Critical image validation failed",
-                        context=context,
-                    )
+            # Always add warnings, regardless of validation status
+            context.warnings.extend(image_validation["warnings"])
+            if image_validation["critical"]:
+                return HookResult(
+                    success=False,
+                    error="Critical image validation failed",
+                    context=context,
+                )
 
             # Validate transform configuration
             config_validation = self._validate_transform_config(context)
-            if not config_validation["valid"]:
-                context.warnings.extend(config_validation["warnings"])
+            # Always add warnings, regardless of validation status
+            context.warnings.extend(config_validation["warnings"])
 
             # Add validation metadata
             context.metadata.update(
@@ -272,8 +272,8 @@ class PreTransformHook(BaseHook):
                         f"Small crop size ({width}x{height}) may lose important details",
                     )
 
-        # Check probability
-        probability = parameters.get("p", 1.0)
+        # Check probability (can be in parameters as 'p' or top-level as 'probability')
+        probability = parameters.get("p", transform.get("probability", 1.0))
         if probability < LOW_PROBABILITY_THRESHOLD:
             analysis["warnings"].append(
                 f"Transform {index} ({transform_name}): "

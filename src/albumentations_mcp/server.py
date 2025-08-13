@@ -119,103 +119,43 @@ def augment_image(
             # If parsing failed, return original image
             return image_b64
 
-        # Apply transforms using processor with optional seed
-        processor = get_processor()
-        processing_result = processor.process_image(
-            image,
-            parse_result["transforms"],
-            seed=seed,
-        )
+        # Use full pipeline with all 7 hooks
+        from .pipeline import process_image_with_hooks
 
-        if processing_result.success and processing_result.augmented_image:
-            # Execute visual verification hook if enabled
-            try:
-                import uuid
+        try:
+            # Try to get the current event loop
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If loop is running, use thread executor
+                import concurrent.futures
 
-                from .hooks import HookContext, HookStage, execute_stage
-
-                # Create context for verification hook
-                session_id = str(uuid.uuid4())[:8]
-                verification_context = HookContext(
-                    session_id=session_id,
-                    original_prompt=prompt,
-                    metadata={
-                        "original_image": image,
-                        "augmented_image": processing_result.augmented_image,
-                        "applied_transforms": processing_result.applied_transforms,
-                        "skipped_transforms": processing_result.skipped_transforms,
-                        "processing_time": processing_result.execution_time,
-                        "pipeline_version": "1.0.0",
-                        # Include seed metadata from processing result
-                        **{
-                            k: v
-                            for k, v in processing_result.metadata.items()
-                            if k.startswith("seed_")
-                            or k in ["effective_seed", "reproducible"]
-                        },
-                        "reproducible": seed is not None,
-                    },
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(
+                        asyncio.run,
+                        process_image_with_hooks(image_b64, prompt, seed),
+                    )
+                    pipeline_result = future.result()
+            else:
+                pipeline_result = loop.run_until_complete(
+                    process_image_with_hooks(image_b64, prompt, seed),
                 )
+        except RuntimeError:
+            # No event loop, create one
+            pipeline_result = asyncio.run(
+                process_image_with_hooks(image_b64, prompt, seed),
+            )
 
-                # Execute verification hook (non-blocking)
-                # Since we're in a sync function, we need to handle async properly
-                try:
-                    loop = asyncio.get_event_loop()
-                    if loop.is_running():
-                        # If loop is running, use thread executor
-                        import concurrent.futures
+        if pipeline_result["success"]:
+            return pipeline_result["augmented_image"]
+        else:
+            # Pipeline failed, return original image
+            import logging
 
-                        with concurrent.futures.ThreadPoolExecutor() as executor:
-                            future = executor.submit(
-                                asyncio.run,
-                                execute_stage(
-                                    HookStage.POST_TRANSFORM_VERIFY,
-                                    verification_context,
-                                ),
-                            )
-                            verification_result = future.result()
-                    else:
-                        verification_result = loop.run_until_complete(
-                            execute_stage(
-                                HookStage.POST_TRANSFORM_VERIFY,
-                                verification_context,
-                            ),
-                        )
-                except RuntimeError:
-                    # No event loop, create one
-                    verification_result = asyncio.run(
-                        execute_stage(
-                            HookStage.POST_TRANSFORM_VERIFY,
-                            verification_context,
-                        ),
-                    )
-
-                if verification_result.success:
-                    import logging
-
-                    logger = logging.getLogger(__name__)
-                    logger.debug(
-                        f"Visual verification completed for session {session_id}",
-                    )
-                else:
-                    import logging
-
-                    logger = logging.getLogger(__name__)
-                    logger.warning(
-                        f"Visual verification failed for session {session_id}",
-                    )
-
-            except Exception as e:
-                import logging
-
-                logger = logging.getLogger(__name__)
-                logger.warning(f"Visual verification hook failed: {e}")
-                # Continue processing even if verification fails
-
-            # Convert augmented image back to base64
-            return pil_to_base64(processing_result.augmented_image)
-        # If processing failed, return original image
-        return image_b64
+            logger = logging.getLogger(__name__)
+            logger.error(
+                f"Pipeline processing failed: {pipeline_result.get('message', 'Unknown error')}"
+            )
+            return image_b64
 
     except ImageConversionError as e:
         # Log error but return original to avoid breaking MCP protocol
@@ -291,11 +231,14 @@ def validate_prompt(prompt: str) -> dict:
 
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     future = executor.submit(
-                        asyncio.run, parse_prompt_with_hooks(prompt),
+                        asyncio.run,
+                        parse_prompt_with_hooks(prompt),
                     )
                     result = future.result()
             else:
-                result = loop.run_until_complete(parse_prompt_with_hooks(prompt))
+                result = loop.run_until_complete(
+                    parse_prompt_with_hooks(prompt)
+                )
         except RuntimeError:
             # No event loop, create one
             result = asyncio.run(parse_prompt_with_hooks(prompt))

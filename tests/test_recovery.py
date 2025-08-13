@@ -1,24 +1,22 @@
 """Tests for transform failure recovery and graceful degradation."""
 
-import pytest
 import time
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
+
 import albumentations as A
-import numpy as np
+import pytest
 from PIL import Image
 
 from src.albumentations_mcp.recovery import (
-    RecoveryStrategy,
-    RecoveryError,
-    TransformRecoveryError,
     MemoryRecoveryError,
-    RecoveryContext,
-    TransformRecoveryManager,
     MemoryRecoveryManager,
     PipelineRecoveryManager,
-    recover_from_transform_failure,
+    RecoveryContext,
+    RecoveryStrategy,
+    TransformRecoveryManager,
     check_memory_limits,
     get_recovery_statistics,
+    recover_from_transform_failure,
 )
 
 
@@ -63,30 +61,30 @@ class TestTransformRecoveryManager:
         error = ValueError("blur_limit must be odd")
 
         transform, strategy = self.recovery_manager.recover_transform_failure(
-            "Blur", {"blur_limit": 100}, error
+            "Blur",
+            {"blur_limit": 100},
+            error,
         )
 
         assert transform is not None
         assert isinstance(transform, A.Blur)
         assert strategy == RecoveryStrategy.USE_SAFE_DEFAULTS
-        assert (
-            self.recovery_manager.recovery_stats["successful_recoveries"] == 1
-        )
+        assert self.recovery_manager.recovery_stats["successful_recoveries"] == 1
 
     def test_progressive_fallback_recovery(self):
         """Test progressive fallback recovery."""
         # Mock safe defaults to fail, forcing progressive fallback
         with patch.object(
-            self.recovery_manager, "_try_safe_defaults", return_value=None
+            self.recovery_manager,
+            "_try_safe_defaults",
+            return_value=None,
         ):
             error = ValueError("Parameter out of range")
 
-            transform, strategy = (
-                self.recovery_manager.recover_transform_failure(
-                    "RandomBrightnessContrast",
-                    {"brightness_limit": 10.0},
-                    error,
-                )
+            transform, strategy = self.recovery_manager.recover_transform_failure(
+                "RandomBrightnessContrast",
+                {"brightness_limit": 10.0},
+                error,
             )
 
             assert transform is not None
@@ -98,7 +96,9 @@ class TestTransformRecoveryManager:
         # Mock both recovery methods to fail
         with (
             patch.object(
-                self.recovery_manager, "_try_safe_defaults", return_value=None
+                self.recovery_manager,
+                "_try_safe_defaults",
+                return_value=None,
             ),
             patch.object(
                 self.recovery_manager,
@@ -109,10 +109,10 @@ class TestTransformRecoveryManager:
 
             error = ValueError("Unrecoverable error")
 
-            transform, strategy = (
-                self.recovery_manager.recover_transform_failure(
-                    "UnknownTransform", {}, error
-                )
+            transform, strategy = self.recovery_manager.recover_transform_failure(
+                "UnknownTransform",
+                {},
+                error,
             )
 
             assert transform is None
@@ -124,7 +124,10 @@ class TestTransformRecoveryManager:
         image_shape = (100, 100, 3)
 
         transform, strategy = self.recovery_manager.recover_transform_failure(
-            "RandomCrop", {"height": 200, "width": 200}, error, image_shape
+            "RandomCrop",
+            {"height": 200, "width": 200},
+            error,
+            image_shape,
         )
 
         assert transform is not None
@@ -138,7 +141,9 @@ class TestTransformRecoveryManager:
         error = ValueError("Parameter out of range")
 
         transform, strategy = self.recovery_manager.recover_transform_failure(
-            "Blur", {"blur_limit": 1000}, error
+            "Blur",
+            {"blur_limit": 1000},
+            error,
         )
 
         assert transform is not None
@@ -160,17 +165,14 @@ class TestTransformRecoveryManager:
         # Perform several recovery attempts
         for i in range(3):
             self.recovery_manager.recover_transform_failure(
-                "Blur", {"blur_limit": 1000}, ValueError("Test error")
+                "Blur",
+                {"blur_limit": 1000},
+                ValueError("Test error"),
             )
 
         stats = self.recovery_manager.recovery_stats
-        assert (
-            stats["total_recoveries"] == initial_stats["total_recoveries"] + 3
-        )
-        assert (
-            stats["successful_recoveries"]
-            > initial_stats["successful_recoveries"]
-        )
+        assert stats["total_recoveries"] == initial_stats["total_recoveries"] + 3
+        assert stats["successful_recoveries"] > initial_stats["successful_recoveries"]
         assert "use_safe_defaults" in stats["recovery_strategies_used"]
 
     def test_unknown_transform_handling(self):
@@ -178,7 +180,9 @@ class TestTransformRecoveryManager:
         error = AttributeError("Unknown transform")
 
         transform, strategy = self.recovery_manager.recover_transform_failure(
-            "NonExistentTransform", {}, error
+            "NonExistentTransform",
+            {},
+            error,
         )
 
         assert transform is None
@@ -189,7 +193,9 @@ class TestTransformRecoveryManager:
         # Mock methods to always fail
         with (
             patch.object(
-                self.recovery_manager, "_try_safe_defaults", return_value=None
+                self.recovery_manager,
+                "_try_safe_defaults",
+                return_value=None,
             ),
             patch.object(
                 self.recovery_manager,
@@ -200,10 +206,10 @@ class TestTransformRecoveryManager:
 
             error = ValueError("Persistent error")
 
-            transform, strategy = (
-                self.recovery_manager.recover_transform_failure(
-                    "Blur", {}, error
-                )
+            transform, strategy = self.recovery_manager.recover_transform_failure(
+                "Blur",
+                {},
+                error,
             )
 
             assert transform is None
@@ -216,7 +222,7 @@ class TestMemoryRecoveryManager:
     def setup_method(self):
         """Set up test fixtures."""
         self.memory_manager = MemoryRecoveryManager(
-            max_memory_mb=100
+            max_memory_mb=100,
         )  # Low limit for testing
 
     def test_memory_recovery_context_success(self):
@@ -237,23 +243,23 @@ class TestMemoryRecoveryManager:
         """Test memory limits checking."""
         # Mock memory usage to exceed limits
         with patch.object(
-            self.memory_manager, "_get_memory_usage_mb", return_value=200
+            self.memory_manager,
+            "_get_memory_usage_mb",
+            return_value=200,
         ):
-            assert not self.memory_manager.check_memory_limits(
-                "test_operation"
-            )
+            assert not self.memory_manager.check_memory_limits("test_operation")
 
         # Mock memory usage within limits
-        with patch.object(
-            self.memory_manager, "_get_memory_usage_mb", return_value=50
-        ):
+        with patch.object(self.memory_manager, "_get_memory_usage_mb", return_value=50):
             assert self.memory_manager.check_memory_limits("test_operation")
 
     def test_memory_recovery_attempt(self):
         """Test memory recovery attempt."""
         # Mock memory usage before and after recovery
         with patch.object(
-            self.memory_manager, "_get_memory_usage_mb", side_effect=[500, 300]
+            self.memory_manager,
+            "_get_memory_usage_mb",
+            side_effect=[500, 300],
         ):
             result = self.memory_manager._attempt_memory_recovery()
             assert result is True  # Should succeed since we "freed" 200MB
@@ -262,7 +268,9 @@ class TestMemoryRecoveryManager:
         """Test memory recovery failure."""
         # Mock memory usage to not change significantly
         with patch.object(
-            self.memory_manager, "_get_memory_usage_mb", side_effect=[500, 490]
+            self.memory_manager,
+            "_get_memory_usage_mb",
+            side_effect=[500, 490],
         ):
             result = self.memory_manager._attempt_memory_recovery()
             assert result is False  # Should fail since we only "freed" 10MB
@@ -279,10 +287,7 @@ class TestMemoryRecoveryManager:
             pass
 
         stats = self.memory_manager.memory_stats
-        assert (
-            stats["recovery_triggers"]
-            == initial_stats["recovery_triggers"] + 1
-        )
+        assert stats["recovery_triggers"] == initial_stats["recovery_triggers"] + 1
 
 
 class TestPipelineRecoveryManager:
@@ -298,17 +303,14 @@ class TestPipelineRecoveryManager:
         def mock_pipeline(data):
             return f"processed_{data}"
 
-        result, recovery_events = (
-            self.pipeline_manager.execute_pipeline_with_recovery(
-                mock_pipeline, "test_data"
-            )
+        result, recovery_events = self.pipeline_manager.execute_pipeline_with_recovery(
+            mock_pipeline,
+            "test_data",
         )
 
         assert result == "processed_test_data"
         assert len(recovery_events) == 0
-        assert (
-            self.pipeline_manager.pipeline_stats["successful_pipelines"] == 1
-        )
+        assert self.pipeline_manager.pipeline_stats["successful_pipelines"] == 1
 
     def test_pipeline_memory_recovery(self):
         """Test pipeline memory recovery."""
@@ -318,7 +320,8 @@ class TestPipelineRecoveryManager:
 
         with pytest.raises(MemoryRecoveryError):
             self.pipeline_manager.execute_pipeline_with_recovery(
-                mock_pipeline_with_memory_error, "test_data"
+                mock_pipeline_with_memory_error,
+                "test_data",
             )
 
         assert self.pipeline_manager.pipeline_stats["failed_pipelines"] == 1
@@ -333,17 +336,16 @@ class TestPipelineRecoveryManager:
             )
 
             raise MemoryRecoveryError(
-                "Memory exhausted", RecoveryStrategy.RETURN_ORIGINAL
+                "Memory exhausted",
+                RecoveryStrategy.RETURN_ORIGINAL,
             )
 
         original_image = Image.new("RGB", (100, 100))
 
-        result, recovery_events = (
-            self.pipeline_manager.execute_pipeline_with_recovery(
-                mock_pipeline_with_recoverable_error,
-                "test_data",
-                original_image=original_image,
-            )
+        result, recovery_events = self.pipeline_manager.execute_pipeline_with_recovery(
+            mock_pipeline_with_recoverable_error,
+            "test_data",
+            original_image=original_image,
         )
 
         assert result == original_image
@@ -358,18 +360,14 @@ class TestPipelineRecoveryManager:
         def success_pipeline(data):
             return data
 
-        self.pipeline_manager.execute_pipeline_with_recovery(
-            success_pipeline, "test"
-        )
+        self.pipeline_manager.execute_pipeline_with_recovery(success_pipeline, "test")
 
         # Execute failed pipeline
         def fail_pipeline(data):
             raise ValueError("Test error")
 
         try:
-            self.pipeline_manager.execute_pipeline_with_recovery(
-                fail_pipeline, "test"
-            )
+            self.pipeline_manager.execute_pipeline_with_recovery(fail_pipeline, "test")
         except ValueError:
             pass
 
@@ -391,13 +389,12 @@ class TestConvenienceFunctions:
         error = ValueError("Test error")
 
         transform, strategy = recover_from_transform_failure(
-            "Blur", {"blur_limit": 1000}, error
+            "Blur",
+            {"blur_limit": 1000},
+            error,
         )
 
-        assert (
-            transform is not None
-            or strategy == RecoveryStrategy.SKIP_TRANSFORM
-        )
+        assert transform is not None or strategy == RecoveryStrategy.SKIP_TRANSFORM
 
     def test_check_memory_limits_function(self):
         """Test convenience function for memory checking."""
@@ -425,12 +422,19 @@ class TestIntegrationScenarios:
         # Test with extremely large blur value
         error = ValueError("blur_limit too large")
         transform, strategy = recovery_manager.recover_transform_failure(
-            "Blur", {"blur_limit": 999999}, error
+            "Blur",
+            {"blur_limit": 999999},
+            error,
         )
 
         assert transform is not None
-        assert transform.blur_limit <= 15  # Should be within safe range
-        assert transform.blur_limit % 2 == 1  # Should be odd
+        # blur_limit is a tuple (min, max) in Albumentations
+        if isinstance(transform.blur_limit, tuple):
+            assert transform.blur_limit[1] <= 15  # Max should be within safe range
+            assert transform.blur_limit[1] % 2 == 1  # Max should be odd
+        else:
+            assert transform.blur_limit <= 15  # Should be within safe range
+            assert transform.blur_limit % 2 == 1  # Should be odd
 
     def test_multiple_transform_failures(self):
         """Test handling multiple transform failures in sequence."""
@@ -448,7 +452,9 @@ class TestIntegrationScenarios:
         for transform_name, params in failing_transforms:
             error = ValueError(f"Invalid parameters for {transform_name}")
             transform, strategy = recovery_manager.recover_transform_failure(
-                transform_name, params, error
+                transform_name,
+                params,
+                error,
             )
 
             if transform is not None:
@@ -459,19 +465,15 @@ class TestIntegrationScenarios:
         # Should recover most transforms or skip them gracefully
         assert recovered_count + skipped_count == len(failing_transforms)
         assert recovery_manager.recovery_stats["total_recoveries"] == len(
-            failing_transforms
+            failing_transforms,
         )
 
     def test_memory_exhaustion_simulation(self):
         """Test memory exhaustion simulation and recovery."""
-        memory_manager = MemoryRecoveryManager(
-            max_memory_mb=1
-        )  # Very low limit
+        memory_manager = MemoryRecoveryManager(max_memory_mb=1)  # Very low limit
 
         # Mock high memory usage
-        with patch.object(
-            memory_manager, "_get_memory_usage_mb", return_value=100
-        ):
+        with patch.object(memory_manager, "_get_memory_usage_mb", return_value=100):
             assert not memory_manager.check_memory_limits("test")
 
         # Test recovery context with memory error
@@ -482,7 +484,6 @@ class TestIntegrationScenarios:
     def test_concurrent_recovery_operations(self):
         """Test recovery operations under concurrent access."""
         import threading
-        import time
 
         recovery_manager = TransformRecoveryManager()
         results = []
@@ -492,10 +493,10 @@ class TestIntegrationScenarios:
             try:
                 for i in range(5):
                     error = ValueError(f"Worker {worker_id} error {i}")
-                    transform, strategy = (
-                        recovery_manager.recover_transform_failure(
-                            "Blur", {"blur_limit": 1000 + i}, error
-                        )
+                    transform, strategy = recovery_manager.recover_transform_failure(
+                        "Blur",
+                        {"blur_limit": 1000 + i},
+                        error,
                     )
                     results.append((worker_id, i, transform is not None))
                     time.sleep(0.001)  # Small delay
@@ -504,8 +505,7 @@ class TestIntegrationScenarios:
 
         # Run multiple threads
         threads = [
-            threading.Thread(target=recovery_worker, args=(i,))
-            for i in range(3)
+            threading.Thread(target=recovery_worker, args=(i,)) for i in range(3)
         ]
         for t in threads:
             t.start()

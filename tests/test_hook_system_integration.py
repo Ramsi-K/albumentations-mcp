@@ -5,37 +5,9 @@ Integration tests for the complete hook system.
 This module tests the complete hook pipeline execution, hook failure recovery,
 context passing, metadata accumulation, and hook registry management.
 
-# File Summary
 Comprehensive integration tests for the 8-stage hook system including
 pipeline execution, failure recovery, context management, and registry operations.
 
-# TODO Tree
-- [x] Test Infrastructure
-  - [x] Import hook system components
-  - [x] Create test fixtures and mock hooks
-  - [x] Set up async test framework
-- [x] Complete Pipeline Tests
-  - [x] Test all 8 stages execution in order
-  - [x] Test context passing between stages
-  - [x] Test metadata accumulation across stages
-- [x] Failure Recovery Tests
-  - [x] Test critical hook failure stops pipeline
-  - [x] Test non-critical hook failure continues pipeline
-  - [x] Test hook exception handling
-- [x] Registry Management Tests
-  - [x] Test hook registration and unregistration
-  - [x] Test dynamic hook registration
-  - [x] Test hook execution order
-- [x] Context Management Tests
-  - [x] Test context data preservation
-  - [x] Test metadata accumulation
-  - [x] Test error and warning collection
-
-# Code Review Notes
-- PERFORMANCE: Tests should run quickly without external dependencies
-- COVERAGE: All hook system functionality should be tested
-- ISOLATION: Tests should not interfere with each other
-- RELIABILITY: Tests should be deterministic and repeatable
 """
 
 import pytest
@@ -185,7 +157,8 @@ class TestCompleteHookPipeline:
         # Execute stages
         result1 = await clean_registry.execute_stage(HookStage.PRE_MCP, sample_context)
         result2 = await clean_registry.execute_stage(
-            HookStage.POST_MCP, result1.context,
+            HookStage.POST_MCP,
+            result1.context,
         )
 
         # Verify data accumulation
@@ -206,7 +179,8 @@ class TestCompleteHookPipeline:
 
         # Execute stage
         result = await clean_registry.execute_stage(
-            HookStage.PRE_TRANSFORM, sample_context,
+            HookStage.PRE_TRANSFORM,
+            sample_context,
         )
 
         # Verify all hooks executed
@@ -264,7 +238,9 @@ class TestHookFailureRecovery:
 
     @pytest.mark.asyncio
     async def test_critical_hook_failure_stops_pipeline(
-        self, clean_registry, sample_context,
+        self,
+        clean_registry,
+        sample_context,
     ):
         """Test that critical hook failure stops pipeline execution."""
         # Create critical hook that fails
@@ -276,7 +252,8 @@ class TestHookFailureRecovery:
 
         # Execute stage
         result = await clean_registry.execute_stage(
-            HookStage.PRE_TRANSFORM, sample_context,
+            HookStage.PRE_TRANSFORM,
+            sample_context,
         )
 
         # Pipeline should stop due to critical failure
@@ -292,7 +269,9 @@ class TestHookFailureRecovery:
 
     @pytest.mark.asyncio
     async def test_non_critical_hook_failure_continues_pipeline(
-        self, clean_registry, sample_context,
+        self,
+        clean_registry,
+        sample_context,
     ):
         """Test that non-critical hook failure allows pipeline to continue."""
         # Create non-critical hook that fails
@@ -304,7 +283,8 @@ class TestHookFailureRecovery:
 
         # Execute stage
         result = await clean_registry.execute_stage(
-            HookStage.POST_TRANSFORM, sample_context,
+            HookStage.POST_TRANSFORM,
+            sample_context,
         )
 
         # Pipeline should continue despite failure
@@ -349,7 +329,9 @@ class TestHookFailureRecovery:
 
     @pytest.mark.asyncio
     async def test_critical_hook_exception_stops_pipeline(
-        self, clean_registry, sample_context,
+        self,
+        clean_registry,
+        sample_context,
     ):
         """Test that critical hook exception stops pipeline."""
 
@@ -383,7 +365,8 @@ class TestHookFailureRecovery:
         clean_registry.register_hook(HookStage.POST_TRANSFORM_VERIFY, after_hook)
 
         result = await clean_registry.execute_stage(
-            HookStage.POST_TRANSFORM_VERIFY, sample_context,
+            HookStage.POST_TRANSFORM_VERIFY,
+            sample_context,
         )
 
         # Pipeline should stop gracefully
@@ -493,7 +476,8 @@ class TestHookRegistryManagement:
         # Execute with initial hook
         context = HookContext(session_id="dynamic-test", original_prompt="test dynamic")
         result1 = await clean_registry.execute_stage(
-            HookStage.POST_TRANSFORM_CLASSIFY, context,
+            HookStage.POST_TRANSFORM_CLASSIFY,
+            context,
         )
 
         assert result1.success is True
@@ -505,7 +489,8 @@ class TestHookRegistryManagement:
 
         # Execute again - both hooks should run
         result2 = await clean_registry.execute_stage(
-            HookStage.POST_TRANSFORM_CLASSIFY, context,
+            HookStage.POST_TRANSFORM_CLASSIFY,
+            context,
         )
 
         assert result2.success is True
@@ -669,7 +654,8 @@ class TestContextManagement:
         clean_registry.register_hook(HookStage.POST_SAVE, hook)
 
         context = HookContext(
-            session_id="immutable-test", original_prompt="test immutability",
+            session_id="immutable-test",
+            original_prompt="test immutability",
         )
 
         result = await clean_registry.execute_stage(HookStage.POST_SAVE, context)

@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+
 from src.albumentations_mcp.utils import (
     cleanup_file,
     create_error_result,
@@ -70,9 +71,7 @@ class TestErrorHandlingUtilities:
         def fallback():
             return "fallback"
 
-        result = handle_exception_with_fallback(
-            operation, fallback, "Test error"
-        )
+        result = handle_exception_with_fallback(operation, fallback, "Test error")
 
         assert result == "success"
 
@@ -85,9 +84,7 @@ class TestErrorHandlingUtilities:
         def fallback():
             return "fallback"
 
-        result = handle_exception_with_fallback(
-            operation, fallback, "Test error"
-        )
+        result = handle_exception_with_fallback(operation, fallback, "Test error")
 
         assert result == "fallback"
 
@@ -188,9 +185,7 @@ class TestValidationUtilities:
 
     def test_validate_numeric_range_valid(self):
         """Test numeric validation with valid input."""
-        result = validate_numeric_range(
-            5, "field_name", min_value=0, max_value=10
-        )
+        result = validate_numeric_range(5, "field_name", min_value=0, max_value=10)
         assert result == 5
 
     def test_validate_numeric_range_invalid_type(self):
@@ -264,9 +259,7 @@ class TestFileOperationUtilities:
         def operation():
             raise OSError("File error")
 
-        result = safe_file_operation(
-            operation, "Test operation", default="default"
-        )
+        result = safe_file_operation(operation, "Test operation", default="default")
         assert result == "default"
 
     def test_ensure_directory_exists_new_dir(self):

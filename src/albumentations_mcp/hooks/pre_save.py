@@ -21,7 +21,7 @@ class PreSaveHook(BaseHook):
 
     def __init__(self, output_dir: str = "./outputs"):
         super().__init__("pre_save_preparation", critical=False)
-        self.output_dir = Path(output_dir)
+        self.output_dir = Path(output_dir).resolve()  # Convert to absolute path
 
     async def execute(self, context: HookContext) -> HookResult:
         """Prepare filenames and directory structure for saving."""

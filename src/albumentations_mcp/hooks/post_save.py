@@ -321,7 +321,9 @@ class PostSaveHook(BaseHook):
                     if path_obj.exists():
                         file_validation["exists"] = True
                         file_validation["size"] = path_obj.stat().st_size
-                        validation_info["total_size"] += file_validation["size"]
+                        validation_info["total_size"] += file_validation[
+                            "size"
+                        ]
 
                         # Check if file is readable
                         if os.access(path_obj, os.R_OK):
@@ -455,7 +457,9 @@ class PostSaveHook(BaseHook):
                     manifest["output_files"][file_type] = {
                         "path": file_path,
                         "exists": path_obj.exists(),
-                        "size": (path_obj.stat().st_size if path_obj.exists() else 0),
+                        "size": (
+                            path_obj.stat().st_size if path_obj.exists() else 0
+                        ),
                     }
 
             # Add key metadata summaries

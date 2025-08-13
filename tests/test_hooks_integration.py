@@ -1,15 +1,13 @@
 """Tests for hook system integration."""
 
 import pytest
-import asyncio
+
 from src.albumentations_mcp.hooks import (
     HookContext,
-    HookStage,
     get_hook_registry,
-    register_hook,
 )
-from src.albumentations_mcp.hooks.pre_mcp import PreMCPHook
 from src.albumentations_mcp.hooks.post_mcp import PostMCPHook
+from src.albumentations_mcp.hooks.pre_mcp import PreMCPHook
 from src.albumentations_mcp.pipeline import (
     AugmentationPipeline,
     parse_prompt_with_hooks,
@@ -44,7 +42,8 @@ class TestHookSystem:
         """Test pre-MCP hook functionality."""
         hook = PreMCPHook()
         context = HookContext(
-            session_id="test-123", original_prompt="  ADD BLUR  and  ROTATE  "
+            session_id="test-123",
+            original_prompt="  ADD BLUR  and  ROTATE  ",
         )
 
         result = await hook.execute(context)
@@ -66,7 +65,7 @@ class TestHookSystem:
                     "name": "Blur",
                     "parameters": {"blur_limit": 7, "p": 1.0},
                     "probability": 1.0,
-                }
+                },
             ],
         )
 
@@ -84,9 +83,7 @@ class TestPipelineIntegration:
     @pytest.mark.asyncio
     async def test_pipeline_with_hooks(self):
         """Test complete pipeline with hook integration."""
-        result = await parse_prompt_with_hooks(
-            "add blur and rotate by 30 degrees"
-        )
+        result = await parse_prompt_with_hooks("add blur and rotate by 30 degrees")
 
         assert result["success"] is True
         assert len(result["transforms"]) == 2
@@ -113,9 +110,7 @@ class TestPipelineIntegration:
         """Test pipeline with unrecognized prompt."""
         result = await parse_prompt_with_hooks("make it sparkly and magical")
 
-        assert (
-            result["success"] is True
-        )  # Pipeline succeeds even with no transforms
+        assert result["success"] is True  # Pipeline succeeds even with no transforms
         assert len(result["transforms"]) == 0
         assert len(result["warnings"]) > 0
         assert result["metadata"]["parser_confidence"] == 0.0

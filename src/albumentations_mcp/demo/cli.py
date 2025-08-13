@@ -152,31 +152,65 @@ async def demo_augment_image(
             print(f"✓ Parsed prompt in {parse_time:.3f}s")
         print(f"  Found {len(parse_result['transforms'])} transforms:")
         for i, transform in enumerate(parse_result["transforms"], 1):
-            print(f"    {i}. {transform['name']} - {transform.get('parameters', {})}")
+            print(
+                f"    {i}. {transform['name']} - {transform.get('parameters', {})}"
+            )
 
-        # Apply transforms using processor
+        # Apply transforms using full hook pipeline
         print("🎨 Applying transforms...")
         if seed is not None:
             print(f"  Using seed: {seed}")
 
         start_time = time.time()
-        processor = get_processor()
-        processing_result = processor.process_image(
-            image,
-            parse_result["transforms"],
+
+        # Convert image to base64 for pipeline
+        from ..image_utils import pil_to_base64
+        from ..pipeline import process_image_with_hooks
+
+        image_b64 = pil_to_base64(image)
+
+        # Use full pipeline with all hooks
+        pipeline_result = await process_image_with_hooks(
+            image_b64=image_b64,
+            prompt=prompt or f"preset:{preset}",
             seed=seed,
         )
+
         process_time = time.time() - start_time
 
-        if not processing_result.success or not processing_result.augmented_image:
-            print(f"✗ Failed to process image: {processing_result.error_message}")
+        if not pipeline_result["success"]:
+            print(
+                f"✗ Failed to process image: {pipeline_result.get('message', 'Unknown error')}"
+            )
             return False
 
         print(f"✓ Processed image in {process_time:.3f}s")
 
+        # Extract results from pipeline
+        augmented_image_b64 = pipeline_result["augmented_image"]
+        from ..image_utils import base64_to_pil
+
+        processing_result = type(
+            "ProcessingResult",
+            (),
+            {
+                "success": True,
+                "augmented_image": base64_to_pil(augmented_image_b64),
+                "applied_transforms": pipeline_result["metadata"]
+                .get("processing_result", {})
+                .get("applied_transforms", []),
+                "skipped_transforms": pipeline_result["metadata"]
+                .get("processing_result", {})
+                .get("skipped_transforms", []),
+                "metadata": pipeline_result["metadata"],
+            },
+        )()
+
         # Show processing statistics
         if verbose:
-            print(f"  Applied transforms: {len(processing_result.applied_transforms)}")
+            print(
+                f"  Applied transforms: {len(processing_result.applied_transforms)}"
+            )
             if processing_result.skipped_transforms:
                 print(
                     f"  Skipped transforms: {len(processing_result.skipped_transforms)}",
@@ -189,47 +223,34 @@ async def demo_augment_image(
                     ]:
                         print(f"  {key}: {value}")
 
-        # Generate output filename
-        input_name = Path(image_path).stem
-        input_ext = Path(image_path).suffix or ".jpg"
-        timestamp = int(time.time())
-        seed_suffix = f"_seed{seed}" if seed is not None else ""
-        output_filename = f"{input_name}_augmented_{timestamp}{seed_suffix}{input_ext}"
-        output_path = os.path.join(output_dir, output_filename)
+        # Files are automatically saved by the hook system
+        # Check if file paths are available in metadata
+        file_paths = pipeline_result["metadata"].get("file_paths", {})
 
-        # Save augmented image
-        save_image(processing_result.augmented_image, output_path)
+        if file_paths:
+            if "augmented_image" in file_paths:
+                print(
+                    f"✓ Saved augmented image to: {file_paths['augmented_image']}"
+                )
+            if "metadata" in file_paths and verbose:
+                print(f"✓ Saved metadata to: {file_paths['metadata']}")
+            if "processing_log" in file_paths and verbose:
+                print(
+                    f"✓ Saved processing log to: {file_paths['processing_log']}"
+                )
+        else:
+            # Fallback: save manually if hooks didn't save files
+            input_name = Path(image_path).stem
+            input_ext = Path(image_path).suffix or ".jpg"
+            timestamp = int(time.time())
+            seed_suffix = f"_seed{seed}" if seed is not None else ""
+            output_filename = (
+                f"{input_name}_augmented_{timestamp}{seed_suffix}{input_ext}"
+            )
+            output_path = os.path.join(output_dir, output_filename)
 
-        # Save metadata if verbose
-        if verbose:
-            metadata_path = output_path.replace(input_ext, "_metadata.json")
-            import json
-
-            metadata = {
-                "input_image": image_path,
-                "prompt": prompt,
-                "seed": seed,
-                "transforms": parse_result["transforms"],
-                "applied_transforms": [
-                    {"name": t["name"], "parameters": t.get("parameters", {})}
-                    for t in processing_result.applied_transforms
-                ],
-                "skipped_transforms": [
-                    {"name": t["name"], "parameters": t.get("parameters", {})}
-                    for t in processing_result.skipped_transforms
-                ],
-                "processing_time": process_time,
-                "parse_time": parse_time,
-                "session_id": parse_result["session_id"],
-                "pipeline_metadata": processing_result.metadata,
-            }
-
-            try:
-                with open(metadata_path, "w") as f:
-                    json.dump(metadata, f, indent=2, default=str)
-                print(f"✓ Saved metadata to: {metadata_path}")
-            except Exception as e:
-                print(f"⚠️  Failed to save metadata: {e}")
+            save_image(processing_result.augmented_image, output_path)
+            print(f"✓ Saved augmented image to: {output_path}")
 
         print("🎉 Demo completed successfully!")
         print(f"   Total time: {parse_time + process_time:.3f}s")
@@ -259,8 +280,12 @@ def create_example_images(examples_dir: str = "examples") -> None:
         draw = ImageDraw.Draw(image)
 
         # Draw some shapes for testing
-        draw.rectangle([50, 50, 150, 150], fill="red", outline="black", width=2)
-        draw.ellipse([200, 50, 300, 150], fill="blue", outline="black", width=2)
+        draw.rectangle(
+            [50, 50, 150, 150], fill="red", outline="black", width=2
+        )
+        draw.ellipse(
+            [200, 50, 300, 150], fill="blue", outline="black", width=2
+        )
         draw.polygon(
             [(75, 200), (125, 175), (175, 200), (150, 250), (100, 250)],
             fill="green",
@@ -290,14 +315,20 @@ def create_example_images(examples_dir: str = "examples") -> None:
         cat_draw = ImageDraw.Draw(cat_image)
 
         # Cat head (circle)
-        cat_draw.ellipse([75, 75, 225, 225], fill="orange", outline="black", width=2)
+        cat_draw.ellipse(
+            [75, 75, 225, 225], fill="orange", outline="black", width=2
+        )
 
         # Cat ears (triangles)
         cat_draw.polygon(
-            [(100, 75), (125, 25), (150, 75)], fill="orange", outline="black",
+            [(100, 75), (125, 25), (150, 75)],
+            fill="orange",
+            outline="black",
         )
         cat_draw.polygon(
-            [(150, 75), (175, 25), (200, 75)], fill="orange", outline="black",
+            [(150, 75), (175, 25), (200, 75)],
+            fill="orange",
+            outline="black",
         )
 
         # Cat eyes
@@ -306,7 +337,9 @@ def create_example_images(examples_dir: str = "examples") -> None:
 
         # Cat nose
         cat_draw.polygon(
-            [(145, 150), (155, 150), (150, 160)], fill="pink", outline="black",
+            [(145, 150), (155, 150), (150, 160)],
+            fill="pink",
+            outline="black",
         )
 
         # Cat mouth

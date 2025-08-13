@@ -4,53 +4,11 @@ This module provides simple string-matching based parsing to convert
 natural language descriptions into structured Albumentations transform
 specifications.
 
-# File Summary
 Natural language parser that converts English descriptions like
 "add blur and rotate" into structured Albumentations transform
 specifications. Core component that bridges human language with
 computer vision transformations.
 
-# TODO Tree
-- [x] Core Parser Infrastructure
-  - [x] Import dependencies (re, logging, typing, pydantic, enum)
-  - [x] Define TransformType enum with all supported transforms
-  - [x] Create TransformConfig Pydantic model
-  - [x] Create ParseResult Pydantic model
-  - [x] Define PromptParsingError exception
-- [x] Transform Mapping System
-  - [x] Build phrase-to-transform dictionary
-  - [x] Create default parameters for each transform
-  - [x] Build regex patterns for parameter extraction
-- [x] Core Parsing Logic
-  - [x] Implement prompt splitting (handle "and", commas, etc.)
-  - [x] Phrase matching algorithm
-  - [x] Parameter extraction with validation
-  - [x] Confidence scoring system
-- [x] Error Handling & Suggestions
-  - [x] Handle empty/invalid prompts
-  - [x] Generate suggestions for unrecognized phrases
-  - [x] Provide meaningful error messages
-- [x] Utility Functions
-  - [x] Transform descriptions
-  - [x] Parameter ranges
-  - [x] Available transforms listing
-- [x] Global Interface
-  - [x] Singleton parser instance
-  - [x] Convenience functions
-- [x] Testing Requirements
-  - [x] Unit tests for all parsing scenarios
-  - [x] Parameter extraction tests
-  - [x] Error handling tests
-
-# Code Review Notes
-- FIXED: Converted all dataclass definitions to Pydantic models
-- ISSUE: parse_prompt() method is too complex (80+ lines)
-- ISSUE: Missing input validation for prompt length limits
-- ISSUE: No protection against ReDoS attacks in regex patterns
-- ISSUE: Global parser instance not thread-safe
-- TODO: Add proper input sanitization
-- TODO: Implement rate limiting protection
-- TODO: Add comprehensive logging context
 """
 
 from __future__ import annotations
@@ -86,9 +44,7 @@ class TransformType(str, Enum):
 class TransformConfig(BaseModel):
     """Configuration for a single transform."""
 
-    name: TransformType = Field(
-        ..., description="Name of the Albumentations transform"
-    )
+    name: TransformType = Field(..., description="Name of the Albumentations transform")
     parameters: dict[str, Any] = Field(
         default_factory=dict,
         description="Transform parameters",
@@ -110,9 +66,7 @@ class TransformConfig(BaseModel):
             "MotionBlur",
             "GaussianBlur",
         ]:
-            if "blur_limit" in v and (
-                v["blur_limit"] < 3 or v["blur_limit"] > 100
-            ):
+            if "blur_limit" in v and (v["blur_limit"] < 3 or v["blur_limit"] > 100):
                 raise ValueError("blur_limit must be between 3 and 100")
         return v
 
@@ -131,9 +85,7 @@ class ParseResult(BaseModel):
         le=1.0,
         description="Confidence score for parsing accuracy",
     )
-    warnings: list[str] = Field(
-        default_factory=list, description="Parsing warnings"
-    )
+    warnings: list[str] = Field(default_factory=list, description="Parsing warnings")
     suggestions: list[str] = Field(
         default_factory=list,
         description="Suggestions for improvement",
@@ -143,9 +95,7 @@ class ParseResult(BaseModel):
 class TransformConfig(BaseModel):
     """Configuration for a single transform."""
 
-    name: TransformType = Field(
-        ..., description="Name of the Albumentations transform"
-    )
+    name: TransformType = Field(..., description="Name of the Albumentations transform")
     parameters: dict[str, Any] = Field(
         default_factory=dict,
         description="Transform parameters",
@@ -167,9 +117,7 @@ class TransformConfig(BaseModel):
             "MotionBlur",
             "GaussianBlur",
         ]:
-            if "blur_limit" in v and (
-                v["blur_limit"] < 3 or v["blur_limit"] > 100
-            ):
+            if "blur_limit" in v and (v["blur_limit"] < 3 or v["blur_limit"] > 100):
                 raise ValueError("blur_limit must be between 3 and 100")
         return v
 
@@ -188,9 +136,7 @@ class ParseResult(BaseModel):
         le=1.0,
         description="Confidence score for parsing accuracy",
     )
-    warnings: list[str] = Field(
-        default_factory=list, description="Parsing warnings"
-    )
+    warnings: list[str] = Field(default_factory=list, description="Parsing warnings")
     suggestions: list[str] = Field(
         default_factory=list,
         description="Suggestions for improvement",
@@ -219,9 +165,7 @@ class PromptParser:
         self._compiled_patterns = {}
         for name, pattern in self._parameter_patterns.items():
             if isinstance(pattern, str):
-                self._compiled_patterns[name] = re.compile(
-                    pattern, re.IGNORECASE
-                )
+                self._compiled_patterns[name] = re.compile(pattern, re.IGNORECASE)
             else:
                 # Pattern is already compiled
                 self._compiled_patterns[name] = pattern
@@ -496,9 +440,7 @@ class PromptParser:
                 blur_value = float(match.group(1))
                 # Ensure odd number for blur_limit
                 blur_limit = (
-                    int(blur_value)
-                    if int(blur_value) % 2 == 1
-                    else int(blur_value) + 1
+                    int(blur_value) if int(blur_value) % 2 == 1 else int(blur_value) + 1
                 )
                 parameters["blur_limit"] = max(3, min(blur_limit, 99))
 
@@ -510,9 +452,7 @@ class PromptParser:
 
         elif transform_type == TransformType.RANDOM_BRIGHTNESS_CONTRAST:
             # Handle brightness parameters
-            brightness_match = self._parameter_patterns[
-                "brightness_amount"
-            ].search(
+            brightness_match = self._parameter_patterns["brightness_amount"].search(
                 phrase,
             )
             if brightness_match:
@@ -522,9 +462,7 @@ class PromptParser:
                 parameters["brightness_limit"] = max(0.1, min(brightness, 1.0))
 
             # Handle contrast parameters
-            contrast_match = self._parameter_patterns[
-                "contrast_amount"
-            ].search(phrase)
+            contrast_match = self._parameter_patterns["contrast_amount"].search(phrase)
             if contrast_match:
                 contrast = float(contrast_match.group(1))
                 if contrast > 1:
@@ -617,16 +555,12 @@ class PromptParser:
             ),
             TransformType.MOTION_BLUR: "Apply motion blur effect",
             TransformType.RANDOM_BRIGHTNESS_CONTRAST: "Randomly adjust image brightness and contrast",
-            TransformType.HUE_SATURATION_VALUE: (
-                "Adjust hue, saturation, and value"
-            ),
+            TransformType.HUE_SATURATION_VALUE: ("Adjust hue, saturation, and value"),
             TransformType.ROTATE: "Rotate image by specified angle",
             TransformType.HORIZONTAL_FLIP: "Flip image horizontally",
             TransformType.VERTICAL_FLIP: "Flip image vertically",
             TransformType.GAUSSIAN_NOISE: "Add gaussian noise to image",
-            TransformType.RANDOM_CROP: (
-                "Randomly crop image to specified size"
-            ),
+            TransformType.RANDOM_CROP: ("Randomly crop image to specified size"),
             TransformType.RANDOM_RESIZE_CROP: "Randomly crop and resize image",
             TransformType.NORMALIZE: "Normalize image pixel values",
             TransformType.CLAHE: (

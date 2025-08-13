@@ -31,12 +31,8 @@ class ProcessingResult(BaseModel):
 
     model_config = {"arbitrary_types_allowed": True}
 
-    success: bool = Field(
-        ..., description="Whether processing completed successfully"
-    )
-    augmented_image: Image.Image | None = Field(
-        None, description="Processed image"
-    )
+    success: bool = Field(..., description="Whether processing completed successfully")
+    augmented_image: Image.Image | None = Field(None, description="Processed image")
     applied_transforms: list[dict[str, Any]] = Field(
         default_factory=list,
         description="Successfully applied transforms",
@@ -49,12 +45,8 @@ class ProcessingResult(BaseModel):
         default_factory=dict,
         description="Processing metadata",
     )
-    execution_time: float = Field(
-        ..., ge=0, description="Processing time in seconds"
-    )
-    error_message: str | None = Field(
-        None, description="Error message if failed"
-    )
+    execution_time: float = Field(..., ge=0, description="Processing time in seconds")
+    error_message: str | None = Field(None, description="Error message if failed")
 
 
 class ImageProcessor:
@@ -133,16 +125,10 @@ class ImageProcessor:
             memory_manager = get_memory_recovery_manager()
 
             try:
-                with memory_manager.memory_recovery_context(
-                    "transform_pipeline"
-                ):
+                with memory_manager.memory_recovery_context("transform_pipeline"):
                     # Check memory limits before processing
-                    if not memory_manager.check_memory_limits(
-                        "transform_pipeline"
-                    ):
-                        logger.warning(
-                            "Memory limits exceeded, using original image"
-                        )
+                    if not memory_manager.check_memory_limits("transform_pipeline"):
+                        logger.warning("Memory limits exceeded, using original image")
                         execution_time = time.time() - start_time
                         return ProcessingResult(
                             success=True,
@@ -242,9 +228,7 @@ class ImageProcessor:
             Tuple of (pipeline, metadata) where pipeline may be None if no valid transforms
         """
         # Create cache key for pipeline caching (excluding seed for broader reuse)
-        cache_key = hash(
-            str(sorted(transforms, key=lambda x: x.get("name", "")))
-        )
+        cache_key = hash(str(sorted(transforms, key=lambda x: x.get("name", ""))))
 
         # Check pipeline cache first
         if cache_key in self._pipeline_cache:
@@ -352,9 +336,7 @@ class ImageProcessor:
             transform_class = getattr(A, transform_name)
 
             # Validate and clean parameters
-            clean_params = self._validate_parameters(
-                transform_name, parameters
-            )
+            clean_params = self._validate_parameters(transform_name, parameters)
 
             # Create transform instance
             transform = transform_class(**clean_params)
@@ -371,12 +353,10 @@ class ImageProcessor:
             from .recovery import recover_from_transform_failure
 
             try:
-                recovered_transform, recovery_strategy = (
-                    recover_from_transform_failure(
-                        transform_name,
-                        parameters,
-                        e,
-                    )
+                recovered_transform, recovery_strategy = recover_from_transform_failure(
+                    transform_name,
+                    parameters,
+                    e,
                 )
 
                 if recovered_transform:
@@ -453,10 +433,7 @@ class ImageProcessor:
         elif transform_name == "GaussNoise":
             if "var_limit" in clean_params:
                 var_limit = clean_params["var_limit"]
-                if (
-                    isinstance(var_limit, (tuple, list))
-                    and len(var_limit) == 2
-                ):
+                if isinstance(var_limit, (tuple, list)) and len(var_limit) == 2:
                     # Ensure noise variance is within valid range
                     min_var, max_var = var_limit
                     clean_params["var_limit"] = (

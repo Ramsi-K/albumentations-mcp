@@ -2,22 +2,20 @@
 
 import base64
 import io
+
 import pytest
 from PIL import Image
-import numpy as np
 
 from src.albumentations_mcp.validation import (
-    ValidationError,
     ImageValidationError,
     PromptValidationError,
     SecurityValidationError,
-    ResourceLimitError,
+    create_safe_fallback_image,
+    get_safe_default_parameters,
+    get_validation_config,
     validate_base64_image,
     validate_prompt,
     validate_transform_parameters,
-    get_validation_config,
-    create_safe_fallback_image,
-    get_safe_default_parameters,
 )
 
 
@@ -67,9 +65,7 @@ class TestImageValidation:
         """Test validation of corrupted Base64."""
         # Create valid Base64 then corrupt it more aggressively
         valid_b64 = self.create_test_image()
-        corrupted_b64 = (
-            valid_b64[:50] + "INVALID_CHARS_!@#$%^&*()" + valid_b64[80:]
-        )
+        corrupted_b64 = valid_b64[:50] + "INVALID_CHARS_!@#$%^&*()" + valid_b64[80:]
 
         result = validate_base64_image(corrupted_b64, strict=False)
 
@@ -101,9 +97,7 @@ class TestImageValidation:
         result = validate_base64_image(large_image_b64, strict=False)
 
         assert result["valid"] is False
-        assert (
-            "too large" in result["error"]
-        )  # Could be security or image size limit
+        assert "too large" in result["error"]  # Could be security or image size limit
 
     def test_large_file_size(self):
         """Test validation of large file size."""
@@ -114,9 +108,7 @@ class TestImageValidation:
         result = validate_base64_image(large_b64, strict=False)
 
         assert result["valid"] is False
-        assert (
-            "too large" in result["error"]
-        )  # Could be security or file size limit
+        assert "too large" in result["error"]  # Could be security or file size limit
 
     def test_unsupported_format(self):
         """Test handling of unsupported image format."""
@@ -130,9 +122,7 @@ class TestImageValidation:
 
     def test_security_patterns(self):
         """Test detection of security patterns."""
-        malicious_b64 = base64.b64encode(
-            b"<script>alert('xss')</script>"
-        ).decode()
+        malicious_b64 = base64.b64encode(b"<script>alert('xss')</script>").decode()
 
         result = validate_base64_image(malicious_b64, strict=False)
 
@@ -162,9 +152,7 @@ class TestPromptValidation:
 
     def test_valid_prompt(self):
         """Test validation of valid prompt."""
-        result = validate_prompt(
-            "add blur and increase contrast", strict=False
-        )
+        result = validate_prompt("add blur and increase contrast", strict=False)
 
         assert result["valid"] is True
         assert result["error"] is None
@@ -231,11 +219,15 @@ class TestPromptValidation:
 
     def test_excessive_punctuation(self):
         """Test detection of excessive punctuation."""
-        punct_prompt = "!@#$%^&*()_+{}|:<>?[]\\;'\",./"
+        # Use punctuation that doesn't trigger security patterns
+        punct_prompt = "blur.... contrast.... brightness.... saturation.... hue.... rotate.... flip.... crop...."
         result = validate_prompt(punct_prompt, strict=False)
 
         # Should have warnings about punctuation ratio
         assert len(result["warnings"]) > 0
+        assert any(
+            "High punctuation ratio" in warning for warning in result["warnings"]
+        )
 
     def test_very_long_words(self):
         """Test handling of very long prompts."""
@@ -275,9 +267,7 @@ class TestParameterValidation:
 
     def test_non_dict_parameters(self):
         """Test validation with non-dict parameters."""
-        result = validate_transform_parameters(
-            "Blur", "not_a_dict", strict=False
-        )
+        result = validate_transform_parameters("Blur", "not_a_dict", strict=False)
 
         assert result["valid"] is False
         assert "must be a dictionary" in result["error"]
@@ -400,7 +390,7 @@ class TestEdgeCases:
             "blur 模糊 and contrast 对比度",  # Chinese characters
             "blur café naïve résumé",  # Accented characters
             "blur \u200b\u200c\u200d",  # Zero-width characters
-            "blur \U0001F600 emoji",  # Emoji
+            "blur \U0001f600 emoji",  # Emoji
         ]
 
         for prompt in unicode_prompts:
@@ -413,14 +403,10 @@ class TestEdgeCases:
         # Test with parameters that could cause memory issues
         large_params = {
             "huge_list": list(range(1000000)),  # Very large list
-            "nested_data": {
-                "level1": {"level2": {"level3": list(range(1000))}}
-            },
+            "nested_data": {"level1": {"level2": {"level3": list(range(1000))}}},
         }
 
-        result = validate_transform_parameters(
-            "Test", large_params, strict=False
-        )
+        result = validate_transform_parameters("Test", large_params, strict=False)
 
         # Should filter out problematic parameters
         assert result["valid"] is True

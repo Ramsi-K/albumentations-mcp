@@ -4,7 +4,6 @@ This module provides minimal seed management for session-level reproducibility
 without reimplementing Albumentations' native seeding functionality.
 """
 
-
 # Global session seed storage
 _global_seed: int | None = None
 
@@ -45,7 +44,8 @@ def get_effective_seed(transform_seed: int | None) -> int | None:
 
 
 def get_seed_metadata(
-    effective_seed: int | None, transform_seed: int | None,
+    effective_seed: int | None,
+    transform_seed: int | None,
 ) -> dict:
     """Get seed metadata for tracking and reproducibility.
 
