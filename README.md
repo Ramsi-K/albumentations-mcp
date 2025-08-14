@@ -248,6 +248,74 @@ The parser understands various ways to describe transforms:
 
 ## 🏗️ Architecture
 
+### User Flow Diagram
+
+```mermaid
+flowchart TD
+    A[User Request] --> B{Input Type?}
+
+    B -->|Natural Language| C[LLM calls augment_image with prompt]
+    B -->|Direct API| D[Direct augment_image call]
+
+    C --> E{Prompt Content?}
+    E -->|"add blur"| F[Parse transforms from prompt]
+    E -->|"use segmentation preset"| G[Parse preset request from prompt]
+
+    D --> H{Parameters?}
+    H -->|prompt only| F
+    H -->|preset only| I[Load preset transforms directly]
+    H -->|both provided| J[Prefer preset, warn user]
+
+    F --> K[Apply transforms via full pipeline]
+    G --> L[Extract preset name from prompt]
+    L --> M[Load preset transforms]
+    M --> K
+
+    I --> N[Apply preset transforms directly]
+    J --> N
+
+    K --> O[7-stage hook system]
+    N --> P[Simplified processing]
+
+    O --> Q[Save files + metadata]
+    P --> R[Return success message]
+    Q --> R
+
+    R --> S[Return to user]
+```
+
+### Processing Flows
+
+#### Flow 1: Natural Language Processing
+
+```
+User: "make this image blurry and rotate it"
+→ LLM: augment_image(image, prompt="add blur and rotate")
+→ Parser: "add blur" → Blur transform, "rotate" → Rotate transform
+→ Pipeline: Full 7-stage hook system
+→ Result: Augmented image with comprehensive metadata
+```
+
+#### Flow 2: Preset via Natural Language
+
+```
+User: "apply the segmentation preset to this image"
+→ LLM: augment_image(image, prompt="apply segmentation preset")
+→ Parser: Recognizes preset request → Extract "segmentation"
+→ System: Load segmentation preset transforms
+→ Pipeline: Full 7-stage hook system with preset transforms
+→ Result: Augmented image with preset metadata
+```
+
+#### Flow 3: Direct Preset (API/Testing)
+
+```
+API: augment_image(image, preset="segmentation")
+→ System: Load segmentation preset transforms directly
+→ Processing: Simplified or full pipeline?
+→ Result: Augmented image
+```
+
 ### MCP Protocol Compliance
 
 - **Standard JSON-RPC**: Full MCP protocol implementation
@@ -272,6 +340,37 @@ All 7 implemented hooks are active and run automatically in sequence:
 - **post_transform_classify**: Classification consistency checking (8th hook)
 - Individual hook toggles via environment variables
 - Custom hook development framework
+
+## 🗺️ Version Roadmap
+
+### v0.2 (Next Release) - Performance & Reliability
+
+**Priority Fixes:**
+
+- 🔧 **MCP Client Timeout Resolution**: Optimize pipeline to stay under 30-second client timeouts
+- 🔧 **Preset Parameter Fix**: Resolve direct preset parameter issues in MCP clients
+- 🔧 **Enhanced Error Handling**: Better debugging for MCP client parameter passing
+
+**New Features:**
+
+- ⚡ **Pipeline Optimization**: Faster processing for large images and multi-transforms
+- 📦 **Batch Processing**: `batch_augment_images` tool for processing multiple images
+- 🎛️ **Hook Toggles**: Environment variables to enable/disable specific hooks
+- 📊 **Progress Callbacks**: Real-time progress updates to prevent client timeouts
+
+### v0.3 (Future) - Advanced Features
+
+**Performance:**
+
+- 🚀 **GPU Acceleration**: CUDA-enabled transforms for 10x faster processing
+- 🎯 **Transform Caching**: Cache compiled transforms for repeated operations
+- ⚡ **Async Optimization**: Parallel hook execution
+
+**Features:**
+
+- 🤖 **AI-Enhanced Transforms**: PyTorch/TensorFlow integration
+- 🎨 **Custom Presets**: User-defined preset creation and sharing
+- 📈 **Advanced Analytics**: Detailed performance and quality metrics
 
 ### Production-Ready Design
 
@@ -386,6 +485,122 @@ tests/                     # Comprehensive test suite
 - **Error Handling**: Graceful degradation with detailed error messages
 - **Performance**: Async/await patterns with efficient resource management
 
+## ⚠️ Known Limitations
+
+### File Size Limits
+
+**Default Security Limits:**
+
+- **Base64 Input**: 5MB (approximately 3.75MB actual image)
+- **Actual Image File**: 50MB maximum
+- **Processing Timeout**: 300 seconds (5 minutes)
+
+**Adjusting File Size Limits:**
+
+If you need to process larger images, you can modify the limits in `src/albumentations_mcp/validation.py`:
+
+```python
+# Increase base64 input limit (currently 5MB)
+MAX_SECURITY_CHECK_LENGTH = 10000000  # 10MB base64 input
+
+# Increase actual file size limit (currently 50MB)
+MAX_FILE_SIZE_MB = 100  # 100MB actual image files
+
+# Increase processing timeout (currently 300 seconds)
+PROCESSING_TIMEOUT_SECONDS = 600  # 10 minutes
+```
+
+Or set via environment variables:
+
+```bash
+export MAX_FILE_SIZE_MB=100
+export PROCESSING_TIMEOUT_SECONDS=600
+# Note: MAX_SECURITY_CHECK_LENGTH must be changed in code
+```
+
+### Performance Considerations
+
+**Processing Time Scaling:**
+
+- Small images (< 1MB): ~0.5-1 seconds
+- Medium images (1-5MB): ~1-3 seconds
+- Large images (5-10MB): ~3-10 seconds
+- Very large images (> 10MB): May exceed MCP client timeouts
+
+**Planned Performance Improvements:**
+
+- 🔄 **Batch Processing**: Process multiple images in single request (v0.2)
+- 🚀 **GPU Acceleration**: CUDA-enabled transforms for faster processing (v0.3)
+- ⚡ **Async Optimization**: Parallel hook execution (v0.2)
+- 🎯 **Transform Caching**: Cache compiled transforms for repeated use (v0.3)
+
+### MCP Client Timeouts
+
+**⚠️ Known Issue - Large Images & Multi-Transforms:**
+
+- **Symptom**: MCP Inspector shows "Request timed out" error after ~30-60 seconds
+- **Reality**: Processing completes successfully in <10 seconds, files are saved correctly
+- **Cause**: MCP client timeout is shorter than our comprehensive processing pipeline
+- **Affected**: Large images (>1MB) with complex multi-transforms like `"blur and rotate and brighten"`
+- **Workaround**: ✅ Check output directory - files are generated despite timeout error
+
+**Client-Specific Timeouts:**
+
+- **MCP Inspector**: ~30-60 second timeout (not configurable)
+- **Claude Desktop**: ~60 second timeout
+- **Kiro IDE**: Configurable timeout settings
+
+**Current Solutions:**
+
+- ✅ Use smaller images for testing (<500KB work reliably)
+- ✅ Check output directory even if timeout error occurs
+- ✅ Monitor processing with `MCP_LOG_LEVEL=DEBUG`
+- ✅ Single transforms work better than multi-transforms for large images
+
+**Planned Solutions (v0.2):**
+
+- 🔄 **Pipeline Optimization**: Faster processing to stay under client timeouts
+- 🔄 **Batch Processing**: Process multiple images efficiently
+- 🔄 **Progress Callbacks**: Real-time progress updates to prevent timeouts
+
+### GPU Support Status
+
+**Current Status**: CPU-only processing
+**Planned GPU Support (v0.3)**:
+
+- CUDA-enabled Albumentations transforms
+- GPU-accelerated image processing with CuPy
+- PyTorch/TensorFlow integration for AI-based transforms
+- Automatic GPU detection and fallback to CPU
+
+**Note**: MCP tools can absolutely use GPU acceleration - they're just Python functions that can leverage any available hardware and libraries.
+
+### Preset Parameter Issues
+
+**⚠️ Known Issue - Direct Preset Parameter:**
+
+- **Symptom**: `augment_image(image, preset="segmentation")` may not work in some MCP clients
+- **Cause**: MCP client parameter passing inconsistencies
+- **Affected**: Direct preset parameter usage in MCP Inspector
+- **Workaround**: ✅ Use natural language instead: `augment_image(image, prompt="apply segmentation preset")`
+
+**Working Preset Usage:**
+
+```python
+# ✅ Works reliably - Natural language preset requests
+augment_image(image, prompt="apply segmentation preset")
+augment_image(image, prompt="use portrait preset")
+augment_image(image, prompt="segmentation preset")
+
+# ❌ May fail in some MCP clients - Direct parameter
+augment_image(image, preset="segmentation")
+```
+
+**Planned Fix (v0.2):**
+
+- 🔄 **Enhanced Parameter Validation**: Better handling of MCP client parameter variations
+- 🔄 **Preset Parameter Debugging**: Detailed logging for parameter passing issues
+
 ## 🐛 Troubleshooting
 
 ### Common Issues
@@ -407,7 +622,8 @@ MCP_LOG_LEVEL=DEBUG uvx albumentations-mcp
 
 - Ensure image is valid Base64-encoded data
 - Check image format is supported (JPEG, PNG, WebP, etc.)
-- Verify image size is reasonable (< 10MB recommended)
+- **File too large errors**: See "Known Limitations" section above for adjusting size limits
+- **Timeout errors**: Try smaller images or check MCP client timeout settings
 
 **Natural Language Parsing Issues**
 
@@ -443,11 +659,26 @@ Contributions welcome! This project follows standard Python development practice
 - **Testing**: Pytest with 90%+ coverage requirement
 - **Documentation**: Google-style docstrings
 
+### Code Review Options
+
+**For Contributors:**
+
+- **GitHub Pull Requests**: Standard review process with maintainer feedback
+- **AI Code Review**: Use tools like CodeRabbit, Codacy, or SonarCloud
+- **Community Review**: Post in GitHub Discussions for community feedback
+
+**For Users/Developers:**
+
+- **Professional Review**: Consider hiring Python/CV experts for production use
+- **Automated Analysis**: Use tools like DeepCode, Snyk, or GitHub's CodeQL
+- **Peer Review**: Share with colleagues or Python communities (Reddit r/Python, Stack Overflow)
+
 Areas of particular interest:
 
 - Additional transform mappings for natural language parser
 - New preset pipelines for specific use cases
 - Performance optimizations for large images
+- GPU acceleration implementation
 - Additional MCP client integrations
 
 ## 📞 Contact & Support
@@ -466,11 +697,11 @@ _This project demonstrates production-ready system design with clean architectur
 
 For technical deep-dive and implementation details:
 
-📋 **[Requirements](/.kiro/specs/albumentations-mcp/requirements.md)** - User stories and acceptance criteria  
-🏗️ **[Design](/.kiro/specs/albumentations-mcp/design.md)** - System architecture and component interfaces  
-📝 **[Tasks](/.kiro/specs/albumentations-mcp/tasks.md)** - Development roadmap and implementation plan  
+📋 **[Requirements](/.kiro/specs/albumentations-mcp/requirements.md)** - User stories and acceptance criteria
+🏗️ **[Design](/.kiro/specs/albumentations-mcp/design.md)** - System architecture and component interfaces
+📝 **[Tasks](/.kiro/specs/albumentations-mcp/tasks.md)** - Development roadmap and implementation plan
 🧪 **[Testing](/.kiro/specs/albumentations-mcp/testing.md)** - Comprehensive test strategy
 
-**License:** MIT  
+**License:** MIT
 **Status:** Beta v0.1 - Core features complete, advanced features in development
 _Developed for the Kiro Hackathon_

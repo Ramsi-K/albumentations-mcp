@@ -22,7 +22,6 @@ from PIL import Image
 
 from ..pipeline import parse_prompt_with_hooks
 from ..presets import get_available_presets, get_preset, preset_to_transforms
-from ..processor import get_processor
 
 
 def setup_logging(verbose: bool = False) -> None:
@@ -152,9 +151,7 @@ async def demo_augment_image(
             print(f"✓ Parsed prompt in {parse_time:.3f}s")
         print(f"  Found {len(parse_result['transforms'])} transforms:")
         for i, transform in enumerate(parse_result["transforms"], 1):
-            print(
-                f"    {i}. {transform['name']} - {transform.get('parameters', {})}"
-            )
+            print(f"    {i}. {transform['name']} - {transform.get('parameters', {})}")
 
         # Apply transforms using full hook pipeline
         print("🎨 Applying transforms...")
@@ -180,7 +177,7 @@ async def demo_augment_image(
 
         if not pipeline_result["success"]:
             print(
-                f"✗ Failed to process image: {pipeline_result.get('message', 'Unknown error')}"
+                f"✗ Failed to process image: {pipeline_result.get('message', 'Unknown error')}",
             )
             return False
 
@@ -208,9 +205,7 @@ async def demo_augment_image(
 
         # Show processing statistics
         if verbose:
-            print(
-                f"  Applied transforms: {len(processing_result.applied_transforms)}"
-            )
+            print(f"  Applied transforms: {len(processing_result.applied_transforms)}")
             if processing_result.skipped_transforms:
                 print(
                     f"  Skipped transforms: {len(processing_result.skipped_transforms)}",
@@ -229,15 +224,11 @@ async def demo_augment_image(
 
         if file_paths:
             if "augmented_image" in file_paths:
-                print(
-                    f"✓ Saved augmented image to: {file_paths['augmented_image']}"
-                )
+                print(f"✓ Saved augmented image to: {file_paths['augmented_image']}")
             if "metadata" in file_paths and verbose:
                 print(f"✓ Saved metadata to: {file_paths['metadata']}")
             if "processing_log" in file_paths and verbose:
-                print(
-                    f"✓ Saved processing log to: {file_paths['processing_log']}"
-                )
+                print(f"✓ Saved processing log to: {file_paths['processing_log']}")
         else:
             # Fallback: save manually if hooks didn't save files
             input_name = Path(image_path).stem
@@ -280,12 +271,8 @@ def create_example_images(examples_dir: str = "examples") -> None:
         draw = ImageDraw.Draw(image)
 
         # Draw some shapes for testing
-        draw.rectangle(
-            [50, 50, 150, 150], fill="red", outline="black", width=2
-        )
-        draw.ellipse(
-            [200, 50, 300, 150], fill="blue", outline="black", width=2
-        )
+        draw.rectangle([50, 50, 150, 150], fill="red", outline="black", width=2)
+        draw.ellipse([200, 50, 300, 150], fill="blue", outline="black", width=2)
         draw.polygon(
             [(75, 200), (125, 175), (175, 200), (150, 250), (100, 250)],
             fill="green",
@@ -315,9 +302,7 @@ def create_example_images(examples_dir: str = "examples") -> None:
         cat_draw = ImageDraw.Draw(cat_image)
 
         # Cat head (circle)
-        cat_draw.ellipse(
-            [75, 75, 225, 225], fill="orange", outline="black", width=2
-        )
+        cat_draw.ellipse([75, 75, 225, 225], fill="orange", outline="black", width=2)
 
         # Cat ears (triangles)
         cat_draw.polygon(

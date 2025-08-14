@@ -39,14 +39,13 @@ class TransformType(str, Enum):
     RANDOM_RESIZE_CROP = "RandomResizedCrop"
     NORMALIZE = "Normalize"
     CLAHE = "CLAHE"
+    TO_GRAY = "ToGray"
 
 
 class TransformConfig(BaseModel):
     """Configuration for a single transform."""
 
-    name: TransformType = Field(
-        ..., description="Name of the Albumentations transform"
-    )
+    name: TransformType = Field(..., description="Name of the Albumentations transform")
     parameters: dict[str, Any] = Field(
         default_factory=dict,
         description="Transform parameters",
@@ -68,9 +67,7 @@ class TransformConfig(BaseModel):
             "MotionBlur",
             "GaussianBlur",
         ]:
-            if "blur_limit" in v and (
-                v["blur_limit"] < 3 or v["blur_limit"] > 100
-            ):
+            if "blur_limit" in v and (v["blur_limit"] < 3 or v["blur_limit"] > 100):
                 raise ValueError("blur_limit must be between 3 and 100")
         return v
 
@@ -89,66 +86,7 @@ class ParseResult(BaseModel):
         le=1.0,
         description="Confidence score for parsing accuracy",
     )
-    warnings: list[str] = Field(
-        default_factory=list, description="Parsing warnings"
-    )
-    suggestions: list[str] = Field(
-        default_factory=list,
-        description="Suggestions for improvement",
-    )
-
-
-class TransformConfig(BaseModel):
-    """Configuration for a single transform."""
-
-    name: TransformType = Field(
-        ..., description="Name of the Albumentations transform"
-    )
-    parameters: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Transform parameters",
-    )
-    probability: float = Field(
-        default=1.0,
-        ge=0.0,
-        le=1.0,
-        description="Probability of applying transform",
-    )
-
-    @field_validator("parameters")
-    @classmethod
-    def validate_parameters(cls, v, info):
-        """Validate parameters based on transform type."""
-        transform_name = info.data.get("name") if info.data else None
-        if transform_name and transform_name in [
-            "Blur",
-            "MotionBlur",
-            "GaussianBlur",
-        ]:
-            if "blur_limit" in v and (
-                v["blur_limit"] < 3 or v["blur_limit"] > 100
-            ):
-                raise ValueError("blur_limit must be between 3 and 100")
-        return v
-
-
-class ParseResult(BaseModel):
-    """Result of parsing a natural language prompt."""
-
-    transforms: list[TransformConfig] = Field(
-        ...,
-        description="List of parsed transform configurations",
-    )
-    original_prompt: str = Field(..., description="Original input prompt")
-    confidence: float = Field(
-        ...,
-        ge=0.0,
-        le=1.0,
-        description="Confidence score for parsing accuracy",
-    )
-    warnings: list[str] = Field(
-        default_factory=list, description="Parsing warnings"
-    )
+    warnings: list[str] = Field(default_factory=list, description="Parsing warnings")
     suggestions: list[str] = Field(
         default_factory=list,
         description="Suggestions for improvement",
@@ -177,9 +115,7 @@ class PromptParser:
         self._compiled_patterns = {}
         for name, pattern in self._parameter_patterns.items():
             if isinstance(pattern, str):
-                self._compiled_patterns[name] = re.compile(
-                    pattern, re.IGNORECASE
-                )
+                self._compiled_patterns[name] = re.compile(pattern, re.IGNORECASE)
             else:
                 # Pattern is already compiled
                 self._compiled_patterns[name] = pattern
@@ -286,6 +222,7 @@ class PromptParser:
                 "tile_grid_size": (8, 8),
                 "p": 1.0,
             },
+            TransformType.TO_GRAY: {"p": 1.0},
         }
 
     def _build_parameter_patterns(self) -> dict[str, re.Pattern]:
@@ -316,6 +253,38 @@ class PromptParser:
                 re.IGNORECASE,
             ),
         }
+
+    def _detect_preset_request(self, prompt: str) -> str | None:
+        """Detect if prompt is requesting a preset and return preset name.
+
+        Args:
+            prompt: Lowercase prompt to analyze
+
+        Returns:
+            Preset name if detected, None otherwise
+        """
+        # Preset detection patterns
+        preset_patterns = [
+            r"(?:apply|use|run)\s+(?:the\s+)?(\w+)\s+preset",
+            r"(\w+)\s+preset",
+            r"preset\s+(\w+)",
+            r"apply\s+(\w+)",
+        ]
+
+        # Available presets
+        available_presets = ["segmentation", "portrait", "lowlight"]
+
+        for pattern in preset_patterns:
+            import re
+
+            match = re.search(pattern, prompt)
+            if match:
+                preset_name = match.group(1).lower()
+                if preset_name in available_presets:
+                    logger.info(f"Detected preset request: '{preset_name}'")
+                    return preset_name
+
+        return None
 
     def parse_prompt(self, prompt: str) -> ParseResult:
         """Parse natural language prompt into transform specifications.
@@ -348,6 +317,18 @@ class PromptParser:
         prompt = sanitized_prompt.lower()
 
         logger.debug(f"Parsing prompt: '{prompt}'")
+
+        # Check if this is a preset request first
+        preset_name = self._detect_preset_request(prompt)
+        if preset_name:
+            # Return a special result indicating preset request
+            return ParseResult(
+                transforms=[],  # Empty transforms, will be handled by server
+                original_prompt=prompt,
+                confidence=1.0,
+                warnings=[f"Preset request detected: {preset_name}"],
+                suggestions=[f"Using preset: {preset_name}"],
+            )
 
         transforms = []
         warnings = []
@@ -467,9 +448,7 @@ class PromptParser:
                 blur_value = float(match.group(1))
                 # Ensure odd number for blur_limit
                 blur_limit = (
-                    int(blur_value)
-                    if int(blur_value) % 2 == 1
-                    else int(blur_value) + 1
+                    int(blur_value) if int(blur_value) % 2 == 1 else int(blur_value) + 1
                 )
                 parameters["blur_limit"] = max(3, min(blur_limit, 99))
 
@@ -481,9 +460,7 @@ class PromptParser:
 
         elif transform_type == TransformType.RANDOM_BRIGHTNESS_CONTRAST:
             # Handle brightness parameters
-            brightness_match = self._parameter_patterns[
-                "brightness_amount"
-            ].search(
+            brightness_match = self._parameter_patterns["brightness_amount"].search(
                 phrase,
             )
             if brightness_match:
@@ -493,9 +470,7 @@ class PromptParser:
                 parameters["brightness_limit"] = max(0.1, min(brightness, 1.0))
 
             # Handle contrast parameters
-            contrast_match = self._parameter_patterns[
-                "contrast_amount"
-            ].search(phrase)
+            contrast_match = self._parameter_patterns["contrast_amount"].search(phrase)
             if contrast_match:
                 contrast = float(contrast_match.group(1))
                 if contrast > 1:
@@ -563,19 +538,33 @@ class PromptParser:
         result = {}
 
         for transform_type in TransformType:
-            # Get example phrases for this transform
-            example_phrases = [
-                phrase
-                for phrase, t_type in self._transform_mappings.items()
-                if t_type == transform_type
-            ]
+            try:
+                # Get example phrases for this transform
+                example_phrases = [
+                    phrase
+                    for phrase, t_type in self._transform_mappings.items()
+                    if t_type == transform_type
+                ]
 
-            result[transform_type.value] = {
-                "description": self._get_transform_description(transform_type),
-                "example_phrases": example_phrases[:3],  # Limit examples
-                "default_parameters": self._default_parameters[transform_type],
-                "parameter_ranges": self._get_parameter_ranges(transform_type),
-            }
+                # Ensure all required data exists for this transform
+                description = self._get_transform_description(transform_type)
+                default_params = self._default_parameters.get(
+                    transform_type,
+                    {"p": 1.0},
+                )
+                param_ranges = self._get_parameter_ranges(transform_type)
+
+                result[transform_type.value] = {
+                    "description": description,
+                    "example_phrases": example_phrases[:3],  # Limit examples
+                    "default_parameters": default_params,
+                    "parameter_ranges": param_ranges,
+                }
+            except Exception as e:
+                logger.warning(
+                    f"Skipping transform {transform_type.value} due to error: {e}",
+                )
+                continue
 
         return result
 
@@ -588,21 +577,18 @@ class PromptParser:
             ),
             TransformType.MOTION_BLUR: "Apply motion blur effect",
             TransformType.RANDOM_BRIGHTNESS_CONTRAST: "Randomly adjust image brightness and contrast",
-            TransformType.HUE_SATURATION_VALUE: (
-                "Adjust hue, saturation, and value"
-            ),
+            TransformType.HUE_SATURATION_VALUE: ("Adjust hue, saturation, and value"),
             TransformType.ROTATE: "Rotate image by specified angle",
             TransformType.HORIZONTAL_FLIP: "Flip image horizontally",
             TransformType.VERTICAL_FLIP: "Flip image vertically",
             TransformType.GAUSSIAN_NOISE: "Add gaussian noise to image",
-            TransformType.RANDOM_CROP: (
-                "Randomly crop image to specified size"
-            ),
+            TransformType.RANDOM_CROP: ("Randomly crop image to specified size"),
             TransformType.RANDOM_RESIZE_CROP: "Randomly crop and resize image",
             TransformType.NORMALIZE: "Normalize image pixel values",
             TransformType.CLAHE: (
                 "Apply Contrast Limited Adaptive Histogram Equalization"
             ),
+            TransformType.TO_GRAY: "Convert image to grayscale",
         }
         return descriptions.get(
             transform_type,
@@ -644,6 +630,7 @@ class PromptParser:
                 "clip_limit": "1.0-40.0",
                 "tile_grid_size": "(2,2)-(16,16)",
             },
+            TransformType.TO_GRAY: {"p": "0.0-1.0"},
         }
         return ranges.get(transform_type, {})
 

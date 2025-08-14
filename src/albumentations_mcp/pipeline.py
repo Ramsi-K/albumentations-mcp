@@ -47,9 +47,7 @@ class AugmentationPipeline:
         register_hook(HookStage.POST_TRANSFORM, PostTransformHook())
 
         # Register post-transform verification hook
-        register_hook(
-            HookStage.POST_TRANSFORM_VERIFY, post_transform_verify_hook
-        )
+        register_hook(HookStage.POST_TRANSFORM_VERIFY, post_transform_verify_hook)
 
         # Register pre-save hook
         register_hook(HookStage.PRE_SAVE, PreSaveHook())
@@ -68,6 +66,7 @@ class AugmentationPipeline:
     ) -> dict[str, Any]:
         """Process image using the complete 7-stage hook system."""
         import uuid
+
         from .image_utils import base64_to_pil, pil_to_base64
         from .processor import get_processor
 
@@ -89,17 +88,13 @@ class AugmentationPipeline:
             },
         )
 
-        logger.info(
-            f"Starting full image processing pipeline for session {session_id}"
-        )
+        logger.info(f"Starting full image processing pipeline for session {session_id}")
 
         try:
             # Stage 1: Pre-MCP processing
             result = await execute_stage(HookStage.PRE_MCP, context)
             if not result.success or not result.should_continue:
-                return self._format_error_response(
-                    context, "Pre-MCP stage failed"
-                )
+                return self._format_error_response(context, "Pre-MCP stage failed")
             context = result.context
 
             # Stage 2: Parse the prompt (core functionality)
@@ -118,7 +113,7 @@ class AugmentationPipeline:
                         "parser_confidence": parse_result.confidence,
                         "parser_warnings": parse_result.warnings,
                         "parser_suggestions": parse_result.suggestions,
-                    }
+                    },
                 )
                 context.warnings.extend(parse_result.warnings)
             except PromptParsingError as e:
@@ -137,7 +132,8 @@ class AugmentationPipeline:
             result = await execute_stage(HookStage.PRE_TRANSFORM, context)
             if not result.success or not result.should_continue:
                 return self._format_error_response(
-                    context, "Pre-transform validation failed"
+                    context,
+                    "Pre-transform validation failed",
                 )
             context = result.context
 
@@ -150,13 +146,15 @@ class AugmentationPipeline:
             )
 
             if not processing_result.success:
-                error_msg = f"Image processing failed: {processing_result.error_message}"
+                error_msg = (
+                    f"Image processing failed: {processing_result.error_message}"
+                )
                 context.errors.append(error_msg)
                 return self._format_error_response(context, error_msg)
 
             # Add processing results to context
             context.augmented_image = pil_to_base64(
-                processing_result.augmented_image
+                processing_result.augmented_image,
             ).encode()
             context.metadata.update(
                 {
@@ -168,7 +166,7 @@ class AugmentationPipeline:
                     },
                     "original_image": image,
                     "augmented_image": processing_result.augmented_image,
-                }
+                },
             )
 
             # Stage 6: Post-transform metadata generation
@@ -178,9 +176,7 @@ class AugmentationPipeline:
             context = result.context
 
             # Stage 7: Visual verification
-            result = await execute_stage(
-                HookStage.POST_TRANSFORM_VERIFY, context
-            )
+            result = await execute_stage(HookStage.POST_TRANSFORM_VERIFY, context)
             if not result.success:
                 logger.warning("Visual verification failed, but continuing")
             context = result.context
@@ -201,16 +197,14 @@ class AugmentationPipeline:
             response = {
                 "success": True,
                 "session_id": context.session_id,
-                "augmented_image": pil_to_base64(
-                    processing_result.augmented_image
-                ),
+                "augmented_image": pil_to_base64(processing_result.augmented_image),
                 "metadata": context.metadata,
                 "warnings": context.warnings,
                 "errors": context.errors,
                 "message": f"Successfully processed image with {len(context.parsed_transforms or [])} transforms",
             }
             logger.info(
-                f"Full pipeline completed successfully for session {session_id}"
+                f"Full pipeline completed successfully for session {session_id}",
             )
             return response
 
@@ -239,17 +233,13 @@ class AugmentationPipeline:
             },
         )
 
-        logger.info(
-            f"Starting prompt parsing pipeline for session {session_id}"
-        )
+        logger.info(f"Starting prompt parsing pipeline for session {session_id}")
 
         try:
             # Stage 1: Pre-MCP processing
             result = await execute_stage(HookStage.PRE_MCP, context)
             if not result.success or not result.should_continue:
-                return self._format_error_response(
-                    context, "Pre-MCP stage failed"
-                )
+                return self._format_error_response(context, "Pre-MCP stage failed")
             context = result.context
 
             # Stage 2: Parse the prompt (core functionality)
@@ -290,9 +280,7 @@ class AugmentationPipeline:
 
             # Format successful response
             response = self._format_success_response(context)
-            logger.info(
-                f"Pipeline completed successfully for session {session_id}"
-            )
+            logger.info(f"Pipeline completed successfully for session {session_id}")
             return response
 
         except Exception as e:
@@ -367,5 +355,8 @@ async def process_image_with_hooks(
 ) -> dict[str, Any]:
     """Convenience function to process image with full hook pipeline."""
     return await get_pipeline().process_image_with_hooks(
-        image_b64, prompt, seed, session_id
+        image_b64,
+        prompt,
+        seed,
+        session_id,
     )

@@ -65,17 +65,12 @@ class PostSaveHook(BaseHook):
             logger.error(error_msg, exc_info=True)
             return HookResult(success=False, error=error_msg, context=context)
 
-    def _save_files(
-        self, context: HookContext, file_paths: dict[str, str]
-    ) -> None:
+    def _save_files(self, context: HookContext, file_paths: dict[str, str]) -> None:
         """Actually save the files to disk."""
         import json
-        from pathlib import Path
 
         # Save augmented image
-        if "augmented_image" in file_paths and hasattr(
-            context, "augmented_image"
-        ):
+        if "augmented_image" in file_paths and hasattr(context, "augmented_image"):
             try:
                 from ..image_utils import base64_to_pil
 
@@ -84,7 +79,7 @@ class PostSaveHook(BaseHook):
                     image = base64_to_pil(context.augmented_image.decode())
                     image.save(file_paths["augmented_image"])
                     logger.info(
-                        f"Saved augmented image: {file_paths['augmented_image']}"
+                        f"Saved augmented image: {file_paths['augmented_image']}",
                     )
             except Exception as e:
                 logger.error(f"Failed to save augmented image: {e}")
@@ -98,9 +93,7 @@ class PostSaveHook(BaseHook):
                     # Convert bytes to PIL and save
                     image = base64_to_pil(context.image_data.decode())
                     image.save(file_paths["original_image"])
-                    logger.info(
-                        f"Saved original image: {file_paths['original_image']}"
-                    )
+                    logger.info(f"Saved original image: {file_paths['original_image']}")
             except Exception as e:
                 logger.error(f"Failed to save original image: {e}")
 
@@ -129,9 +122,7 @@ class PostSaveHook(BaseHook):
             try:
                 with open(file_paths["visual_eval"], "w") as f:
                     f.write(context.metadata["verification_report_content"])
-                logger.info(
-                    f"Saved visual evaluation: {file_paths['visual_eval']}"
-                )
+                logger.info(f"Saved visual evaluation: {file_paths['visual_eval']}")
             except Exception as e:
                 logger.error(f"Failed to save visual evaluation: {e}")
 
@@ -142,14 +133,13 @@ class PostSaveHook(BaseHook):
                     "session_id": context.session_id,
                     "transforms": context.parsed_transforms,
                     "transformation_summary": context.metadata.get(
-                        "transformation_summary", {}
+                        "transformation_summary",
+                        {},
                     ),
                 }
                 with open(file_paths["transform_spec"], "w") as f:
                     json.dump(transform_spec, f, indent=2, default=str)
-                logger.info(
-                    f"Saved transform spec: {file_paths['transform_spec']}"
-                )
+                logger.info(f"Saved transform spec: {file_paths['transform_spec']}")
             except Exception as e:
                 logger.error(f"Failed to save transform spec: {e}")
 
@@ -158,18 +148,15 @@ class PostSaveHook(BaseHook):
             try:
                 quality_report = {
                     "session_id": context.session_id,
-                    "quality_metrics": context.metadata.get(
-                        "quality_metrics", {}
-                    ),
+                    "quality_metrics": context.metadata.get("quality_metrics", {}),
                     "processing_statistics": context.metadata.get(
-                        "processing_statistics", {}
+                        "processing_statistics",
+                        {},
                     ),
                 }
                 with open(file_paths["quality_report"], "w") as f:
                     json.dump(quality_report, f, indent=2, default=str)
-                logger.info(
-                    f"Saved quality report: {file_paths['quality_report']}"
-                )
+                logger.info(f"Saved quality report: {file_paths['quality_report']}")
             except Exception as e:
                 logger.error(f"Failed to save quality report: {e}")
 
@@ -194,9 +181,7 @@ Success: {context.metadata.get('processing_result', {}).get('success', False)}
 """
                 with open(file_paths["processing_log"], "w") as f:
                     f.write(log_content)
-                logger.info(
-                    f"Saved processing log: {file_paths['processing_log']}"
-                )
+                logger.info(f"Saved processing log: {file_paths['processing_log']}")
             except Exception as e:
                 logger.error(f"Failed to save processing log: {e}")
 
@@ -211,7 +196,7 @@ Success: {context.metadata.get('processing_result', {}).get('success', False)}
                 with open(file_paths["classification_report"], "w") as f:
                     json.dump(classification_report, f, indent=2, default=str)
                 logger.info(
-                    f"Saved classification report: {file_paths['classification_report']}"
+                    f"Saved classification report: {file_paths['classification_report']}",
                 )
             except Exception as e:
                 logger.error(f"Failed to save classification report: {e}")
@@ -475,9 +460,7 @@ Success: {context.metadata.get('processing_result', {}).get('success', False)}
                     if path_obj.exists():
                         file_validation["exists"] = True
                         file_validation["size"] = path_obj.stat().st_size
-                        validation_info["total_size"] += file_validation[
-                            "size"
-                        ]
+                        validation_info["total_size"] += file_validation["size"]
 
                         # Check if file is readable
                         if os.access(path_obj, os.R_OK):
@@ -611,9 +594,7 @@ Success: {context.metadata.get('processing_result', {}).get('success', False)}
                     manifest["output_files"][file_type] = {
                         "path": file_path,
                         "exists": path_obj.exists(),
-                        "size": (
-                            path_obj.stat().st_size if path_obj.exists() else 0
-                        ),
+                        "size": (path_obj.stat().st_size if path_obj.exists() else 0),
                     }
 
             # Add key metadata summaries

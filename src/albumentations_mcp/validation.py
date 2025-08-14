@@ -86,7 +86,9 @@ for pattern in SUSPICIOUS_PATTERNS:
         logger.warning(f"Skipping problematic regex pattern {pattern}: {e}")
 
 # Additional security constants
-MAX_SECURITY_CHECK_LENGTH = 100000  # Limit input length for security checks (100KB)
+MAX_SECURITY_CHECK_LENGTH = (
+    5000000  # Limit input length for security checks (5MB base64 = ~3.75MB image)
+)
 SECURITY_TIMEOUT_SECONDS = 1.0  # Timeout for regex operations
 
 # Exception classes are now imported from errors.py module

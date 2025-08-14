@@ -62,10 +62,13 @@ PRESET_DEFINITIONS = {
                 },
                 "probability": 0.6,
             },
+            # RandomScale not supported, using RandomResizedCrop instead
             {
-                "name": "RandomScale",
+                "name": "RandomResizedCrop",
                 "parameters": {
-                    "scale_limit": 0.1,
+                    "height": 224,
+                    "width": 224,
+                    "scale": (0.9, 1.1),
                     "p": 0.5,
                 },
                 "probability": 0.5,
@@ -115,11 +118,12 @@ PRESET_DEFINITIONS = {
                 },
                 "probability": 0.6,
             },
+            # Sharpen not supported, using CLAHE for enhancement instead
             {
-                "name": "Sharpen",
+                "name": "CLAHE",
                 "parameters": {
-                    "alpha": [0.2, 0.5],
-                    "lightness": [0.5, 1.0],
+                    "clip_limit": 3.0,
+                    "tile_grid_size": (4, 4),
                     "p": 0.5,
                 },
                 "probability": 0.5,
@@ -134,9 +138,9 @@ PRESET_DEFINITIONS = {
                 "probability": 0.4,
             },
             {
-                "name": "GaussNoise",
+                "name": "GaussianNoise",
                 "parameters": {
-                    "var_limit": [5.0, 15.0],
+                    "var_limit": (5.0, 15.0),
                     "p": 0.3,
                 },
                 "probability": 0.3,
@@ -186,25 +190,23 @@ PRESET_DEFINITIONS = {
                 },
                 "probability": 0.7,
             },
+            # Sharpen and UnsharpMask not supported, using additional CLAHE for enhancement
             {
-                "name": "Sharpen",
+                "name": "CLAHE",
                 "parameters": {
-                    "alpha": [0.3, 0.7],
-                    "lightness": [0.5, 1.0],
+                    "clip_limit": 6.0,
+                    "tile_grid_size": (6, 6),
                     "p": 0.6,
                 },
                 "probability": 0.6,
             },
             {
-                "name": "UnsharpMask",
+                "name": "GaussianNoise",
                 "parameters": {
-                    "blur_limit": [3, 7],
-                    "sigma_limit": [0.0, 0.0],
-                    "alpha": [0.2, 0.5],
-                    "threshold": 10,
-                    "p": 0.5,
+                    "var_limit": (3.0, 8.0),
+                    "p": 0.3,
                 },
-                "probability": 0.5,
+                "probability": 0.3,
             },
             {
                 "name": "ToGray",

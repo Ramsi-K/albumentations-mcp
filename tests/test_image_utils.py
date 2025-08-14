@@ -111,7 +111,8 @@ class TestBase64ToPil:
         base64_data, _ = self.create_test_image(size=large_size)
 
         with pytest.raises(
-            ImageConversionError, match="Unexpected error.*Image too large",
+            ImageConversionError,
+            match="Unexpected error.*Image too large",
         ):
             base64_to_pil(base64_data)
 

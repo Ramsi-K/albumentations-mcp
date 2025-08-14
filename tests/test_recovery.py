@@ -106,7 +106,6 @@ class TestTransformRecoveryManager:
                 return_value=None,
             ),
         ):
-
             error = ValueError("Unrecoverable error")
 
             transform, strategy = self.recovery_manager.recover_transform_failure(
@@ -203,7 +202,6 @@ class TestTransformRecoveryManager:
                 return_value=None,
             ),
         ):
-
             error = ValueError("Persistent error")
 
             transform, strategy = self.recovery_manager.recover_transform_failure(
