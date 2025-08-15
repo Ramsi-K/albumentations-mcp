@@ -17,7 +17,7 @@ __email__ = "support@albumentations-mcp.com"
 __description__ = "MCP-compliant image augmentation server using Albumentations"
 
 # Package exports
-from .image_utils import base64_to_pil, pil_to_base64
+from .image_conversions import base64_to_pil, pil_to_base64
 from .parser import get_available_transforms, parse_prompt, validate_prompt
 from .pipeline import get_pipeline, parse_prompt_with_hooks
 from .server import main

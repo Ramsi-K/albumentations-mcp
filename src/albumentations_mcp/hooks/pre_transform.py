@@ -7,7 +7,7 @@ parameters to provide warnings before processing begins.
 import logging
 from typing import Any
 
-from ..image_utils import base64_to_pil
+from ..image_conversions import base64_to_pil
 from . import BaseHook, HookContext, HookResult
 from .utils import (
     HIGH_BLUR_LIMIT,

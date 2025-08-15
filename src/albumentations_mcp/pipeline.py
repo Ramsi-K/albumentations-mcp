@@ -67,7 +67,7 @@ class AugmentationPipeline:
         """Process image using the complete 7-stage hook system."""
         import uuid
 
-        from .image_utils import base64_to_pil, pil_to_base64
+        from .image_conversions import base64_to_pil, pil_to_base64
         from .processor import get_processor
 
         if session_id is None:

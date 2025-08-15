@@ -7,18 +7,24 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from src.albumentations_mcp.image_utils import (
-    MAX_IMAGE_SIZE,
-    SUPPORTED_FORMATS,
+from src.albumentations_mcp.errors import (
     ImageConversionError,
     ImageValidationError,
+)
+from src.albumentations_mcp.utils.image_handler import (
+    MAX_IMAGE_SIZE,
+    SUPPORTED_FORMATS,
+)
+from src.albumentations_mcp.image_conversions import (
     base64_to_pil,
-    get_image_info,
-    get_supported_formats,
-    is_supported_format,
     numpy_to_pil,
     pil_to_base64,
     pil_to_numpy,
+)
+from src.albumentations_mcp.utils.image_handler import (
+    get_image_info,
+    get_supported_formats,
+    is_supported_format,
     validate_image,
 )
 

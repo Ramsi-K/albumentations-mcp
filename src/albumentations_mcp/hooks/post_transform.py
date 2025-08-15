@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
-from ..image_utils import base64_to_pil
+from ..image_conversions import base64_to_pil
 from . import BaseHook, HookContext, HookResult
 from .utils import (
     HIGH_COMPLEXITY_THRESHOLD,

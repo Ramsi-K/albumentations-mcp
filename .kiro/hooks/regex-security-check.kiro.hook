@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "Regex Security Check",
+  "description": "Check for dangerous regex patterns",
+  "version": "1",
+  "when": [
+    {
+      "type": "fileSaved",
+      "patterns": ["src/**/*.py"]
+    },
+    {
+      "type": "manual"
+    }
+  ],
+  "then": {
+    "type": "askAgent",
+    "prompt": "🚨 SECURITY CHECK: Code contains regex patterns. Review for ReDoS vulnerabilities: nested quantifiers like (\\w+)+, (.+)+, (.*)*. Check validation.py and parser.py especially. Ensure no catastrophic backtracking patterns."
+  }
+}

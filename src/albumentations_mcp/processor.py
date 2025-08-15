@@ -13,7 +13,7 @@ import albumentations as A
 from PIL import Image
 from pydantic import BaseModel, Field
 
-from .image_utils import (
+from .image_conversions import (
     numpy_to_pil,
     pil_to_numpy,
     validate_image,
@@ -87,7 +87,7 @@ class ImageProcessor:
             image_array = pil_to_numpy(image)
 
             # Get effective seed using simple seed manager
-            from .seed_manager import get_effective_seed, get_seed_metadata
+            from .utils.seed_utils import get_effective_seed, get_seed_metadata
 
             effective_seed = get_effective_seed(seed)
             seed_metadata = get_seed_metadata(effective_seed, seed)

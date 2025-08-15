@@ -67,6 +67,8 @@ def get_seed_metadata(
         "seed_source": (
             "transform"
             if transform_seed is not None
-            else "global" if global_seed is not None else "random"
+            else "global"
+            if global_seed is not None
+            else "random"
         ),
     }

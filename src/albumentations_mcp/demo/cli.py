@@ -161,7 +161,7 @@ async def demo_augment_image(
         start_time = time.time()
 
         # Convert image to base64 for pipeline
-        from ..image_utils import pil_to_base64
+        from ..image_conversions import pil_to_base64
         from ..pipeline import process_image_with_hooks
 
         image_b64 = pil_to_base64(image)
@@ -185,7 +185,7 @@ async def demo_augment_image(
 
         # Extract results from pipeline
         augmented_image_b64 = pipeline_result["augmented_image"]
-        from ..image_utils import base64_to_pil
+        from ..image_conversions import base64_to_pil
 
         processing_result = type(
             "ProcessingResult",

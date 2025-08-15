@@ -1,20 +1,12 @@
 {
   "enabled": true,
   "name": "Check Existing Implementation",
-  "description": "Before creating new functions or classes, check if similar implementations already exist and improve them instead of creating duplicates",
-  "version": "2",
+  "description": "Before creating new code, check for existing implementations",
+  "version": "3",
   "when": [
     {
       "type": "fileCreated",
-      "patterns": ["src/**/*.py", "tests/**/*.py", "*.py"]
-    },
-    {
-      "type": "fileEdited",
-      "patterns": ["src/**/*.py", "tests/**/*.py", "*.py"]
-    },
-    {
-      "type": "fileSaved",
-      "patterns": ["src/**/*.py", "tests/**/*.py", "*.py"]
+      "patterns": ["src/**/*.py"]
     },
     {
       "type": "manual"
@@ -22,6 +14,6 @@
   ],
   "then": {
     "type": "askAgent",
-    "prompt": "Before creating any new functions, classes, or implementations, first search through the existing codebase to identify if similar functionality already exists. If you find existing implementations that serve a similar purpose, work on improving, extending, or refactoring those instead of creating new ones. Focus on code reuse and avoiding duplication. Only create new implementations if no suitable existing code can be found or adapted."
+    "prompt": "🔍 IMPLEMENTATION CHECK: Before creating new functions or classes, search the existing codebase for similar functionality. If found, improve or extend existing code instead of creating duplicates. Focus on code reuse and avoiding duplication."
   }
 }

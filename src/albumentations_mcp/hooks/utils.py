@@ -77,25 +77,14 @@ def check_image_size_warnings(width: int, height: int) -> list[str]:
 
 
 def sanitize_filename(text: str, max_length: int = 30) -> str:
-    """Sanitize text for use in filename."""
-    if not text:
-        return "untitled"
+    """Sanitize text for use in filename - delegates to validation.py."""
+    from ..validation import sanitize_filename as _sanitize_filename
 
-    # Convert to lowercase and replace spaces with underscores
-    sanitized = text.lower().replace(" ", "_")
-
-    # Remove or replace problematic characters
-    sanitized = re.sub(r"[^\w\-_]", "", sanitized)
-
-    # Truncate if too long
-    if len(sanitized) > max_length:
-        sanitized = sanitized[:max_length]
-
-    # Ensure it doesn't start with a number or special character
-    if sanitized and not sanitized[0].isalpha():
-        sanitized = "prompt_" + sanitized
-
-    return sanitized or "untitled"
+    try:
+        return _sanitize_filename(text, max_length)
+    except Exception:
+        # Fallback for simple cases
+        return "untitled" if not text else text[:max_length]
 
 
 def categorize_transform(transform_name: str) -> str:

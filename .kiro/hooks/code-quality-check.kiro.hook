@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "Code Quality Check",
+  "description": "Run quality checks after code changes",
+  "version": "1",
+  "when": [
+    {
+      "type": "fileSaved",
+      "patterns": ["src/**/*.py"]
+    },
+    {
+      "type": "manual"
+    }
+  ],
+  "then": {
+    "type": "askAgent",
+    "prompt": "🔧 QUALITY CHECK: Code has been saved. Run quality checks: `uv run black src/ && uv run ruff check src/ --fix && uv run mypy src/`. Review any issues and fix them before proceeding."
+  }
+}

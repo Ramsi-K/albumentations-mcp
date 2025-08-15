@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "name": "Create Regex Security Analysis",
+  "description": "Create comprehensive regex security analysis document",
+  "version": "1",
+  "when": [
+    {
+      "type": "manual"
+    }
+  ],
+  "then": {
+    "type": "askAgent",
+    "prompt": "📊 REGEX ANALYSIS: Create a comprehensive regex security analysis document. Search all files for regex patterns, identify ReDoS vulnerabilities, document attack scenarios, and provide remediation recommendations. Save as 'regex_security_analysis.md' in the project root."
+  }
+}

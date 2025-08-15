@@ -184,7 +184,9 @@ def _sanitize_and_decode_base64(
 ) -> bytes | None:
     """Sanitize Base64 input and decode to bytes."""
     try:
-        clean_b64 = _sanitize_base64_input(image_b64)
+        from .utils.validation_utils import sanitize_base64_input
+
+        clean_b64 = sanitize_base64_input(image_b64)
         validation_result["sanitized_data"] = clean_b64
     except ImageValidationError as e:
         validation_result["error"] = str(e)
@@ -615,29 +617,7 @@ def validate_transform_parameters(
     return validation_result
 
 
-def _sanitize_base64_input(image_b64: str) -> str:
-    """Sanitize Base64 input string."""
-    # Remove data URL prefix if present
-    if image_b64.startswith("data:"):
-        if "," not in image_b64:
-            raise ImageValidationError("Invalid data URL format")
-        image_b64 = image_b64.split(",", 1)[1]
-
-    # Clean whitespace and validate
-    clean_b64 = re.sub(r"\s+", "", image_b64)  # Remove all whitespace
-
-    if not clean_b64:
-        raise ImageValidationError("Empty Base64 data after cleaning")
-
-    # Add padding if missing
-    missing_padding = len(clean_b64) % 4
-    if missing_padding:
-        clean_b64 += "=" * (4 - missing_padding)
-
-    return clean_b64
-
-
-# Duplicate function removed - using the first definition
+# Security validation functions
 
 
 def _validate_security(input_data: str) -> None:

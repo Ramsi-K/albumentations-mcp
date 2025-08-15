@@ -72,7 +72,7 @@ class PostSaveHook(BaseHook):
         # Save augmented image
         if "augmented_image" in file_paths and hasattr(context, "augmented_image"):
             try:
-                from ..image_utils import base64_to_pil
+                from ..image_conversions import base64_to_pil
 
                 if isinstance(context.augmented_image, bytes):
                     # Convert bytes to PIL and save
@@ -87,7 +87,7 @@ class PostSaveHook(BaseHook):
         # Save original image
         if "original_image" in file_paths and hasattr(context, "image_data"):
             try:
-                from ..image_utils import base64_to_pil
+                from ..image_conversions import base64_to_pil
 
                 if isinstance(context.image_data, bytes):
                     # Convert bytes to PIL and save

@@ -2,7 +2,7 @@
   "enabled": true,
   "name": "Test Hook",
   "description": "Simple test hook to verify hook system is working",
-  "version": "1",
+  "version": "3",
   "when": [
     {
       "type": "manual"
@@ -10,6 +10,6 @@
   ],
   "then": {
     "type": "askAgent",
-    "prompt": "This is a test hook. If you see this message, the hook system is working correctly."
+    "prompt": "🎉 SUCCESS: This is a test hook. If you see this message, the Kiro hook system is working correctly!"
   }
 }
