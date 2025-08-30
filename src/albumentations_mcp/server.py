@@ -610,13 +610,23 @@ def _load_image_from_input(
 
 
 def _create_session_directory(session_id: str) -> str:
-    """Create session directory and return path."""
+    """Create session directory with proper structure and return path."""
     import os
+    from datetime import datetime
     from pathlib import Path
 
     output_dir = os.getenv("OUTPUT_DIR", "outputs")
-    session_dir = Path(output_dir) / f"session_{session_id}"
+
+    # Create session directory with timestamp format: YYYYMMDD_HHMMSS_sessionID
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    session_dir_name = f"{timestamp}_{session_id}"
+    session_dir = Path(output_dir) / session_dir_name
+
+    # Create main session directory and tmp subdirectory
     session_dir.mkdir(parents=True, exist_ok=True)
+    tmp_dir = session_dir / "tmp"
+    tmp_dir.mkdir(exist_ok=True)
+
     return str(session_dir)
 
 
@@ -649,18 +659,21 @@ def load_image_for_processing(image_source: str) -> str:
         # 2. Generate session ID
         session_id = str(uuid.uuid4())[:8]
 
-        # 3. Create session directory
+        # 3. Create session directory with proper structure
         session_dir = _create_session_directory(session_id)
 
-        # 4. Load image (external function handles URL/file/base64)
-        image = load_image_from_source(image_source)
+        # 4. Initialize temp_paths tracking
+        temp_paths = []
 
-        # 5. Save original image
+        # 5. Load image (external function handles URL/file/base64 and saves temps)
+        image = load_image_from_source(image_source, session_dir, temp_paths)
+
+        # 6. Save original image
         image_filename = f"original_{session_id}.png"
         image_path = Path(session_dir) / image_filename
         image.save(image_path, format="PNG")
 
-        return f"✅ Image loaded and saved successfully!\n\n📁 Session ID: {session_id}\n📄 Source type: {source_type}\n📄 Image saved: {image_path}\n\n🔄 Use augment_image with session_id='{session_id}' to process this image."
+        return f"✅ Image loaded and saved successfully!\n\n📁 Session ID: {session_id}\n📄 Source type: {source_type}\n📄 Image saved: {image_path}\n📄 Temp files tracked: {len(temp_paths)}\n\n🔄 Use augment_image with session_id='{session_id}' to process this image."
 
     except Exception as e:
         import logging
@@ -689,6 +702,20 @@ def get_pipeline_status() -> dict:
 
 def main():
     """Main entry point for the MCP server."""
+    # Validate configuration on startup
+    from .config import validate_config_on_startup, get_config_summary
+
+    try:
+        validate_config_on_startup()
+        logger = logging.getLogger(__name__)
+        logger.info("Starting albumentations-mcp server")
+        logger.info(get_config_summary())
+    except Exception as e:
+        import sys
+
+        print(f"❌ Configuration Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
     # Run the MCP server using stdio for Kiro integration
     mcp.run("stdio")
 

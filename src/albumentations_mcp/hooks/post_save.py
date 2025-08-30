@@ -368,44 +368,112 @@ Success: {context.metadata.get('processing_result', {}).get('success', False)}
         self,
         context: HookContext,
     ) -> dict[str, Any]:
-        """Clean up temporary files and resources."""
+        """Clean up temporary files and resources using context.temp_paths."""
         cleanup_info = {
             "temp_files_cleaned": [],
             "temp_dirs_cleaned": [],
             "memory_released": False,
             "cleanup_errors": [],
+            "cleanup_warnings": [],
         }
 
         try:
-            # Clean up any temporary files that might have been created
-            temp_dir = Path(tempfile.gettempdir())
-            session_pattern = f"*{context.session_id[:8]}*"
+            # Clean up tracked temporary files from context.temp_paths
+            if hasattr(context, "temp_paths") and context.temp_paths:
+                logger.debug(
+                    f"Cleaning up {len(context.temp_paths)} tracked temp files"
+                )
 
-            # Look for temporary files related to this session
-            temp_files = list(temp_dir.glob(session_pattern))
-            for temp_file in temp_files:
+                for temp_path in context.temp_paths:
+                    try:
+                        path_obj = Path(temp_path)
+
+                        # Validate path security - never touch user originals
+                        if not self._is_safe_to_delete(path_obj, context):
+                            cleanup_info["cleanup_warnings"].append(
+                                f"Skipped unsafe path: {temp_path}"
+                            )
+                            continue
+
+                        if path_obj.exists():
+                            if path_obj.is_file():
+                                path_obj.unlink()
+                                cleanup_info["temp_files_cleaned"].append(
+                                    str(temp_path)
+                                )
+                                logger.debug(f"Cleaned up temp file: {temp_path}")
+                            elif path_obj.is_dir():
+                                import shutil
+
+                                shutil.rmtree(path_obj)
+                                cleanup_info["temp_dirs_cleaned"].append(str(temp_path))
+                                logger.debug(f"Cleaned up temp directory: {temp_path}")
+                        else:
+                            logger.debug(f"Temp file already gone: {temp_path}")
+
+                    except Exception as e:
+                        cleanup_info["cleanup_errors"].append(
+                            {"file": str(temp_path), "error": str(e)}
+                        )
+                        logger.warning(f"Failed to clean up {temp_path}: {e}")
+
+            # Clean up session temp directory if it exists and is empty
+            session_dir = context.metadata.get("session_dir")
+            if session_dir:
                 try:
-                    if temp_file.is_file():
-                        temp_file.unlink()
-                        cleanup_info["temp_files_cleaned"].append(
-                            str(temp_file),
-                        )
-                        logger.debug(f"Cleaned up temporary file: {temp_file}")
-                    elif temp_file.is_dir():
-                        import shutil
+                    session_temp_dir = Path(session_dir) / "tmp"
+                    if session_temp_dir.exists():
+                        # Check if temp directory is empty or only contains files we can safely delete
+                        remaining_files = list(session_temp_dir.iterdir())
 
-                        shutil.rmtree(temp_file)
-                        cleanup_info["temp_dirs_cleaned"].append(
-                            str(temp_file),
-                        )
-                        logger.debug(
-                            f"Cleaned up temporary directory: {temp_file}",
-                        )
+                        # Remove any remaining files that are safe to delete
+                        for remaining_file in remaining_files:
+                            if self._is_safe_to_delete(remaining_file, context):
+                                try:
+                                    if remaining_file.is_file():
+                                        remaining_file.unlink()
+                                        cleanup_info["temp_files_cleaned"].append(
+                                            str(remaining_file)
+                                        )
+                                    elif remaining_file.is_dir():
+                                        import shutil
+
+                                        shutil.rmtree(remaining_file)
+                                        cleanup_info["temp_dirs_cleaned"].append(
+                                            str(remaining_file)
+                                        )
+                                except Exception as e:
+                                    cleanup_info["cleanup_errors"].append(
+                                        {
+                                            "file": str(remaining_file),
+                                            "error": str(e),
+                                        }
+                                    )
+
+                        # Try to remove the temp directory if it's now empty
+                        try:
+                            if not list(session_temp_dir.iterdir()):  # Check if empty
+                                session_temp_dir.rmdir()
+                                cleanup_info["temp_dirs_cleaned"].append(
+                                    str(session_temp_dir)
+                                )
+                                logger.debug(
+                                    f"Removed empty session temp directory: {session_temp_dir}"
+                                )
+                            else:
+                                cleanup_info["cleanup_warnings"].append(
+                                    f"Session temp directory not empty, keeping: {session_temp_dir}"
+                                )
+                        except Exception as e:
+                            cleanup_info["cleanup_warnings"].append(
+                                f"Could not remove session temp directory: {e}"
+                            )
+
                 except Exception as e:
                     cleanup_info["cleanup_errors"].append(
-                        {"file": str(temp_file), "error": str(e)},
+                        {"session_temp_cleanup": str(e)}
                     )
-                    logger.warning(f"Failed to clean up {temp_file}: {e}")
+                    logger.warning(f"Error cleaning session temp directory: {e}")
 
             # Force garbage collection to release memory
             import gc
@@ -421,9 +489,15 @@ Success: {context.metadata.get('processing_result', {}).get('success', False)}
                     # Keep metadata but remove large image data
                     result["augmented_image"] = "<removed_for_memory_cleanup>"
 
-            logger.debug(
-                f"Cleanup completed: {len(cleanup_info['temp_files_cleaned'])} files, "
-                f"{len(cleanup_info['temp_dirs_cleaned'])} directories",
+            # Log cleanup summary
+            files_count = len(cleanup_info["temp_files_cleaned"])
+            dirs_count = len(cleanup_info["temp_dirs_cleaned"])
+            warnings_count = len(cleanup_info["cleanup_warnings"])
+
+            logger.info(
+                f"Cleanup completed for session {context.session_id}: "
+                f"{files_count} files, {dirs_count} directories removed, "
+                f"{warnings_count} warnings"
             )
 
         except Exception as e:
@@ -638,3 +712,39 @@ Success: {context.metadata.get('processing_result', {}).get('success', False)}
             manifest["error"] = str(e)
 
         return manifest
+
+    def _is_safe_to_delete(self, path: Path, context: HookContext) -> bool:
+        """Check if a path is safe to delete (within session directory, not a user original)."""
+        try:
+            session_dir = context.metadata.get("session_dir")
+            if not session_dir:
+                return False
+
+            session_path = Path(session_dir)
+
+            # Ensure path is within session directory
+            try:
+                path.resolve().relative_to(session_path.resolve())
+            except ValueError:
+                # Path is outside session directory - not safe to delete
+                return False
+
+            # Additional safety checks
+            if path.is_symlink():
+                return False
+
+            # Don't delete the main session directory itself
+            if path.resolve() == session_path.resolve():
+                return False
+
+            # Don't delete user original files (they should be outside session dir anyway)
+            if "original" in path.name and not path.name.startswith(
+                ("temp_", "resized_", "url_", "pasted_")
+            ):
+                return False
+
+            return True
+
+        except Exception as e:
+            logger.warning(f"Error checking path safety for {path}: {e}")
+            return False

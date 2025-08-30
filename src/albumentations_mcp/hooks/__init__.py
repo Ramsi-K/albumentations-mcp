@@ -46,6 +46,9 @@ class HookContext(BaseModel):
     )
     errors: list[str] = Field(default_factory=list, description="Error messages")
     warnings: list[str] = Field(default_factory=list, description="Warning messages")
+    temp_paths: list[str] = Field(
+        default_factory=list, description="Temporary file paths for cleanup"
+    )
 
 
 class HookResult:

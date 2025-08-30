@@ -242,11 +242,13 @@ def pil_to_numpy(image: Image.Image) -> np.ndarray:
         )
 
 
-def load_image_from_source(image_source: str) -> Image.Image:
+def load_image_from_source(
+    image_source: str, session_dir: str = None, temp_paths: list = None
+) -> Image.Image:
     """Load PIL Image from various sources - delegates to image handler."""
     from .utils.image_handler import load_image_from_source
 
-    return load_image_from_source(image_source)
+    return load_image_from_source(image_source, session_dir, temp_paths)
 
 
 def validate_image(image: Image.Image) -> None:

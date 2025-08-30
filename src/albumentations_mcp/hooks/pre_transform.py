@@ -1,13 +1,17 @@
 """Pre-transform hook for image and configuration validation before processing.
 
-This hook validates image format, size, and quality, and validates transform
-parameters to provide warnings before processing begins.
+This hook validates image format, size, and quality, validates transform
+parameters, and automatically resizes oversized images when needed.
 """
 
 import logging
+import os
+from pathlib import Path
 from typing import Any
 
-from ..image_conversions import base64_to_pil
+from PIL import Image, ImageOps
+
+from ..image_conversions import base64_to_pil, pil_to_base64
 from . import BaseHook, HookContext, HookResult
 from .utils import (
     HIGH_BLUR_LIMIT,
@@ -25,6 +29,28 @@ from .utils import (
 
 logger = logging.getLogger(__name__)
 
+# Configuration constants - validated from environment variables
+from ..config import (
+    get_max_image_size,
+    get_max_pixels_in,
+    get_max_bytes_in,
+    is_strict_mode,
+)
+
+
+def _get_config_values():
+    """Get validated configuration values."""
+    return {
+        "MAX_IMAGE_SIZE": get_max_image_size(),
+        "MAX_PIXELS_IN": get_max_pixels_in(),
+        "MAX_BYTES_IN": get_max_bytes_in(),
+        "STRICT_MODE": is_strict_mode(),
+    }
+
+
+# Supported formats for preservation
+SUPPORTED_FORMATS = {"JPEG", "PNG", "WEBP", "TIFF"}
+
 
 class PreTransformHook(BaseHook):
     """Hook for image and configuration validation before processing."""
@@ -33,14 +59,18 @@ class PreTransformHook(BaseHook):
         super().__init__("pre_transform_validation", critical=False)
 
     async def execute(self, context: HookContext) -> HookResult:
-        """Validate image and configuration before processing."""
+        """Validate image and configuration before processing, with auto-resize capability."""
         try:
             logger.debug(
                 f"Pre-transform validation for session {context.session_id}",
             )
 
-            # Validate image data
-            image_validation = self._validate_image(context)
+            # Initialize temp_paths list if not exists
+            if not hasattr(context, "temp_paths"):
+                context.temp_paths = []
+
+            # Validate and potentially resize image
+            image_validation = self._validate_and_resize_image(context)
             # Always add warnings, regardless of validation status
             context.warnings.extend(image_validation["warnings"])
             if image_validation["critical"]:
@@ -73,13 +103,19 @@ class PreTransformHook(BaseHook):
             logger.error(error_msg, exc_info=True)
             return HookResult(success=False, error=error_msg, context=context)
 
-    def _validate_image(self, context: HookContext) -> dict[str, Any]:
-        """Validate image format, size, and quality."""
+    def _validate_and_resize_image(self, context: HookContext) -> dict[str, Any]:
+        """Validate image format, size, and quality, with automatic resizing."""
         validation_result = {
             "valid": True,
             "critical": False,
             "warnings": [],
             "image_info": {},
+            "resize_applied": False,
+            "original_dimensions": None,
+            "resized_dimensions": None,
+            "original_bytes": None,
+            "resized_bytes": None,
+            "resize_reason": None,
         }
 
         try:
@@ -106,21 +142,47 @@ class PreTransformHook(BaseHook):
                 )
                 return validation_result
 
-            # Store image info
+            # Normalize EXIF orientation and convert to RGB before measuring
+            image = self._normalize_image(image)
+
+            # Store original image info
+            original_width, original_height = image.size
+            original_pixels = original_width * original_height
+            original_bytes = len(context.image_data)
+
             validation_result["image_info"] = {
                 "format": image.format,
                 "mode": image.mode,
                 "size": image.size,
-                "width": image.width,
-                "height": image.height,
+                "width": original_width,
+                "height": original_height,
+                "pixels": original_pixels,
+                "bytes": original_bytes,
             }
+            validation_result[
+                "original_dimensions"
+            ] = f"{original_width}x{original_height}"
+            validation_result["original_bytes"] = original_bytes
 
             # Validate image format
             if not validate_image_format(image.format):
-                validation_result["warnings"].append(
-                    f"Unsupported image format: {image.format}. "
-                    "Supported formats: JPEG, PNG, WEBP, TIFF",
-                )
+                config = _get_config_values()
+                if config["STRICT_MODE"]:
+                    validation_result.update(
+                        {
+                            "valid": False,
+                            "critical": True,
+                            "warnings": [
+                                f"Unsupported image format: {image.format}. Supported formats: {', '.join(SUPPORTED_FORMATS)}"
+                            ],
+                        }
+                    )
+                    return validation_result
+                else:
+                    validation_result["warnings"].append(
+                        f"Unsupported image format: {image.format}. "
+                        f"Supported formats: {', '.join(SUPPORTED_FORMATS)}",
+                    )
 
             # Validate image mode
             if not validate_image_mode(image.mode):
@@ -129,9 +191,70 @@ class PreTransformHook(BaseHook):
                     "Recommended modes: RGB, RGBA, L",
                 )
 
-            # Validate image size
-            width, height = image.size
-            size_warnings = check_image_size_warnings(width, height)
+            # Check if image needs resizing
+            needs_resize, resize_reason = self._check_resize_needed(
+                original_width,
+                original_height,
+                original_pixels,
+                original_bytes,
+            )
+
+            if needs_resize:
+                config = _get_config_values()
+                if config["STRICT_MODE"]:
+                    validation_result.update(
+                        {
+                            "valid": False,
+                            "critical": True,
+                            "warnings": [
+                                f"Image exceeds size limits: {resize_reason}. Enable auto-resize by setting STRICT_MODE=false"
+                            ],
+                        }
+                    )
+                    return validation_result
+                else:
+                    # Auto-resize the image
+                    resized_image, resize_info = self._resize_image(image, context)
+                    if resized_image:
+                        # Update context with resized image
+                        context.image_data = pil_to_base64(
+                            resized_image, format=image.format or "PNG"
+                        ).encode()
+
+                        validation_result.update(
+                            {
+                                "resize_applied": True,
+                                "resized_dimensions": f"{resized_image.width}x{resized_image.height}",
+                                "resized_bytes": len(context.image_data),
+                                "resize_reason": resize_reason,
+                            }
+                        )
+
+                        # Update image info with resized dimensions
+                        validation_result["image_info"].update(
+                            {
+                                "width": resized_image.width,
+                                "height": resized_image.height,
+                                "size": resized_image.size,
+                                "pixels": resized_image.width * resized_image.height,
+                                "bytes": len(context.image_data),
+                            }
+                        )
+
+                        logger.info(
+                            f"Auto-resized image: {original_width}x{original_height} -> "
+                            f"{resized_image.width}x{resized_image.height}, "
+                            f"reason: {resize_reason}"
+                        )
+                    else:
+                        validation_result["warnings"].append(
+                            f"Failed to auto-resize oversized image: {resize_reason}"
+                        )
+
+            # Add size warnings for remaining issues
+            current_width = validation_result["image_info"]["width"]
+            current_height = validation_result["image_info"]["height"]
+            size_warnings = check_image_size_warnings(current_width, current_height)
             validation_result["warnings"].extend(size_warnings)
 
             # Validate image quality (basic checks)
@@ -142,6 +265,14 @@ class PreTransformHook(BaseHook):
                         f"Low image quality detected ({quality}). "
                         "Results may be degraded.",
                     )
+
+            # Log comprehensive metadata
+            logger.debug(
+                f"Image validation complete - resize_applied: {validation_result['resize_applied']}, "
+                f"original: {validation_result['original_dimensions']}, "
+                f"final: {current_width}x{current_height}, "
+                f"reason: {validation_result['resize_reason']}"
+            )
 
         except Exception as e:
             validation_result.update(
@@ -281,3 +412,176 @@ class PreTransformHook(BaseHook):
             )
 
         return analysis
+
+    def _normalize_image(self, image: Image.Image) -> Image.Image:
+        """Normalize EXIF orientation and convert to RGB before measuring/resizing."""
+        try:
+            # Fix EXIF orientation
+            image = ImageOps.exif_transpose(image)
+
+            # Convert to RGB if needed (but preserve RGBA for transparency)
+            if image.mode not in ("RGB", "RGBA"):
+                if image.mode in ("P", "L", "LA"):
+                    image = image.convert("RGB")
+                else:
+                    try:
+                        image = image.convert("RGB")
+                    except Exception:
+                        # If conversion fails, keep original
+                        pass
+
+            return image
+        except Exception as e:
+            logger.warning(f"Failed to normalize image: {e}")
+            return image
+
+    def _check_resize_needed(
+        self, width: int, height: int, pixels: int, bytes_size: int
+    ) -> tuple[bool, str]:
+        """Check if image needs resizing based on various limits."""
+        config = _get_config_values()
+        reasons = []
+
+        # Check maximum dimension
+        max_dimension = max(width, height)
+        if max_dimension > config["MAX_IMAGE_SIZE"]:
+            reasons.append(
+                f"max dimension {max_dimension}px > {config['MAX_IMAGE_SIZE']}px"
+            )
+
+        # Check total pixels
+        if pixels > config["MAX_PIXELS_IN"]:
+            reasons.append(f"total pixels {pixels:,} > {config['MAX_PIXELS_IN']:,}")
+
+        # Check file size
+        if bytes_size > config["MAX_BYTES_IN"]:
+            reasons.append(
+                f"file size {bytes_size:,} bytes > {config['MAX_BYTES_IN']:,} bytes"
+            )
+
+        if reasons:
+            return True, "; ".join(reasons)
+
+        return False, ""
+
+    def _resize_image(
+        self, image: Image.Image, context: HookContext
+    ) -> tuple[Image.Image | None, dict[str, Any]]:
+        """Resize image while preserving aspect ratio and format."""
+        try:
+            original_width, original_height = image.size
+            original_format = image.format or "PNG"
+
+            # Calculate new dimensions preserving aspect ratio
+            config = _get_config_values()
+            aspect_ratio = original_width / original_height
+
+            if original_width > original_height:
+                new_width = config["MAX_IMAGE_SIZE"]
+                new_height = int(config["MAX_IMAGE_SIZE"] / aspect_ratio)
+            else:
+                new_height = config["MAX_IMAGE_SIZE"]
+                new_width = int(config["MAX_IMAGE_SIZE"] * aspect_ratio)
+
+            # Ensure minimum size
+            new_width = max(new_width, 32)
+            new_height = max(new_height, 32)
+
+            # Resize using high-quality LANCZOS filter
+            resized_image = image.resize(
+                (new_width, new_height), Image.Resampling.LANCZOS
+            )
+
+            # Preserve format information
+            resized_image.format = original_format
+
+            # Save resized copy to session temp directory
+            temp_path = self._save_temp_image(resized_image, context, "resized")
+            if temp_path:
+                context.temp_paths.append(str(temp_path))
+
+            resize_info = {
+                "original_size": (original_width, original_height),
+                "new_size": (new_width, new_height),
+                "aspect_ratio_preserved": True,
+                "filter_used": "LANCZOS",
+                "temp_path": str(temp_path) if temp_path else None,
+            }
+
+            logger.debug(
+                f"Image resized: {original_width}x{original_height} -> {new_width}x{new_height}"
+            )
+
+            return resized_image, resize_info
+
+        except Exception as e:
+            logger.error(f"Failed to resize image: {e}")
+            return None, {"error": str(e)}
+
+    def _save_temp_image(
+        self, image: Image.Image, context: HookContext, suffix: str = ""
+    ) -> Path | None:
+        """Save image to session temp directory with proper format preservation."""
+        try:
+            # Create session temp directory
+            session_dir = Path("outputs") / f"{context.session_id}"
+            temp_dir = session_dir / "tmp"
+            temp_dir.mkdir(parents=True, exist_ok=True)
+
+            # Determine format and extension
+            original_format = image.format or "PNG"
+            ext_map = {
+                "JPEG": "jpg",
+                "PNG": "png",
+                "WEBP": "webp",
+                "TIFF": "tiff",
+            }
+            extension = ext_map.get(original_format.upper(), "png")
+
+            # Generate filename
+            filename = f"image_{suffix}.{extension}" if suffix else f"image.{extension}"
+            temp_path = temp_dir / filename
+
+            # Save with format-specific options
+            save_kwargs = {"format": original_format}
+            if original_format.upper() == "JPEG":
+                save_kwargs["quality"] = 85
+                save_kwargs["optimize"] = True
+                # Convert RGBA to RGB for JPEG
+                if image.mode == "RGBA":
+                    background = Image.new("RGB", image.size, (255, 255, 255))
+                    background.paste(image, mask=image.split()[-1])
+                    image = background
+            elif original_format.upper() == "PNG":
+                save_kwargs["optimize"] = True
+            elif original_format.upper() == "WEBP":
+                save_kwargs["lossless"] = True
+                save_kwargs["quality"] = 100
+
+            image.save(temp_path, **save_kwargs)
+
+            logger.debug(f"Saved temp image: {temp_path}")
+            return temp_path
+
+        except Exception as e:
+            logger.warning(f"Failed to save temp image: {e}")
+            return None
+
+    def _validate_path_security(self, path: str) -> bool:
+        """Validate path for security (prevent path traversal, symlinks)."""
+        try:
+            # Reject absolute paths outside session directory
+            if os.path.isabs(path):
+                return False
+
+            # Reject paths with '..' segments
+            if ".." in Path(path).parts:
+                return False
+
+            # Reject symlinks
+            if Path(path).is_symlink():
+                return False
+
+            return True
+        except Exception:
+            return False

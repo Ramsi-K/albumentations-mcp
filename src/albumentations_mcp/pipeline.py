@@ -76,6 +76,9 @@ class AugmentationPipeline:
         # Convert base64 to PIL Image
         image = base64_to_pil(image_b64)
 
+        # Create session directory with proper structure
+        session_dir = self._create_session_directory(session_id)
+
         # Initialize context
         context = HookContext(
             session_id=session_id,
@@ -85,8 +88,12 @@ class AugmentationPipeline:
                 "timestamp": datetime.now(UTC).isoformat(),
                 "pipeline_version": "1.0.0",
                 "seed": seed,
+                "session_dir": session_dir,
             },
         )
+
+        # Initialize temp_paths tracking
+        context.temp_paths = []
 
         logger.info(f"Starting full image processing pipeline for session {session_id}")
 
@@ -325,6 +332,27 @@ class AugmentationPipeline:
             "pipeline_version": "1.0.0",
             "supported_stages": [stage.value for stage in HookStage],
         }
+
+    def _create_session_directory(self, session_id: str) -> str:
+        """Create session directory with proper structure and return path."""
+        import os
+        from datetime import datetime
+        from pathlib import Path
+
+        output_dir = os.getenv("OUTPUT_DIR", "outputs")
+
+        # Create session directory with timestamp format: YYYYMMDD_HHMMSS_sessionID
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        session_dir_name = f"{timestamp}_{session_id}"
+        session_dir = Path(output_dir) / session_dir_name
+
+        # Create main session directory and tmp subdirectory
+        session_dir.mkdir(parents=True, exist_ok=True)
+        tmp_dir = session_dir / "tmp"
+        tmp_dir.mkdir(exist_ok=True)
+
+        logger.debug(f"Created session directory: {session_dir}")
+        return str(session_dir)
 
 
 # Global pipeline instance

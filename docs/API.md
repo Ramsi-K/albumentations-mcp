@@ -224,10 +224,41 @@ All tools return proper error responses for invalid inputs:
 
 ## Environment Variables
 
+### Core Configuration
+
 - `MCP_LOG_LEVEL`: Set logging level (DEBUG, INFO, WARNING, ERROR)
 - `OUTPUT_DIR`: Directory for temporary files (default: ./outputs)
 - `ENABLE_VISION_VERIFICATION`: Enable visual verification hooks (default: true)
 - `DEFAULT_SEED`: Default seed for reproducible testing
+
+### Image Size Handling (New in v0.1)
+
+- `STRICT_MODE`: Reject oversized images instead of auto-resizing (default: false)
+- `MAX_IMAGE_SIZE`: Maximum image dimension in pixels (default: 4096)
+- `MAX_PIXELS_IN`: Maximum total pixels allowed (default: 16000000)
+- `MAX_BYTES_IN`: Maximum file size in bytes (default: 50000000)
+
+**Image Size Behavior:**
+
+- When `STRICT_MODE=false` (default): Oversized images are automatically resized while preserving aspect ratio
+- When `STRICT_MODE=true`: Oversized images are rejected with a clear error message
+- Auto-resize uses high-quality LANCZOS filter and preserves original format (JPEG→JPEG, PNG→PNG, etc.)
+- Resized images are saved to `session_dir/tmp/` and cleaned up after processing
+- EXIF orientation is normalized before measuring/resizing
+
+**Example Configuration:**
+
+```bash
+# Strict mode - reject large images
+export STRICT_MODE=true
+export MAX_IMAGE_SIZE=2048
+
+# Permissive mode - auto-resize large images
+export STRICT_MODE=false
+export MAX_IMAGE_SIZE=4096
+export MAX_PIXELS_IN=20000000
+export MAX_BYTES_IN=100000000
+```
 
 ## Reproducibility
 

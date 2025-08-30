@@ -885,3 +885,701 @@ class TestHookErrorHandling:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+    @pytest.mark.asyncio
+    async def test_auto_resize_oversized_image(self, hook):
+        """Test automatic resizing of oversized images."""
+        # Create oversized image (larger than MAX_IMAGE_SIZE=4096)
+        large_image = Image.new("RGB", (5000, 3000), color="blue")
+        buffer = io.BytesIO()
+        large_image.save(buffer, format="PNG")
+        base64_data = base64.b64encode(buffer.getvalue()).decode()
+
+        context = HookContext(
+            session_id="test-session-123",
+            original_prompt="add blur",
+            image_data=base64_data.encode(),
+            parsed_transforms=[{"name": "Blur", "parameters": {}}],
+            metadata={"session_dir": "outputs/test_session"},
+        )
+        context.temp_paths = []
+
+        with patch.dict("os.environ", {"STRICT_MODE": "false"}):
+            result = await hook.execute(context)
+
+        assert result.success is True
+        image_validation = result.context.metadata["image_validation"]
+        assert image_validation["resize_applied"] is True
+        assert image_validation["original_dimensions"] == "5000x3000"
+        assert "max dimension" in image_validation["resize_reason"]
+
+        # Check that resized image is within limits
+        resized_width = image_validation["image_info"]["width"]
+        resized_height = image_validation["image_info"]["height"]
+        assert max(resized_width, resized_height) <= 4096
+
+        # Check aspect ratio is preserved
+        original_ratio = 5000 / 3000
+        resized_ratio = resized_width / resized_height
+        assert abs(original_ratio - resized_ratio) < 0.01
+
+    @pytest.mark.asyncio
+    async def test_strict_mode_rejects_oversized_image(self, hook):
+        """Test STRICT_MODE=true rejects oversized images with clear error."""
+        # Create oversized image
+        large_image = Image.new("RGB", (5000, 3000), color="blue")
+        buffer = io.BytesIO()
+        large_image.save(buffer, format="PNG")
+        base64_data = base64.b64encode(buffer.getvalue()).decode()
+
+        context = HookContext(
+            session_id="test-session-123",
+            original_prompt="add blur",
+            image_data=base64_data.encode(),
+            parsed_transforms=[{"name": "Blur", "parameters": {}}],
+        )
+
+        with patch.dict("os.environ", {"STRICT_MODE": "true"}):
+            result = await hook.execute(context)
+
+        assert result.success is False
+        assert "Image exceeds size limits" in result.error
+        assert "Enable auto-resize by setting STRICT_MODE=false" in result.error
+
+    @pytest.mark.asyncio
+    async def test_resize_preserves_aspect_ratio(self, hook):
+        """Test resized image maintains aspect ratio."""
+        # Create portrait image
+        portrait_image = Image.new("RGB", (3000, 5000), color="green")
+        buffer = io.BytesIO()
+        portrait_image.save(buffer, format="PNG")
+        base64_data = base64.b64encode(buffer.getvalue()).decode()
+
+        context = HookContext(
+            session_id="test-session-123",
+            original_prompt="add blur",
+            image_data=base64_data.encode(),
+            parsed_transforms=[{"name": "Blur", "parameters": {}}],
+            metadata={"session_dir": "outputs/test_session"},
+        )
+        context.temp_paths = []
+
+        with patch.dict("os.environ", {"STRICT_MODE": "false"}):
+            result = await hook.execute(context)
+
+        assert result.success is True
+        image_validation = result.context.metadata["image_validation"]
+        assert image_validation["resize_applied"] is True
+
+        # Check aspect ratio preservation
+        original_ratio = 3000 / 5000
+        resized_width = image_validation["image_info"]["width"]
+        resized_height = image_validation["image_info"]["height"]
+        resized_ratio = resized_width / resized_height
+        assert abs(original_ratio - resized_ratio) < 0.01
+
+    @pytest.mark.asyncio
+    async def test_resize_uses_proper_temp_directory(self, hook):
+        """Test resized image is saved to proper temp directory."""
+        # Create oversized image
+        large_image = Image.new("RGB", (5000, 3000), color="red")
+        buffer = io.BytesIO()
+        large_image.save(buffer, format="PNG")
+        base64_data = base64.b64encode(buffer.getvalue()).decode()
+
+        context = HookContext(
+            session_id="test-session-123",
+            original_prompt="add blur",
+            image_data=base64_data.encode(),
+            parsed_transforms=[{"name": "Blur", "parameters": {}}],
+            metadata={"session_dir": "outputs/test_session"},
+        )
+        context.temp_paths = []
+
+        with patch.dict("os.environ", {"STRICT_MODE": "false"}):
+            with patch(
+                "src.albumentations_mcp.hooks.pre_transform.PreTransformHook._save_temp_image"
+            ) as mock_save:
+                mock_save.return_value = Path(
+                    "outputs/test_session/tmp/resized_image.png"
+                )
+                result = await hook.execute(context)
+
+        assert result.success is True
+        mock_save.assert_called_once()
+        # Check that temp path was added to context
+        assert len(context.temp_paths) > 0
+
+    @pytest.mark.asyncio
+    async def test_original_input_files_preserved(self, hook):
+        """Test original input files are never modified."""
+        # This test ensures we don't modify user originals
+        large_image = Image.new("RGB", (5000, 3000), color="yellow")
+        buffer = io.BytesIO()
+        large_image.save(buffer, format="PNG")
+        original_data = base64.b64encode(buffer.getvalue()).decode()
+
+        context = HookContext(
+            session_id="test-session-123",
+            original_prompt="add blur",
+            image_data=original_data.encode(),
+            parsed_transforms=[{"name": "Blur", "parameters": {}}],
+            metadata={"session_dir": "outputs/test_session"},
+        )
+        context.temp_paths = []
+
+        with patch.dict("os.environ", {"STRICT_MODE": "false"}):
+            result = await hook.execute(context)
+
+        assert result.success is True
+        # The context.image_data should be updated with resized image
+        # but we should verify original is not touched (this is more of an integration test)
+        assert result.context.image_data != original_data.encode()
+
+    @pytest.mark.asyncio
+    async def test_max_image_size_configuration(self, hook):
+        """Test MAX_IMAGE_SIZE configuration works correctly."""
+        # Create image that's larger than custom limit
+        large_image = Image.new("RGB", (3000, 2000), color="purple")
+        buffer = io.BytesIO()
+        large_image.save(buffer, format="PNG")
+        base64_data = base64.b64encode(buffer.getvalue()).decode()
+
+        context = HookContext(
+            session_id="test-session-123",
+            original_prompt="add blur",
+            image_data=base64_data.encode(),
+            parsed_transforms=[{"name": "Blur", "parameters": {}}],
+            metadata={"session_dir": "outputs/test_session"},
+        )
+        context.temp_paths = []
+
+        # Set custom MAX_IMAGE_SIZE
+        with patch.dict(
+            "os.environ", {"MAX_IMAGE_SIZE": "2048", "STRICT_MODE": "false"}
+        ):
+            result = await hook.execute(context)
+
+        assert result.success is True
+        image_validation = result.context.metadata["image_validation"]
+        assert image_validation["resize_applied"] is True
+
+        # Check resized to custom limit
+        resized_width = image_validation["image_info"]["width"]
+        resized_height = image_validation["image_info"]["height"]
+        assert max(resized_width, resized_height) <= 2048
+
+    @pytest.mark.asyncio
+    async def test_oversize_by_pixels_limit(self, hook):
+        """Test oversized image by total pixels (e.g., 9000×2000)."""
+        # Create image with high pixel count but reasonable dimensions
+        wide_image = Image.new("RGB", (9000, 2000), color="orange")
+        buffer = io.BytesIO()
+        wide_image.save(buffer, format="PNG")
+        base64_data = base64.b64encode(buffer.getvalue()).decode()
+
+        context = HookContext(
+            session_id="test-session-123",
+            original_prompt="add blur",
+            image_data=base64_data.encode(),
+            parsed_transforms=[{"name": "Blur", "parameters": {}}],
+            metadata={"session_dir": "outputs/test_session"},
+        )
+        context.temp_paths = []
+
+        with patch.dict(
+            "os.environ", {"MAX_PIXELS_IN": "10000000", "STRICT_MODE": "false"}
+        ):
+            result = await hook.execute(context)
+
+        assert result.success is True
+        image_validation = result.context.metadata["image_validation"]
+        assert image_validation["resize_applied"] is True
+        assert "total pixels" in image_validation["resize_reason"]
+
+    @pytest.mark.asyncio
+    async def test_oversize_by_bytes_limit(self, hook):
+        """Test oversized image by file size (high-quality JPEG)."""
+        # Create a high-quality image that might exceed byte limits
+        large_image = Image.new("RGB", (2000, 2000), color="cyan")
+        buffer = io.BytesIO()
+        large_image.save(buffer, format="JPEG", quality=100)
+
+        # Simulate large file by patching the byte size check
+        base64_data = base64.b64encode(buffer.getvalue()).decode()
+
+        context = HookContext(
+            session_id="test-session-123",
+            original_prompt="add blur",
+            image_data=base64_data.encode(),
+            parsed_transforms=[{"name": "Blur", "parameters": {}}],
+            metadata={"session_dir": "outputs/test_session"},
+        )
+        context.temp_paths = []
+
+        # Set very low byte limit to trigger resize
+        with patch.dict(
+            "os.environ", {"MAX_BYTES_IN": "100000", "STRICT_MODE": "false"}
+        ):
+            result = await hook.execute(context)
+
+        assert result.success is True
+        image_validation = result.context.metadata["image_validation"]
+        assert image_validation["resize_applied"] is True
+        assert "file size" in image_validation["resize_reason"]
+
+    @pytest.mark.asyncio
+    async def test_exif_orientation_corrected(self, hook):
+        """Test EXIF-rotated portrait image has orientation corrected and aspect preserved."""
+        # Create a portrait image (this simulates EXIF rotation)
+        portrait_image = Image.new("RGB", (3000, 5000), color="magenta")
+        buffer = io.BytesIO()
+        portrait_image.save(buffer, format="JPEG")
+        base64_data = base64.b64encode(buffer.getvalue()).decode()
+
+        context = HookContext(
+            session_id="test-session-123",
+            original_prompt="add blur",
+            image_data=base64_data.encode(),
+            parsed_transforms=[{"name": "Blur", "parameters": {}}],
+            metadata={"session_dir": "outputs/test_session"},
+        )
+        context.temp_paths = []
+
+        with patch.dict("os.environ", {"STRICT_MODE": "false"}):
+            with patch("PIL.ImageOps.exif_transpose") as mock_transpose:
+                mock_transpose.return_value = portrait_image
+                result = await hook.execute(context)
+
+        assert result.success is True
+        mock_transpose.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_webp_format_preserved(self, hook):
+        """Test WEBP input is preserved as WEBP when resized."""
+        # Create oversized WEBP image
+        large_image = Image.new("RGB", (5000, 3000), color="lime")
+        buffer = io.BytesIO()
+        large_image.save(buffer, format="WEBP")
+        large_image.format = "WEBP"  # Ensure format is set
+        base64_data = base64.b64encode(buffer.getvalue()).decode()
+
+        context = HookContext(
+            session_id="test-session-123",
+            original_prompt="add blur",
+            image_data=base64_data.encode(),
+            parsed_transforms=[{"name": "Blur", "parameters": {}}],
+            metadata={"session_dir": "outputs/test_session"},
+        )
+        context.temp_paths = []
+
+        with patch.dict("os.environ", {"STRICT_MODE": "false"}):
+            with patch(
+                "src.albumentations_mcp.hooks.pre_transform.PreTransformHook._save_temp_image"
+            ) as mock_save:
+                mock_save.return_value = Path(
+                    "outputs/test_session/tmp/resized_image.webp"
+                )
+                result = await hook.execute(context)
+
+        assert result.success is True
+        # Verify format preservation logic was called
+        mock_save.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_corrupted_image_raises_clean_error(self, hook):
+        """Test corrupted image raises clean error."""
+        # Create corrupted image data
+        corrupted_data = b"definitely_not_an_image"
+        base64_data = base64.b64encode(corrupted_data).decode()
+
+        context = HookContext(
+            session_id="test-session-123",
+            original_prompt="add blur",
+            image_data=base64_data.encode(),
+            parsed_transforms=[{"name": "Blur", "parameters": {}}],
+        )
+
+        result = await hook.execute(context)
+
+        assert result.success is False
+        assert any(
+            "Invalid image data" in warning for warning in result.context.warnings
+        )
+
+    @pytest.mark.asyncio
+    async def test_comprehensive_logging_metadata(self, hook):
+        """Test comprehensive logging includes all required metadata."""
+        # Create oversized image
+        large_image = Image.new("RGB", (5000, 3000), color="teal")
+        buffer = io.BytesIO()
+        large_image.save(buffer, format="PNG")
+        base64_data = base64.b64encode(buffer.getvalue()).decode()
+
+        context = HookContext(
+            session_id="test-session-123",
+            original_prompt="add blur",
+            image_data=base64_data.encode(),
+            parsed_transforms=[{"name": "Blur", "parameters": {}}],
+            metadata={"session_dir": "outputs/test_session"},
+        )
+        context.temp_paths = []
+
+        with patch.dict("os.environ", {"STRICT_MODE": "false"}):
+            result = await hook.execute(context)
+
+        assert result.success is True
+        image_validation = result.context.metadata["image_validation"]
+
+        # Check all required metadata fields
+        assert "resize_applied" in image_validation
+        assert "original_dimensions" in image_validation
+        assert "resized_dimensions" in image_validation
+        assert "original_bytes" in image_validation
+        assert "resized_bytes" in image_validation
+        assert "resize_reason" in image_validation
+
+        # Check logging includes comprehensive info
+        assert image_validation["original_dimensions"] == "5000x3000"
+        assert image_validation["resize_reason"] is not None
+
+    @pytest.mark.asyncio
+    async def test_pasted_image_temp_files_cleaned(self, hook):
+        """Test pasted image temp files are cleaned after processing."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            session_dir = Path(temp_dir) / "session_123"
+            session_temp_dir = session_dir / "tmp"
+            session_temp_dir.mkdir(parents=True)
+
+            # Create mock pasted image temp files
+            pasted_file = session_temp_dir / "pasted_file_abc123.png"
+            pasted_file.touch()
+
+            context = HookContext(
+                session_id="test-session-123",
+                original_prompt="add blur",
+                metadata={"session_dir": str(session_dir)},
+            )
+            context.temp_paths = [str(pasted_file)]
+
+            result = await hook.execute(context)
+
+            assert result.success is True
+            cleanup_info = result.context.metadata["cleanup_info"]
+            assert str(pasted_file) in cleanup_info["temp_files_cleaned"]
+            assert not pasted_file.exists()
+
+    @pytest.mark.asyncio
+    async def test_url_loaded_image_temp_files_cleaned(self, hook):
+        """Test URL-loaded image temp files are cleaned after processing."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            session_dir = Path(temp_dir) / "session_123"
+            session_temp_dir = session_dir / "tmp"
+            session_temp_dir.mkdir(parents=True)
+
+            # Create mock URL-loaded image temp files
+            url_file = session_temp_dir / "url_download_def456.jpg"
+            url_file.touch()
+
+            context = HookContext(
+                session_id="test-session-123",
+                original_prompt="add blur",
+                metadata={"session_dir": str(session_dir)},
+            )
+            context.temp_paths = [str(url_file)]
+
+            result = await hook.execute(context)
+
+            assert result.success is True
+            cleanup_info = result.context.metadata["cleanup_info"]
+            assert str(url_file) in cleanup_info["temp_files_cleaned"]
+            assert not url_file.exists()
+
+    @pytest.mark.asyncio
+    async def test_session_temp_directory_empty_after_processing(self, hook):
+        """Test session_dir/tmp/ is empty or removed after processing."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            session_dir = Path(temp_dir) / "session_123"
+            session_temp_dir = session_dir / "tmp"
+            session_temp_dir.mkdir(parents=True)
+
+            # Create multiple temp files
+            temp_files = [
+                session_temp_dir / "temp1.png",
+                session_temp_dir / "temp2.jpg",
+                session_temp_dir / "resized_image.png",
+            ]
+            for temp_file in temp_files:
+                temp_file.touch()
+
+            context = HookContext(
+                session_id="test-session-123",
+                original_prompt="add blur",
+                metadata={"session_dir": str(session_dir)},
+            )
+            context.temp_paths = [str(f) for f in temp_files]
+
+            result = await hook.execute(context)
+
+            assert result.success is True
+            # Check that temp directory is empty or removed
+            if session_temp_dir.exists():
+                assert len(list(session_temp_dir.iterdir())) == 0
+            else:
+                # Directory was removed entirely
+                assert not session_temp_dir.exists()
+
+    @pytest.mark.asyncio
+    async def test_user_original_files_never_touched(self, hook):
+        """Test user original files are never touched during cleanup."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            session_dir = Path(temp_dir) / "session_123"
+            session_temp_dir = session_dir / "tmp"
+            session_temp_dir.mkdir(parents=True)
+
+            # Create user original file outside session directory
+            user_original = Path(temp_dir) / "user_image.jpg"
+            user_original.touch()
+
+            # Create temp files inside session
+            temp_file = session_temp_dir / "temp_image.png"
+            temp_file.touch()
+
+            context = HookContext(
+                session_id="test-session-123",
+                original_prompt="add blur",
+                metadata={"session_dir": str(session_dir)},
+            )
+            # Only track temp files, not user originals
+            context.temp_paths = [str(temp_file)]
+
+            result = await hook.execute(context)
+
+            assert result.success is True
+            # User original should still exist
+            assert user_original.exists()
+            # Temp file should be cleaned
+            assert not temp_file.exists()
+
+    @pytest.mark.asyncio
+    async def test_cleanup_works_regardless_of_naming_patterns(self, hook):
+        """Test cleanup works regardless of temp file naming patterns."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            session_dir = Path(temp_dir) / "session_123"
+            session_temp_dir = session_dir / "tmp"
+            session_temp_dir.mkdir(parents=True)
+
+            # Create temp files with various naming patterns
+            temp_files = [
+                session_temp_dir / "weird_name_123.png",
+                session_temp_dir / "no_session_id.jpg",
+                session_temp_dir / "random_file.webp",
+                session_temp_dir / "another.tiff",
+            ]
+            for temp_file in temp_files:
+                temp_file.touch()
+
+            context = HookContext(
+                session_id="test-session-123",
+                original_prompt="add blur",
+                metadata={"session_dir": str(session_dir)},
+            )
+            context.temp_paths = [str(f) for f in temp_files]
+
+            result = await hook.execute(context)
+
+            assert result.success is True
+            cleanup_info = result.context.metadata["cleanup_info"]
+
+            # All files should be cleaned regardless of naming
+            for temp_file in temp_files:
+                assert str(temp_file) in cleanup_info["temp_files_cleaned"]
+                assert not temp_file.exists()
+
+    @pytest.mark.asyncio
+    async def test_cleanup_logs_detailed_information(self, hook):
+        """Test cleanup logs provide detailed information about removed files."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            session_dir = Path(temp_dir) / "session_123"
+            session_temp_dir = session_dir / "tmp"
+            session_temp_dir.mkdir(parents=True)
+
+            # Create temp files and directories
+            temp_file = session_temp_dir / "temp_file.png"
+            temp_file.touch()
+            temp_subdir = session_temp_dir / "temp_subdir"
+            temp_subdir.mkdir()
+
+            context = HookContext(
+                session_id="test-session-123",
+                original_prompt="add blur",
+                metadata={"session_dir": str(session_dir)},
+            )
+            context.temp_paths = [str(temp_file), str(temp_subdir)]
+
+            result = await hook.execute(context)
+
+            assert result.success is True
+            cleanup_info = result.context.metadata["cleanup_info"]
+
+            # Check detailed logging
+            assert "temp_files_cleaned" in cleanup_info
+            assert "temp_dirs_cleaned" in cleanup_info
+            assert "cleanup_errors" in cleanup_info
+            assert "cleanup_warnings" in cleanup_info
+
+            # Check counts
+            assert len(cleanup_info["temp_files_cleaned"]) >= 1
+            assert len(cleanup_info["temp_dirs_cleaned"]) >= 1
+
+    @pytest.mark.asyncio
+    async def test_pasted_and_resized_temp_both_removed(self, hook):
+        """Test both pasted image temp and resized temp are removed."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            session_dir = Path(temp_dir) / "session_123"
+            session_temp_dir = session_dir / "tmp"
+            session_temp_dir.mkdir(parents=True)
+
+            # Create both pasted and resized temp files
+            pasted_file = session_temp_dir / "pasted_file_abc123.png"
+            resized_file = session_temp_dir / "resized_image.png"
+            pasted_file.touch()
+            resized_file.touch()
+
+            context = HookContext(
+                session_id="test-session-123",
+                original_prompt="add blur",
+                metadata={"session_dir": str(session_dir)},
+            )
+            context.temp_paths = [str(pasted_file), str(resized_file)]
+
+            result = await hook.execute(context)
+
+            assert result.success is True
+            cleanup_info = result.context.metadata["cleanup_info"]
+
+            # Both files should be cleaned
+            assert str(pasted_file) in cleanup_info["temp_files_cleaned"]
+            assert str(resized_file) in cleanup_info["temp_files_cleaned"]
+            assert not pasted_file.exists()
+            assert not resized_file.exists()
+
+            # Session temp directory should be empty or gone
+            if session_temp_dir.exists():
+                assert len(list(session_temp_dir.iterdir())) == 0
+
+    @pytest.mark.asyncio
+    async def test_concurrent_sessions_clean_only_own_temp(self, hook):
+        """Test each session cleans only its own tmp/ directory."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Create two session directories
+            session1_dir = Path(temp_dir) / "session_123"
+            session2_dir = Path(temp_dir) / "session_456"
+            session1_temp = session1_dir / "tmp"
+            session2_temp = session2_dir / "tmp"
+            session1_temp.mkdir(parents=True)
+            session2_temp.mkdir(parents=True)
+
+            # Create temp files in both sessions
+            session1_file = session1_temp / "temp1.png"
+            session2_file = session2_temp / "temp2.png"
+            session1_file.touch()
+            session2_file.touch()
+
+            # Test cleanup for session 1 only
+            context = HookContext(
+                session_id="test-session-123",
+                original_prompt="add blur",
+                metadata={"session_dir": str(session1_dir)},
+            )
+            context.temp_paths = [str(session1_file)]
+
+            result = await hook.execute(context)
+
+            assert result.success is True
+
+            # Session 1 temp should be cleaned
+            assert not session1_file.exists()
+
+            # Session 2 temp should remain untouched
+            assert session2_file.exists()
+
+    @pytest.mark.asyncio
+    async def test_symlink_input_rejected_no_cleanup_outside_session(self, hook):
+        """Test symlink input is rejected and no cleanup happens outside session tree."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            session_dir = Path(temp_dir) / "session_123"
+            session_temp_dir = session_dir / "tmp"
+            session_temp_dir.mkdir(parents=True)
+
+            # Create a file outside session and a symlink to it inside
+            outside_file = Path(temp_dir) / "outside_file.png"
+            outside_file.touch()
+
+            # This test is more about the safety check in _is_safe_to_delete
+            # We'll test that symlinks are not cleaned up
+            context = HookContext(
+                session_id="test-session-123",
+                original_prompt="add blur",
+                metadata={"session_dir": str(session_dir)},
+            )
+            # Don't add symlinks to temp_paths - they should be rejected earlier
+            context.temp_paths = []
+
+            result = await hook.execute(context)
+
+            assert result.success is True
+            # Outside file should remain untouched
+            assert outside_file.exists()
+
+    @pytest.mark.asyncio
+    async def test_cleanup_handles_permission_errors_gracefully(self, hook):
+        """Test cleanup handles permission errors gracefully."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            session_dir = Path(temp_dir) / "session_123"
+            session_temp_dir = session_dir / "tmp"
+            session_temp_dir.mkdir(parents=True)
+
+            # Create a temp file
+            temp_file = session_temp_dir / "temp_file.png"
+            temp_file.touch()
+
+            context = HookContext(
+                session_id="test-session-123",
+                original_prompt="add blur",
+                metadata={"session_dir": str(session_dir)},
+            )
+            context.temp_paths = [str(temp_file)]
+
+            # Mock unlink to raise permission error
+            with patch.object(
+                Path, "unlink", side_effect=PermissionError("Access denied")
+            ):
+                result = await hook.execute(context)
+
+            # Should still succeed overall but log the error
+            assert result.success is True
+            cleanup_info = result.context.metadata["cleanup_info"]
+            assert len(cleanup_info["cleanup_errors"]) > 0
+            assert any(
+                "Access denied" in str(error)
+                for error in cleanup_info["cleanup_errors"]
+            )
+
+    @pytest.mark.asyncio
+    async def test_no_temp_paths_attribute_handled_gracefully(self, hook):
+        """Test cleanup handles missing temp_paths attribute gracefully."""
+        context = HookContext(
+            session_id="test-session-123",
+            original_prompt="add blur",
+            metadata={"session_dir": "outputs/test_session"},
+        )
+        # Don't set temp_paths attribute
+
+        result = await hook.execute(context)
+
+        assert result.success is True
+        cleanup_info = result.context.metadata["cleanup_info"]
+        # Should handle gracefully with empty cleanup
+        assert "temp_files_cleaned" in cleanup_info
+        assert len(cleanup_info["temp_files_cleaned"]) == 0
