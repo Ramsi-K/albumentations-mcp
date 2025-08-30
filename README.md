@@ -78,23 +78,53 @@ Add to your `.kiro/settings/mcp.json`:
 
 Apply image augmentations based on natural language prompt or preset.
 
+**🆕 File Path Mode (Recommended for Large Images):**
+
 ```python
-# Example usage in MCP client
+# Use file path to avoid base64 conversion crashes
+augment_image(
+    image_path="/path/to/your/image.jpg",
+    prompt="add blur and increase contrast",
+    seed=42,
+    output_dir="./my_outputs"  # Optional custom output directory
+)
+```
+
+**Base64 Mode (Backward Compatibility):**
+
+```python
+# Traditional base64 mode still supported
 augment_image(
     image_b64="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ...",
     prompt="add blur and increase contrast",
-    seed=42  # Optional for reproducible results
+    seed=42
+)
+```
+
+**Session Mode (Legacy):**
+
+```python
+# Load image first, then process
+session_id = load_image_for_processing("path/to/image.jpg")
+augment_image(
+    session_id=session_id,
+    prompt="add blur and increase contrast"
 )
 ```
 
 **Parameters:**
 
-- `image_b64` (str): Base64-encoded image data
+- `image_path` (str, optional): Path to image file (recommended for large images)
+- `image_b64` (str, optional): Base64-encoded image data (for backward compatibility)
+- `session_id` (str, optional): Session ID from load_image_for_processing (legacy mode)
 - `prompt` (str): Natural language description of desired augmentations
 - `seed` (int, optional): Random seed for reproducible results
 - `preset` (str, optional): Use preset instead of prompt ("segmentation", "portrait", "lowlight")
+- `output_dir` (str, optional): Directory to save output files (defaults to ./outputs)
 
-**Returns:** Base64-encoded augmented image
+**Note:** Provide exactly one of: `image_path`, `image_b64`, or `session_id`
+
+**Returns:** Success message with file path where augmented image was saved
 
 ### `list_available_transforms`
 
@@ -166,46 +196,80 @@ get_pipeline_status()
 
 ### Basic Image Augmentation
 
+**File Path Mode (Recommended):**
+
 ```python
-# Simple blur and rotation
+# Simple blur and rotation using file path
 result = augment_image(
-    image_b64=your_image_b64,
+    image_path="path/to/your/image.jpg",
     prompt="add blur and rotate 15 degrees"
 )
 
-# Multiple transforms
+# Multiple transforms with custom output directory
 result = augment_image(
-    image_b64=your_image_b64,
-    prompt="increase brightness, add noise, and flip horizontally"
+    image_path="input/photo.png",
+    prompt="increase brightness, add noise, and flip horizontally",
+    output_dir="./my_results"
 )
 
 # Reproducible results
 result = augment_image(
-    image_b64=your_image_b64,
+    image_path="test_image.jpg",
     prompt="add blur and rotate",
     seed=42  # Same seed = same result
 )
 ```
 
+**Base64 Mode (Backward Compatibility):**
+
+```python
+# Traditional base64 mode still works
+result = augment_image(
+    image_b64=your_image_b64,
+    prompt="add blur and rotate 15 degrees"
+)
+
+# Can still use all parameters
+result = augment_image(
+    image_b64=your_image_b64,
+    prompt="increase brightness",
+    seed=42,
+    output_dir="./outputs"
+)
+```
+
 ### Using Presets
+
+**File Path Mode:**
 
 ```python
 # Optimized for segmentation tasks
 result = augment_image(
-    image_b64=your_image_b64,
+    image_path="dataset/image_001.jpg",
     preset="segmentation"
 )
 
 # Portrait photography enhancements
 result = augment_image(
-    image_b64=your_image_b64,
-    preset="portrait"
+    image_path="photos/portrait.jpg",
+    preset="portrait",
+    output_dir="./enhanced_portraits"
 )
 
 # Low-light image improvements
 result = augment_image(
-    image_b64=your_image_b64,
+    image_path="lowlight/dark_image.png",
     preset="lowlight"
+)
+```
+
+**Base64 Mode (Still Supported):**
+
+```python
+# All presets work with base64 too
+result = augment_image(
+    image_b64=your_image_b64,
+    preset="segmentation"
 )
 ```
 
@@ -245,6 +309,63 @@ The parser understands various ways to describe transforms:
 - ✅ **Code Quality**: Black formatting, Ruff linting
 - ✅ **Documentation**: Comprehensive API docs and examples
 - ✅ **PyPI Ready**: Proper package structure for distribution
+
+## 📁 Output Directory Structure
+
+The system creates organized output directories with comprehensive metadata:
+
+```
+outputs/
+├── 20241230_143022_a1b2c3d4/          # Session directory (timestamp_sessionID)
+│   ├── original_a1b2c3d4.png          # Original image (preserved)
+│   ├── augmented_a1b2c3d4.png         # Final augmented image
+│   ├── metadata_a1b2c3d4.json         # Processing metadata
+│   ├── visual_eval.md                 # AI verification report (if enabled)
+│   └── processing_log.jsonl           # Structured processing log
+└── session_a1b2c3d4/                  # Legacy session format (backward compatibility)
+    └── original_a1b2c3d4.png
+```
+
+### File Naming Conventions
+
+- **Session Directory**: `YYYYMMDD_HHMMSS_sessionID` (e.g., `20241230_143022_a1b2c3d4`)
+- **Original Image**: `original_{sessionID}.png` (always PNG for consistency)
+- **Augmented Image**: `augmented_{sessionID}.png` (preserves all transformations)
+- **Metadata**: `metadata_{sessionID}.json` (complete processing information)
+- **Verification**: `visual_eval.md` (AI analysis of transformation success)
+
+### Custom Output Directory
+
+```python
+# Set custom output directory
+augment_image(
+    image_path="input.jpg",
+    prompt="add blur",
+    output_dir="/path/to/custom/outputs"  # Files saved here instead of ./outputs
+)
+
+# Or set globally via environment
+export OUTPUT_DIR="/path/to/global/outputs"
+```
+
+### Resource Cleanup
+
+The system automatically manages temporary files:
+
+- **Session Files**: Preserved for debugging and reuse
+- **Temporary Files**: Cleaned up after processing
+- **Memory Management**: Large images automatically garbage collected
+- **Disk Space**: Old sessions can be manually cleaned (no auto-cleanup to preserve results)
+
+**Manual Cleanup:**
+
+```bash
+# Clean old sessions (older than 7 days)
+find outputs/ -name "20*" -type d -mtime +7 -exec rm -rf {} \;
+
+# Clean specific session
+rm -rf outputs/20241230_143022_a1b2c3d4/
+```
 
 ## 🏗️ Architecture
 
@@ -378,6 +499,58 @@ All 7 implemented hooks are active and run automatically in sequence:
 - **Memory Management**: Automatic cleanup of large image arrays
 - **Session Tracking**: Unique session IDs for request correlation
 - **Structured Logging**: JSON logs with contextual information
+
+## 🔧 Troubleshooting
+
+### Large Image Issues
+
+If you encounter memory or token limit issues with large images:
+
+```python
+# ❌ Avoid: Base64 mode with large images (can crash Claude)
+augment_image(image_b64=large_base64_data, prompt="add blur")
+
+# ✅ Use: File path mode instead
+augment_image(image_path="large_image.jpg", prompt="add blur")
+```
+
+### Resource Cleanup
+
+**Automatic Cleanup:**
+
+- Temporary files are automatically cleaned after processing
+- Memory is automatically garbage collected for large images
+- Session files are preserved for debugging and reuse
+
+**Manual Cleanup:**
+
+```bash
+# Clean old sessions (older than 7 days)
+find outputs/ -name "20*" -type d -mtime +7 -exec rm -rf {} \;
+
+# Clean all outputs (be careful!)
+rm -rf outputs/
+
+# Clean specific session
+rm -rf outputs/20241230_143022_a1b2c3d4/
+```
+
+**Environment Variables for Cleanup:**
+
+```bash
+# Set custom output directory
+export OUTPUT_DIR="/tmp/albumentations_outputs"
+
+# Enable automatic cleanup (not implemented yet)
+export SESSION_CLEANUP_HOURS=24
+```
+
+### Common Issues
+
+1. **"Image file not found"**: Check file path and permissions
+2. **"Invalid base64 image data"**: Ensure proper base64 encoding
+3. **"Must provide either image_path, image_b64, or session_id"**: Provide exactly one input parameter
+4. **Memory issues**: Use file path mode instead of base64 for large images
 
 ## 🔧 Development Setup
 

@@ -140,3 +140,32 @@ The albumentations-mcp tool is an MCP-compliant image augmentation system that a
 2. IF a CLI tool is implemented THEN it SHALL accept command-line arguments for batch processing
 3. IF batch processing is implemented THEN it SHALL handle multiple images efficiently
 4. WHEN advanced features are available THEN they SHALL maintain the same hook system and logging capabilities
+
+### Requirement 12
+
+**User Story:** As a user, I want automatic handling of oversized images, so that I can process large images without manual resizing or pipeline failures.
+
+#### Acceptance Criteria
+
+1. WHEN an image exceeds the maximum size limit THEN the PreTransformHook SHALL automatically downscale the image while preserving aspect ratio
+2. WHEN auto-resizing occurs THEN the system SHALL use LANCZOS filter for high-quality downscaling
+3. WHEN auto-resizing occurs THEN the system SHALL save the resized copy to `session_dir/tmp/` directory
+4. WHEN auto-resizing occurs THEN the system SHALL log metadata including original dimensions, resized dimensions, resize_applied=True, and reason
+5. WHEN STRICT_MODE is enabled THEN the system SHALL reject oversized images with an error instead of auto-resizing
+6. WHEN STRICT_MODE is disabled (default) THEN the system SHALL auto-resize oversized images and continue processing
+7. WHEN the maximum image size limit is configurable THEN it SHALL default to 4096 pixels on the largest dimension
+
+### Requirement 13
+
+**User Story:** As a user, I want comprehensive temporary file cleanup, so that no orphaned files accumulate on my system after processing.
+
+#### Acceptance Criteria
+
+1. WHEN temporary files are created from any source THEN they SHALL be saved within the proper session directory structure (`session_dir/tmp/`)
+2. WHEN files are loaded from URLs or pasted images THEN they SHALL be saved in the correct session ID folder format (`outputs/YYYYMMDD_HHMMSS_sessionID/tmp/`)
+3. WHEN PostSaveHook executes THEN it SHALL track and clean up all temporary files and directories created during processing
+4. WHEN PostSaveHook executes THEN it SHALL clean up temporary files regardless of their naming pattern
+5. WHEN PostSaveHook executes THEN it SHALL confine cleanup to session-specific temporary directories and never touch user original files
+6. WHEN PostSaveHook executes THEN it SHALL log cleanup results including files removed, directories removed, and any cleanup warnings
+7. WHEN processing completes THEN the `session_dir/tmp/` directory SHALL be empty or removed entirely
+8. WHEN cleanup fails for any temporary file THEN the system SHALL log warnings but continue processing

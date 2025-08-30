@@ -65,6 +65,7 @@ warn_unused_configs = true
 
 [dependency-groups]
 dev = [
+    "psutil>=7.0.0",
     "ruff>=0.12.7",
     "twine>=6.1.0",
 ]

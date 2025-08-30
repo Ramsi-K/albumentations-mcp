@@ -36,6 +36,14 @@ def validate_mcp_request(tool_name: str, **kwargs) -> tuple[bool, str | None]:
     try:
         # Tool-specific validation using existing utilities
         if tool_name == "augment_image":
+            if "image_path" in kwargs and kwargs["image_path"]:
+                validate_string_input(
+                    kwargs["image_path"], "image_path", max_length=1000
+                )
+            if "image_b64" in kwargs and kwargs["image_b64"]:
+                validate_string_input(
+                    kwargs["image_b64"], "image_b64", max_length=50000000
+                )  # ~50MB base64
             if "session_id" in kwargs and kwargs["session_id"]:
                 validate_string_input(kwargs["session_id"], "session_id", max_length=50)
             if "prompt" in kwargs and kwargs["prompt"]:
@@ -54,6 +62,10 @@ def validate_mcp_request(tool_name: str, **kwargs) -> tuple[bool, str | None]:
             if "seed" in kwargs and kwargs["seed"] is not None:
                 validate_numeric_range(
                     kwargs["seed"], "seed", min_value=0, max_value=4294967295
+                )
+            if "output_dir" in kwargs and kwargs["output_dir"]:
+                validate_string_input(
+                    kwargs["output_dir"], "output_dir", max_length=500
                 )
 
         elif tool_name == "validate_prompt":
@@ -183,13 +195,23 @@ def _execute_pipeline(
     )
 
 
-def _format_success_response(pipeline_result: dict, session_id: str) -> str:
+def _format_success_response(
+    pipeline_result: dict, session_id: str, input_mode: str = "session"
+) -> str:
     """Format successful pipeline response."""
     file_paths = pipeline_result["metadata"].get("file_paths", {})
     returned_session_id = pipeline_result.get("session_id", session_id)
 
     if file_paths and "augmented_image" in file_paths:
-        return f"✅ Image successfully augmented and saved!\n\n📁 Files saved:\n• Augmented image: {file_paths['augmented_image']}\n• Session ID: {returned_session_id}\n\nUse the file path to access your augmented image."
+        input_info = ""
+        if input_mode == "file_path":
+            input_info = "\n🔄 Input mode: File path (recommended for large images)"
+        elif input_mode == "base64":
+            input_info = "\n🔄 Input mode: Base64 data"
+        elif input_mode == "session":
+            input_info = "\n🔄 Input mode: Session (legacy)"
+
+        return f"✅ Image successfully augmented and saved!{input_info}\n\n📁 Files saved:\n• Augmented image: {file_paths['augmented_image']}\n• Session ID: {returned_session_id}\n\nUse the file path to access your augmented image."
 
     # Fallback if file saving failed
     applied_transforms = (
@@ -203,25 +225,32 @@ def _format_success_response(pipeline_result: dict, session_id: str) -> str:
 
 @mcp.tool()
 def augment_image(
-    session_id: str,
+    image_path: str = "",
+    image_b64: str = "",
+    session_id: str = "",
     prompt: str = "",
     seed: int | None = None,
     preset: str | None = None,
+    output_dir: str | None = None,
 ) -> str:
-    """Apply image augmentations to a previously loaded image.
+    """Apply image augmentations using file path or base64 data.
 
     Args:
-        session_id: Session ID from load_image_for_processing tool
+        image_path: Path to image file (preferred for large images to avoid base64 conversion)
+        image_b64: Base64 encoded image data (for backward compatibility)
+        session_id: Session ID from load_image_for_processing tool (for backward compatibility)
         prompt: Natural language description of desired augmentations (optional if preset is used)
         seed: Optional random seed for reproducible results
         preset: Optional preset name (segmentation, portrait, lowlight) to use instead of prompt
+        output_dir: Directory to save output files (optional, defaults to ./outputs)
 
     Returns:
         Success message with file path where augmented image was saved
 
     Note:
+        Provide either image_path, image_b64, or session_id (in order of preference).
         Either prompt or preset must be provided, but not both.
-        Must use load_image_for_processing first to get a session_id.
+        File path mode is recommended for large images to avoid memory issues.
     """
     # Validate request before processing
     valid, error = validate_mcp_request(
@@ -235,37 +264,56 @@ def augment_image(
         return f"❌ Validation Error: {error}"
 
     try:
-        # 1. Validate inputs
+        # 1. Detect input mode and validate
+        input_mode, error = _detect_input_mode(image_path, image_b64, session_id)
+        if error:
+            return f"❌ Error: {error}"
+
+        # 2. Validate augmentation inputs
         valid, error = _validate_augmentation_inputs(prompt, preset)
         if not valid:
             return f"❌ Error: {error}"
 
-        # 2. Load session image
-        image_b64, error = _load_session_image(session_id)
+        # 3. Load image based on input mode
+        loaded_image_b64, error = _load_image_from_input(
+            input_mode, image_path, image_b64, session_id
+        )
         if error:
             return f"❌ Error: {error}"
 
-        # 3. Prepare processing prompt
+        # 4. Prepare processing prompt
         effective_prompt, error = _prepare_processing_prompt(prompt, preset)
         if error:
             return f"❌ Error: {error}"
 
-        # 4. Check pipeline status (hooks employed)
+        # 5. Generate session ID if not provided
+        if not session_id or not session_id.strip():
+            import uuid
+
+            session_id = str(uuid.uuid4())[:8]
+
+        # 6. Set up output directory
+        if output_dir:
+            import os
+
+            os.environ["OUTPUT_DIR"] = output_dir
+
+        # 7. Check pipeline status (hooks employed)
         pipeline = get_pipeline()
         status = pipeline.get_pipeline_status()
         if not status.get("registered_hooks"):
             return "❌ Error: Pipeline not ready - no hooks registered."
 
-        # 5. Execute pipeline
+        # 8. Execute pipeline
         pipeline_result = _execute_pipeline(
-            image_b64,
+            loaded_image_b64,
             effective_prompt,
             seed,
             session_id,
         )
 
         if pipeline_result["success"]:
-            return _format_success_response(pipeline_result, session_id)
+            return _format_success_response(pipeline_result, session_id, input_mode)
         error_msg = pipeline_result.get("message", "Unknown error")
         return f"❌ Error: {error_msg}. Use validate_prompt tool to test your prompt or list_available_transforms tool to see available transforms."
 
@@ -479,6 +527,86 @@ def _detect_image_source_type(image_source: str) -> str:
     ):
         return "base64"
     return "file"
+
+
+def _detect_input_mode(
+    image_path: str, image_b64: str, session_id: str
+) -> tuple[str, str | None]:
+    """Detect input mode and return (mode, error_message).
+
+    Args:
+        image_path: File path parameter
+        image_b64: Base64 data parameter
+        session_id: Session ID parameter
+
+    Returns:
+        Tuple of (mode, error_message) where mode is 'file_path', 'base64', or 'session'
+    """
+    # Count non-empty inputs
+    inputs_provided = sum(
+        [
+            bool(image_path and image_path.strip()),
+            bool(image_b64 and image_b64.strip()),
+            bool(session_id and session_id.strip()),
+        ]
+    )
+
+    if inputs_provided == 0:
+        return "", "Must provide either image_path, image_b64, or session_id"
+
+    if inputs_provided > 1:
+        return "", "Provide only one of: image_path, image_b64, or session_id"
+
+    if image_path and image_path.strip():
+        return "file_path", None
+    elif image_b64 and image_b64.strip():
+        return "base64", None
+    elif session_id and session_id.strip():
+        return "session", None
+
+    return "", "Invalid input parameters"
+
+
+def _load_image_from_input(
+    mode: str, image_path: str, image_b64: str, session_id: str
+) -> tuple[str | None, str | None]:
+    """Load image based on input mode. Returns (image_b64, error_message)."""
+    if mode == "file_path":
+        try:
+            from pathlib import Path
+            from .image_conversions import (
+                load_image_from_source,
+                pil_to_base64,
+            )
+
+            # Validate file exists
+            if not Path(image_path).exists():
+                return None, f"Image file not found: {image_path}"
+
+            # Load image from file path
+            image = load_image_from_source(image_path)
+            image_b64_data = pil_to_base64(image)
+            return image_b64_data, None
+
+        except Exception as e:
+            return None, f"Failed to load image from file path: {e}"
+
+    elif mode == "base64":
+        # Validate base64 data
+        try:
+            from .image_conversions import base64_to_pil, pil_to_base64
+
+            # Test conversion to ensure valid base64
+            image = base64_to_pil(image_b64)
+            return image_b64, None
+        except Exception as e:
+            return None, f"Invalid base64 image data: {e}"
+
+    elif mode == "session":
+        # Use existing session loading logic
+        return _load_session_image(session_id)
+
+    return None, f"Unknown input mode: {mode}"
 
 
 def _create_session_directory(session_id: str) -> str:

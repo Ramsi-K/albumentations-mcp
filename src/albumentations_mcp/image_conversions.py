@@ -247,3 +247,10 @@ def load_image_from_source(image_source: str) -> Image.Image:
     from .utils.image_handler import load_image_from_source
 
     return load_image_from_source(image_source)
+
+
+def validate_image(image: Image.Image) -> None:
+    """Full image validation with comprehensive checks - delegates to image handler."""
+    from .utils.image_handler import validate_image
+
+    return validate_image(image)

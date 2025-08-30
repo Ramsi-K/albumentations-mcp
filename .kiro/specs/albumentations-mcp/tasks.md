@@ -346,7 +346,74 @@ Production-ready PyPI package for natural language image augmentation via MCP pr
     - Focus on: preset system, CLI demo, error recovery, hook integration
     - _Requirements: 4.1, 4.2_
 
-## � MAIENTENANCE & IMPROVEMENTS
+## 🔧 URGENT FIXES - CLAUDE INTEGRATION ISSUE
+
+- [-] 23. Fix Claude base64 conversion crash issue
+
+  **Problem**: When users paste large images into Claude, Claude converts them to base64 strings before calling the MCP tool, causing memory/token limit crashes before the tool is even called.
+
+  **Solution**: Modify augment_image tool to accept file paths instead of base64 data, allowing Claude to save pasted images to temporary files.
+
+  - [x] 23.1 Modify augment_image tool signature
+
+    - Change signature from `augment_image(image_b64: str, prompt: str, ...)` to `augment_image(image_path: str, prompt: str, output_dir: str = None, ...)`
+    - Update tool description and parameter documentation
+    - Add file path validation and existence checking
+    - Maintain backward compatibility by detecting input type (base64 vs file path)
+    - _Requirements: 1.1, 1.2, 7.1, 7.2_
+
+  - [x] 23.2 Update internal processing pipeline
+
+    - Modify image loading to work with file paths using existing conversion functions
+    - Update hook system to handle file path inputs
+    - Ensure all existing augmentation pipeline and hooks remain intact
+    - Add proper error handling for file access issues
+    - _Requirements: 7.1, 7.2, 3.1, 3.2_
+
+  - [x] 23.3 Implement dual input mode support
+
+    - Add input type detection (base64 string vs file path)
+    - Maintain full backward compatibility for direct API usage
+    - Support both `image_b64` and `image_path` parameters with automatic detection
+    - Add validation for both input types
+    - _Requirements: 1.1, 1.2, 7.1, 7.2_
+
+  - [x] 23.4 Update output handling
+
+    - Change return format from base64 data to success message with output file path
+    - Add `output_dir` parameter for specifying where to save results
+    - Create default output directory structure if not specified
+    - Include metadata about saved files in response
+    - _Requirements: 5.4, 10.1, 10.2_
+
+  - [x] 23.5 Comprehensive testing and validation
+
+    - Update all existing tests to cover both file path and base64 input modes
+    - Add new tests specifically for file path processing
+    - Test error handling for missing files, invalid paths, permission issues
+    - Verify all 4 MCP tools still work correctly after changes
+    - Run complete test suite: `uv run pytest -v` (ensure 311/311 tests still pass)
+    - _Requirements: 4.1, 4.2_
+
+  - [x] 23.6 Documentation and resource cleanup
+
+    - Update README.md with new file path usage examples
+    - Update MCP tool descriptions and parameter documentation
+    - Add examples showing both base64 and file path usage
+    - Document output directory structure and file naming conventions
+    - Add resource cleanup procedures for temporary files
+    - _Requirements: 11.1, 11.2, 11.3, 11.4_
+
+  - [x] 23.7 Integration testing and verification
+
+    - Test with actual MCP clients to verify Claude integration works
+    - Verify file path mode prevents base64 conversion crashes
+    - Test with various image sizes and formats
+    - Ensure all existing functionality (presets, seeding, hooks) works with file paths
+    - Validate resource cleanup after processing
+    - _Requirements: 2.1, 2.2, 2.3, 2.4_
+
+## 🔧 MAINTENANCE & IMPROVEMENTS
 
 ### Current Issues to Address
 
@@ -785,3 +852,99 @@ This structure enables:
   - Add hook execution tracing
   - Implement performance profiling tools
   - Add visual diff tools for before/after comparison
+
+## 🔧 BETA v0.2 - ENHANCED IMAGE HANDLING
+
+- [ ] 24. Implement automatic image size handling and comprehensive temp cleanup
+
+  **Problem**: Current PreTransformHook only warns about oversized images but doesn't fix them, causing pipeline failures. PostSaveHook only cleans temp files matching session_id patterns, leaving orphaned files from pasted images.
+
+  **Solution**: Enhance PreTransformHook to auto-resize oversized images and improve PostSaveHook to comprehensively clean all temporary files within proper session directory structure.
+
+  - [ ] 24.1 Enhance PreTransformHook with auto-resize capability
+
+    - Add automatic downscaling in PreTransformHook when image exceeds MAX_IMAGE_SIZE (default: 4096px largest dimension)
+    - Preserve aspect ratio using LANCZOS filter for high-quality downscaling
+    - Save resized copy to `session_dir/tmp/` directory following proper session structure
+    - Log comprehensive metadata: original_dimensions, resized_dimensions, resize_applied=True, resize_reason
+    - Add STRICT_MODE environment variable: when true, reject oversized images with error instead of resizing
+    - Make MAX_IMAGE_SIZE configurable via environment variable
+    - Add hard checks for MAX_PIXELS_IN (e.g., 16_000_000) and MAX_BYTES_IN (e.g., 50_000_000) in addition to MAX_IMAGE_SIZE (max side).
+    - Normalize EXIF orientation and convert to RGB BEFORE measuring/resizing.
+    - Preserve source format on save (JPEG→JPEG with quality=85/optimize; PNG→PNG; WEBP→WEBP lossless when supported). Avoid forcing PNG.
+    - Log: resize_applied, original_wxh, original_bytes, resized_wxh, resized_bytes, reason, limits.
+
+    - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.7_
+
+  - [ ] 24.2 Fix session directory structure for temporary files
+
+    - Ensure all temporary files from URLs/pasted images are saved in correct session directory format
+    - Update file saving logic to use `outputs/YYYYMMDD_HHMMSS_sessionID/tmp/` structure
+    - Modify URL/paste image handling to follow proper session directory conventions
+    - Add validation to ensure temp files are created in session-specific directories
+    - Route ALL derived temps (pasted/url downloads, EXIF-fix copies, resized copies) into session_dir/tmp/.
+    - Maintain context.temp_paths: list[str] of every temp created during the run.
+    - Guard against path traversal and symlinks: reject absolute outside session_dir and any '..' segments or symlinked inputs.
+
+    - _Requirements: 13.1, 13.2_
+
+  - [ ] 24.3 Enhance PostSaveHook comprehensive temp cleanup
+
+    - Extend `_cleanup_temporary_resources` to track all temp files/directories created during processing
+    - Remove dependency on session_id pattern matching for cleanup
+    - Implement comprehensive cleanup that handles all temporary files regardless of naming pattern
+    - Confine cleanup operations to session-specific temp directories only
+    - Add detailed logging of cleanup results including files removed, directories removed, and warnings
+    - Ensure `session_dir/tmp/` is empty or removed after processing
+    - Never touch user original files during cleanup
+    - Cleanup uses ONLY context.temp_paths (do not glob by session_id).
+    - Delete files/dirs listed; then remove session_dir/tmp/ if empty.
+    - Never touch user originals or any path outside session_dir.
+    - Log counts: files_removed, dirs_removed, warnings.
+    - _Requirements: 13.3, 13.4, 13.5, 13.6, 13.7, 13.8_
+
+  - [ ] 24.4 Add comprehensive testing for image size handling
+
+    - Add test: oversized image (>4096px) automatically resizes and augmentation continues
+    - Add test: STRICT_MODE=true rejects oversized image with clear error message
+    - Add test: resized image maintains aspect ratio and uses proper temp directory
+    - Add test: original input files are preserved and never modified
+    - Add test: MAX_IMAGE_SIZE configuration works correctly
+    - Oversize by pixels (e.g., 9000×2000) and by bytes (high-quality JPEG).
+    - EXIF-rotated portrait → verify orientation corrected, aspect preserved.
+    - WEBP input preserved as WEBP (when resized).
+    - Corrupted image raises clean error.
+    - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.7_
+
+  - [ ] 24.5 Add comprehensive testing for temp cleanup
+
+    - Add test: pasted image temp files are cleaned after processing
+    - Add test: URL-loaded image temp files are cleaned after processing
+    - Add test: session_dir/tmp/ is empty or removed after processing
+    - Add test: user original files are never touched during cleanup
+    - Add test: cleanup works regardless of temp file naming patterns
+    - Add test: cleanup logs provide detailed information about removed files
+    - Pasted image temp + resized temp → both removed; session_dir/tmp/ gone or empty.
+    - Concurrent sessions: ensure each session cleans only its own tmp/.
+    - Symlink input: rejected; no cleanup outside session tree.
+    - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6, 13.7, 13.8_
+
+  - [ ] 24.6 Environment variable configuration
+
+    - Add STRICT_MODE environment variable (default: false)
+    - Add MAX_IMAGE_SIZE environment variable (default: 4096)
+    - Add documentation for new environment variables
+    - Add validation for environment variable values
+    - _Requirements: 12.5, 12.6, 12.7_
+
+  **Acceptance Criteria**:
+
+  - Large internet images (>10MB, >8K pixels) automatically resize, process successfully, and leave no orphaned temp folders
+  - STRICT_MODE correctly rejects oversized images with helpful error messages
+  - After processing, `session_dir/tmp/` directory is empty or removed
+  - All temporary files follow proper session directory structure
+  - User original files are never modified or deleted
+  - Comprehensive logging provides visibility into resize and cleanup operations
+  - Logs include: resize_applied, original_wxh, original_bytes, resized_wxh, resized_bytes, reason, limits.
+  - Non-whitelisted formats rejected with explicit hint.
+  - No path outside session_dir is ever deleted; originals never modified.

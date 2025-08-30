@@ -8,10 +8,21 @@ Apply image augmentations based on natural language prompt or preset.
 
 **Parameters:**
 
-- `image_b64` (str, required): Base64-encoded image data
+- `image_path` (str, optional): Path to image file (recommended for large images)
+- `image_b64` (str, optional): Base64-encoded image data (for backward compatibility)
+- `session_id` (str, optional): Session ID from load_image_for_processing (legacy mode)
 - `prompt` (str, optional): Natural language description of desired augmentations
 - `seed` (int, optional): Random seed for reproducible results (0 to 2^32-1)
 - `preset` (str, optional): Use preset instead of prompt
+- `output_dir` (str, optional): Directory to save output files (defaults to ./outputs)
+
+**Input Modes:**
+
+Provide exactly one of: `image_path`, `image_b64`, or `session_id`
+
+- **File Path Mode** (recommended): Avoids base64 conversion crashes with large images
+- **Base64 Mode**: Backward compatibility with existing code
+- **Session Mode**: Legacy mode using load_image_for_processing
 
 **Presets:**
 
@@ -21,15 +32,31 @@ Apply image augmentations based on natural language prompt or preset.
 
 **Returns:**
 
-- `str`: Base64-encoded augmented image
+- `str`: Success message with file path where augmented image was saved
 
-**Example:**
+**Examples:**
 
 ```python
+# File path mode (recommended)
+result = augment_image(
+    image_path="/path/to/image.jpg",
+    prompt="add blur and rotate 15 degrees",
+    seed=42,
+    output_dir="./my_outputs"
+)
+
+# Base64 mode (backward compatibility)
 result = augment_image(
     image_b64="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ...",
     prompt="add blur and rotate 15 degrees",
     seed=42
+)
+
+# Session mode (legacy)
+session_id = load_image_for_processing("image.jpg")
+result = augment_image(
+    session_id=session_id,
+    prompt="add blur and rotate 15 degrees"
 )
 ```
 

@@ -86,9 +86,7 @@ for pattern in SUSPICIOUS_PATTERNS:
         logger.warning(f"Skipping problematic regex pattern {pattern}: {e}")
 
 # Additional security constants
-MAX_SECURITY_CHECK_LENGTH = (
-    5000000  # Limit input length for security checks (5MB base64 = ~3.75MB image)
-)
+MAX_SECURITY_CHECK_LENGTH = 10000  # Limit input length for security checks (10KB)
 SECURITY_TIMEOUT_SECONDS = 1.0  # Timeout for regex operations
 
 # Exception classes are now imported from errors.py module
@@ -313,7 +311,10 @@ def _validate_image_dimensions(
         return False
 
     if width > MAX_IMAGE_WIDTH or height > MAX_IMAGE_HEIGHT:
-        error = f"Image too large: {width}x{height} (max: {MAX_IMAGE_WIDTH}x{MAX_IMAGE_HEIGHT})"
+        error = (
+            f"Image too large: {width}x{height} "
+            f"(max: {MAX_IMAGE_WIDTH}x{MAX_IMAGE_HEIGHT})"
+        )
         validation_result["error"] = error
         if strict:
             raise ResourceLimitError(
@@ -330,7 +331,9 @@ def _validate_image_dimensions(
     # Check pixel count for decompression bomb protection
     pixel_count = width * height
     if pixel_count > MAX_IMAGE_PIXELS:
-        error = f"Image has too many pixels: {pixel_count} (max: {MAX_IMAGE_PIXELS})"
+        error = (
+            f"Image has too many pixels: {pixel_count} " f"(max: {MAX_IMAGE_PIXELS})"
+        )
         validation_result["error"] = error
         if strict:
             raise ResourceLimitError(
@@ -423,7 +426,10 @@ def validate_prompt(prompt: str, strict: bool = True) -> dict[str, Any]:
             return validation_result
 
         if prompt_length > MAX_PROMPT_LENGTH:
-            error = f"Prompt too long: {prompt_length} characters (max: {MAX_PROMPT_LENGTH})"
+            error = (
+                f"Prompt too long: {prompt_length} characters "
+                f"(max: {MAX_PROMPT_LENGTH})"
+            )
             validation_result["error"] = error
             if strict:
                 raise ResourceLimitError(
@@ -705,7 +711,8 @@ def _estimate_memory_usage(metadata: dict[str, Any]) -> float:
     if width <= 0 or height <= 0:
         return 0.0
 
-    # Estimate memory for RGB image (3 bytes per pixel) plus processing overhead
+    # Estimate memory for RGB image (3 bytes per pixel)
+    # plus processing overhead
     base_memory = (width * height * 3) / (1024 * 1024)  # MB
     processing_overhead = base_memory * 2  # 2x for processing
 
