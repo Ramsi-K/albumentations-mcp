@@ -1,0 +1,130 @@
+{
+  "claude_desktop_config": {
+    "description": "Configuration for Claude Desktop (~/.claude_desktop_config.json)",
+    "config": {
+      "mcpServers": {
+        "albumentations": {
+          "command": "uvx",
+          "args": ["albumentations-mcp"],
+          "env": {
+            "MCP_LOG_LEVEL": "INFO",
+            "OUTPUT_DIR": "./outputs",
+            "ENABLE_VISION_VERIFICATION": "true",
+            "DEFAULT_SEED": "42"
+          }
+        }
+      }
+    }
+  },
+  "kiro_ide_config": {
+    "description": "Configuration for Kiro IDE (.kiro/settings/mcp.json)",
+    "config": {
+      "mcpServers": {
+        "albumentations": {
+          "command": "uvx",
+          "args": ["albumentations-mcp"],
+          "env": {
+            "MCP_LOG_LEVEL": "INFO",
+            "OUTPUT_DIR": "./outputs",
+            "ENABLE_VISION_VERIFICATION": "true",
+            "DEFAULT_SEED": "42"
+          },
+          "disabled": false,
+          "autoApprove": ["augment_image", "list_available_transforms"]
+        }
+      }
+    }
+  },
+  "minimal_config": {
+    "description": "Minimal configuration (just the essentials)",
+    "config": {
+      "mcpServers": {
+        "albumentations": {
+          "command": "uvx",
+          "args": ["albumentations-mcp"]
+        }
+      }
+    }
+  },
+  "development_config": {
+    "description": "Development configuration with debug logging",
+    "config": {
+      "mcpServers": {
+        "albumentations": {
+          "command": "uvx",
+          "args": ["albumentations-mcp"],
+          "env": {
+            "MCP_LOG_LEVEL": "DEBUG",
+            "OUTPUT_DIR": "./dev_outputs",
+            "ENABLE_VISION_VERIFICATION": "false",
+            "MAX_FILE_SIZE_MB": "100",
+            "PROCESSING_TIMEOUT_SECONDS": "600"
+          },
+          "disabled": false,
+          "autoApprove": []
+        }
+      }
+    }
+  },
+  "production_config": {
+    "description": "Production configuration with optimized settings",
+    "config": {
+      "mcpServers": {
+        "albumentations": {
+          "command": "uvx",
+          "args": ["albumentations-mcp"],
+          "env": {
+            "MCP_LOG_LEVEL": "WARNING",
+            "OUTPUT_DIR": "/var/lib/albumentations/outputs",
+            "ENABLE_VISION_VERIFICATION": "true",
+            "DEFAULT_SEED": "42",
+            "MAX_FILE_SIZE_MB": "50",
+            "PROCESSING_TIMEOUT_SECONDS": "300"
+          },
+          "disabled": false,
+          "autoApprove": [
+            "augment_image",
+            "list_available_transforms",
+            "validate_prompt",
+            "list_available_presets"
+          ]
+        }
+      }
+    }
+  },
+  "environment_variables": {
+    "description": "Available environment variables and their defaults",
+    "variables": {
+      "MCP_LOG_LEVEL": {
+        "description": "Logging level",
+        "options": ["DEBUG", "INFO", "WARNING", "ERROR"],
+        "default": "INFO"
+      },
+      "OUTPUT_DIR": {
+        "description": "Directory for output files",
+        "default": "./outputs"
+      },
+      "ENABLE_VISION_VERIFICATION": {
+        "description": "Enable AI-powered result validation",
+        "options": ["true", "false"],
+        "default": "false"
+      },
+      "DEFAULT_SEED": {
+        "description": "Default seed for reproducible results",
+        "type": "integer",
+        "range": "0 to 4294967295",
+        "default": null
+      },
+      "MAX_FILE_SIZE_MB": {
+        "description": "Maximum file size limit in MB",
+        "type": "integer",
+        "default": 50
+      },
+      "PROCESSING_TIMEOUT_SECONDS": {
+        "description": "Processing timeout in seconds",
+        "type": "integer",
+        "default": 300
+      }
+    }
+  }
+}

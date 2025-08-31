@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "albumentations": {
+      "command": "uvx",
+      "args": ["albumentations-mcp"],
+      "env": {
+        "MCP_LOG_LEVEL": "INFO",
+        "OUTPUT_DIR": "./outputs",
+        "ENABLE_VISION_VERIFICATION": "true",
+        "DEFAULT_SEED": "42"
+      }
+    }
+  }
+}
