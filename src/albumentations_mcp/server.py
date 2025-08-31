@@ -6,8 +6,16 @@ An MCP-compliant image augmentation server that bridges natural language
 processing with computer vision using the Albumentations library.
 """
 
+import json
+import logging
+import os
+import sys
+import uuid
+from datetime import datetime
+from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
+from PIL import Image
 
 from .parser import get_available_transforms
 from .pipeline import get_pipeline, parse_prompt_with_hooks
@@ -29,26 +37,30 @@ def validate_mcp_request(tool_name: str, **kwargs) -> tuple[bool, str | None]:
         Tuple of (is_valid, error_message)
     """
     from .utils.validation_utils import (
-        validate_string_input,
         validate_numeric_range,
+        validate_string_input,
     )
 
     try:
         # Tool-specific validation using existing utilities
         if tool_name == "augment_image":
-            if "image_path" in kwargs and kwargs["image_path"]:
+            if kwargs.get("image_path"):
                 validate_string_input(
-                    kwargs["image_path"], "image_path", max_length=1000
+                    kwargs["image_path"],
+                    "image_path",
+                    max_length=1000,
                 )
-            if "image_b64" in kwargs and kwargs["image_b64"]:
+            if kwargs.get("image_b64"):
                 validate_string_input(
-                    kwargs["image_b64"], "image_b64", max_length=50000000
+                    kwargs["image_b64"],
+                    "image_b64",
+                    max_length=50000000,
                 )  # ~50MB base64
-            if "session_id" in kwargs and kwargs["session_id"]:
+            if kwargs.get("session_id"):
                 validate_string_input(kwargs["session_id"], "session_id", max_length=50)
-            if "prompt" in kwargs and kwargs["prompt"]:
+            if kwargs.get("prompt"):
                 validate_string_input(kwargs["prompt"], "prompt", max_length=1000)
-            if "preset" in kwargs and kwargs["preset"]:
+            if kwargs.get("preset"):
                 validate_string_input(kwargs["preset"], "preset", max_length=50)
                 if kwargs["preset"] not in [
                     "segmentation",
@@ -57,15 +69,20 @@ def validate_mcp_request(tool_name: str, **kwargs) -> tuple[bool, str | None]:
                 ]:
                     return (
                         False,
-                        f"preset must be one of: segmentation, portrait, lowlight",
+                        "preset must be one of: segmentation, portrait, lowlight",
                     )
             if "seed" in kwargs and kwargs["seed"] is not None:
                 validate_numeric_range(
-                    kwargs["seed"], "seed", min_value=0, max_value=4294967295
+                    kwargs["seed"],
+                    "seed",
+                    min_value=0,
+                    max_value=4294967295,
                 )
-            if "output_dir" in kwargs and kwargs["output_dir"]:
+            if kwargs.get("output_dir"):
                 validate_string_input(
-                    kwargs["output_dir"], "output_dir", max_length=500
+                    kwargs["output_dir"],
+                    "output_dir",
+                    max_length=500,
                 )
 
         elif tool_name == "validate_prompt":
@@ -75,13 +92,18 @@ def validate_mcp_request(tool_name: str, **kwargs) -> tuple[bool, str | None]:
         elif tool_name == "set_default_seed":
             if "seed" in kwargs and kwargs["seed"] is not None:
                 validate_numeric_range(
-                    kwargs["seed"], "seed", min_value=0, max_value=4294967295
+                    kwargs["seed"],
+                    "seed",
+                    min_value=0,
+                    max_value=4294967295,
                 )
 
         elif tool_name == "load_image_for_processing":
             if "image_source" in kwargs:
                 validate_string_input(
-                    kwargs["image_source"], "image_source", max_length=10000
+                    kwargs["image_source"],
+                    "image_source",
+                    max_length=10000,
                 )
 
         return True, None
@@ -196,7 +218,9 @@ def _execute_pipeline(
 
 
 def _format_success_response(
-    pipeline_result: dict, session_id: str, input_mode: str = "session"
+    pipeline_result: dict,
+    session_id: str,
+    input_mode: str = "session",
 ) -> str:
     """Format successful pipeline response."""
     file_paths = pipeline_result["metadata"].get("file_paths", {})
@@ -276,7 +300,10 @@ def augment_image(
 
         # 3. Load image based on input mode
         loaded_image_b64, error = _load_image_from_input(
-            input_mode, image_path, image_b64, session_id
+            input_mode,
+            image_path,
+            image_b64,
+            session_id,
         )
         if error:
             return f"❌ Error: {error}"
@@ -530,7 +557,9 @@ def _detect_image_source_type(image_source: str) -> str:
 
 
 def _detect_input_mode(
-    image_path: str, image_b64: str, session_id: str
+    image_path: str,
+    image_b64: str,
+    session_id: str,
 ) -> tuple[str, str | None]:
     """Detect input mode and return (mode, error_message).
 
@@ -548,7 +577,7 @@ def _detect_input_mode(
             bool(image_path and image_path.strip()),
             bool(image_b64 and image_b64.strip()),
             bool(session_id and session_id.strip()),
-        ]
+        ],
     )
 
     if inputs_provided == 0:
@@ -559,21 +588,25 @@ def _detect_input_mode(
 
     if image_path and image_path.strip():
         return "file_path", None
-    elif image_b64 and image_b64.strip():
+    if image_b64 and image_b64.strip():
         return "base64", None
-    elif session_id and session_id.strip():
+    if session_id and session_id.strip():
         return "session", None
 
     return "", "Invalid input parameters"
 
 
 def _load_image_from_input(
-    mode: str, image_path: str, image_b64: str, session_id: str
+    mode: str,
+    image_path: str,
+    image_b64: str,
+    session_id: str,
 ) -> tuple[str | None, str | None]:
     """Load image based on input mode. Returns (image_b64, error_message)."""
     if mode == "file_path":
         try:
             from pathlib import Path
+
             from .image_conversions import (
                 load_image_from_source,
                 pil_to_base64,
@@ -642,7 +675,8 @@ def load_image_for_processing(image_source: str) -> str:
     """
     # Validate request before processing
     valid, error = validate_mcp_request(
-        "load_image_for_processing", image_source=image_source
+        "load_image_for_processing",
+        image_source=image_source,
     )
     if not valid:
         return f"❌ Validation Error: {error}"
@@ -700,10 +734,797 @@ def get_pipeline_status() -> dict:
         }
 
 
+# MCP Prompt Templates
+@mcp.prompt()
+def compose_preset(base: str, tweak_note: str = "", output_format: str = "json") -> str:
+    """Generate a policy skeleton based on presets with optional tweaks.
+
+    Args:
+        base: Base preset name (segmentation, portrait, lowlight)
+        tweak_note: Optional description of desired modifications
+        output_format: Output format (json, yaml, text)
+
+    Returns:
+        Structured prompt for creating augmentation policies
+    """
+    from .presets import get_preset
+
+    preset_config = get_preset(base)
+    if not preset_config:
+        available_presets = ["segmentation", "portrait", "lowlight"]
+        return f"Error: Unknown preset '{base}'. Available presets: {', '.join(available_presets)}"
+
+    base_transforms = preset_config.get("transforms", [])
+
+    prompt = f"""Create an image augmentation policy based on the '{base}' preset.
+
+BASE PRESET: {base}
+Description: {preset_config.get('description', 'No description available')}
+Use cases: {', '.join(preset_config.get('use_cases', []))}
+
+BASE TRANSFORMS:
+"""
+
+    for i, transform in enumerate(base_transforms, 1):
+        prompt += f"{i}. {transform['name']}: {transform.get('parameters', {})}\n"
+
+    if tweak_note:
+        prompt += f"\nREQUESTED MODIFICATIONS:\n{tweak_note}\n"
+
+    prompt += f"""
+TASK: Generate a complete augmentation policy that:
+1. Starts with the base preset transforms
+2. Incorporates the requested modifications (if any)
+3. Maintains compatibility with the original use case
+4. Returns the result in {output_format} format
+
+Please provide the augmentation policy with clear parameter values and explanations for any modifications made."""
+
+    return prompt
+
+
+@mcp.prompt()
+def explain_effects(pipeline_json: str, image_context: str = "") -> str:
+    """Generate plain-English critique/summary of any augmentation pipeline.
+
+    Args:
+        pipeline_json: JSON string containing the augmentation pipeline
+        image_context: Optional context about the image type or use case
+
+    Returns:
+        Structured prompt for analyzing pipeline effects
+    """
+    try:
+        import json
+
+        pipeline_data = json.loads(pipeline_json)
+    except json.JSONDecodeError:
+        return "Error: Invalid JSON format in pipeline_json parameter"
+
+    transforms = pipeline_data.get("transforms", [])
+    if not transforms:
+        return "Error: No transforms found in pipeline"
+
+    prompt = f"""Analyze this image augmentation pipeline and explain its effects in plain English.
+
+PIPELINE TO ANALYZE:
+{json.dumps(pipeline_data, indent=2)}
+"""
+
+    if image_context:
+        prompt += f"\nIMAGE CONTEXT: {image_context}\n"
+
+    prompt += """
+ANALYSIS REQUIREMENTS:
+1. Explain what each transform does in simple terms
+2. Describe the combined visual effects
+3. Identify potential benefits and drawbacks
+4. Assess suitability for the given image context (if provided)
+5. Suggest improvements or alternatives if needed
+
+Please provide:
+- Summary of overall effects
+- Transform-by-transform breakdown
+- Potential issues or concerns
+- Recommendations for optimization"""
+
+    return prompt
+
+
+@mcp.prompt()
+def augmentation_parser(
+    user_prompt: str, available_transforms: list | None = None
+) -> str:
+    """Parse natural language into Albumentations transforms.
+
+    Args:
+        user_prompt: Natural language description of desired augmentations
+        available_transforms: Optional list of available transform names
+
+    Returns:
+        Structured prompt for parsing natural language to transforms
+    """
+    if available_transforms is None:
+        from .parser import get_available_transforms
+
+        transforms_info = get_available_transforms()
+        available_transforms = list(transforms_info.keys())
+
+    prompt = f"""Parse this natural language request into structured Albumentations transforms.
+
+USER REQUEST: "{user_prompt}"
+
+AVAILABLE TRANSFORMS:
+{', '.join(available_transforms)}
+
+PARSING GUIDELINES:
+1. Identify specific augmentation requests in the user prompt
+2. Map each request to appropriate Albumentations transforms
+3. Extract or infer reasonable parameter values
+4. Handle ambiguous requests with sensible defaults
+5. Suggest alternatives for unsupported requests
+
+OUTPUT FORMAT:
+Provide a JSON structure with:
+- transforms: List of transform objects with name, parameters, and probability
+- confidence: Parsing confidence score (0.0-1.0)
+- warnings: Any ambiguities or assumptions made
+- suggestions: Alternative interpretations if applicable
+
+Example output:
+{{
+  "transforms": [
+    {{"name": "Blur", "parameters": {{"blur_limit": 7}}, "probability": 1.0}}
+  ],
+  "confidence": 0.9,
+  "warnings": ["Using default blur intensity"],
+  "suggestions": ["Consider specifying blur amount for more control"]
+}}"""
+
+    return prompt
+
+
+@mcp.prompt()
+def vision_verification(
+    original_image_path: str,
+    augmented_image_path: str,
+    requested_transforms: str,
+) -> str:
+    """Generate prompt for vision model to verify augmentation results.
+
+    Args:
+        original_image_path: Path to the original image
+        augmented_image_path: Path to the augmented image
+        requested_transforms: Description of transforms that were applied
+
+    Returns:
+        Structured prompt for vision model analysis
+    """
+    prompt = f"""Compare these two images to verify that the requested augmentations were applied correctly.
+
+ORIGINAL IMAGE: {original_image_path}
+AUGMENTED IMAGE: {augmented_image_path}
+REQUESTED TRANSFORMS: {requested_transforms}
+
+VERIFICATION TASKS:
+1. Compare the original and augmented images side by side
+2. Identify visible changes between the images
+3. Verify that the changes match the requested transforms
+4. Rate the quality and appropriateness of the augmentations
+
+EVALUATION CRITERIA:
+- Accuracy: Do the changes match what was requested?
+- Quality: Are the augmentations well-executed and natural-looking?
+- Preservation: Are important image features preserved?
+- Artifacts: Are there any unwanted distortions or artifacts?
+
+RESPONSE FORMAT:
+Provide your analysis in this structure:
+- RATING: [1-5] (1=poor, 5=excellent)
+- CHANGES_DETECTED: [List of specific visual changes observed]
+- ACCURACY_ASSESSMENT: [How well changes match the request]
+- QUALITY_NOTES: [Comments on augmentation quality]
+- RECOMMENDATIONS: [Suggestions for improvement if needed]
+
+Please be specific about what you observe and provide constructive feedback."""
+
+    return prompt
+
+
+@mcp.prompt()
+def error_handler(error_type: str, error_message: str, user_context: str = "") -> str:
+    """Generate user-friendly error messages and recovery suggestions.
+
+    Args:
+        error_type: Category of error (parsing, processing, validation, etc.)
+        error_message: Technical error message
+        user_context: Optional context about what the user was trying to do
+
+    Returns:
+        Structured prompt for generating helpful error responses
+    """
+    prompt = f"""Generate a user-friendly error message and recovery suggestions.
+
+ERROR TYPE: {error_type}
+TECHNICAL MESSAGE: {error_message}
+"""
+
+    if user_context:
+        prompt += f"USER CONTEXT: {user_context}\n"
+
+    prompt += """
+REQUIREMENTS:
+1. Explain the error in simple, non-technical terms
+2. Provide specific steps the user can take to resolve it
+3. Suggest alternatives if the original request isn't possible
+4. Include relevant examples or documentation links if helpful
+
+RESPONSE FORMAT:
+- PROBLEM: [Clear explanation of what went wrong]
+- SOLUTION: [Step-by-step recovery instructions]
+- ALTERNATIVES: [Other approaches the user could try]
+- EXAMPLES: [Helpful examples if applicable]
+
+Keep the tone helpful and encouraging. Focus on getting the user back on track quickly."""
+
+    return prompt
+
+
+# MCP Resources
+@mcp.resource("file://transforms_guide")
+def transforms_guide() -> str:
+    """JSON of supported transforms, defaults, and parameter ranges (auto-generated from parser).
+
+    Returns:
+        Comprehensive guide to available transforms in JSON format
+    """
+    try:
+        import json
+
+        from .parser import get_available_transforms
+
+        transforms_info = get_available_transforms()
+
+        # Structure the data for easy consumption
+        guide = {
+            "metadata": {
+                "total_transforms": len(transforms_info),
+                "generated_at": "runtime",
+                "version": "1.0",
+            },
+            "transforms": {},
+        }
+
+        for name, info in transforms_info.items():
+            guide["transforms"][name] = {
+                "description": info.get("description", f"Apply {name} transformation"),
+                "example_phrases": info.get("example_phrases", []),
+                "default_parameters": info.get("default_parameters", {}),
+                "parameter_ranges": info.get("parameter_ranges", {}),
+                "category": _get_transform_category(name),
+            }
+
+        return json.dumps(guide, indent=2)
+
+    except Exception as e:
+        error_response = {
+            "error": f"Failed to generate transforms guide: {e}",
+            "transforms": {},
+            "metadata": {"total_transforms": 0},
+        }
+        return json.dumps(error_response, indent=2)
+
+
+@mcp.resource("file://policy_presets")
+def policy_presets() -> str:
+    """JSON of built-in presets: segmentation, portrait, lowlight.
+
+    Returns:
+        Complete preset configurations in JSON format
+    """
+    try:
+        import json
+
+        from .presets import get_available_presets
+
+        presets_info = get_available_presets()
+
+        # Structure the data with additional metadata
+        policy_guide = {
+            "metadata": {
+                "total_presets": len(presets_info),
+                "generated_at": "runtime",
+                "version": "1.0",
+            },
+            "presets": {},
+        }
+
+        for name, config in presets_info.items():
+            policy_guide["presets"][name] = {
+                "display_name": config.get("name", name.title()),
+                "description": config.get("description", f"{name.title()} preset"),
+                "use_cases": config.get("use_cases", []),
+                "transforms": config.get("transforms", []),
+                "metadata": config.get("metadata", {}),
+                "transform_count": len(config.get("transforms", [])),
+                "recommended_for": _get_preset_recommendations(name),
+            }
+
+        return json.dumps(policy_guide, indent=2)
+
+    except Exception as e:
+        error_response = {
+            "error": f"Failed to generate policy presets: {e}",
+            "presets": {},
+            "metadata": {"total_presets": 0},
+        }
+        return json.dumps(error_response, indent=2)
+
+
+@mcp.resource("file://available_transforms_examples")
+def available_transforms_examples() -> str:
+    """Available transforms with practical examples and usage patterns.
+
+    Returns:
+        Transform examples and usage patterns in JSON format
+    """
+    try:
+        import json
+
+        examples = {
+            "metadata": {
+                "description": "Practical examples and usage patterns for image augmentations",
+                "version": "1.0",
+            },
+            "categories": {
+                "blur_effects": {
+                    "description": "Various blur transformations",
+                    "examples": [
+                        {
+                            "prompt": "add slight blur",
+                            "transforms": [
+                                {
+                                    "name": "Blur",
+                                    "parameters": {"blur_limit": 3},
+                                },
+                            ],
+                            "use_case": "Subtle image softening",
+                        },
+                        {
+                            "prompt": "motion blur effect",
+                            "transforms": [
+                                {
+                                    "name": "MotionBlur",
+                                    "parameters": {"blur_limit": 7},
+                                },
+                            ],
+                            "use_case": "Simulate camera movement",
+                        },
+                    ],
+                },
+                "color_adjustments": {
+                    "description": "Color and lighting modifications",
+                    "examples": [
+                        {
+                            "prompt": "increase brightness and contrast",
+                            "transforms": [
+                                {
+                                    "name": "RandomBrightnessContrast",
+                                    "parameters": {
+                                        "brightness_limit": 0.2,
+                                        "contrast_limit": 0.2,
+                                    },
+                                },
+                            ],
+                            "use_case": "Enhance image visibility",
+                        },
+                        {
+                            "prompt": "adjust colors",
+                            "transforms": [
+                                {
+                                    "name": "HueSaturationValue",
+                                    "parameters": {
+                                        "hue_shift_limit": 20,
+                                        "sat_shift_limit": 30,
+                                    },
+                                },
+                            ],
+                            "use_case": "Color variation for training",
+                        },
+                    ],
+                },
+                "geometric_transforms": {
+                    "description": "Spatial transformations",
+                    "examples": [
+                        {
+                            "prompt": "rotate image",
+                            "transforms": [
+                                {
+                                    "name": "Rotate",
+                                    "parameters": {"limit": 45},
+                                },
+                            ],
+                            "use_case": "Orientation variation",
+                        },
+                        {
+                            "prompt": "flip horizontally",
+                            "transforms": [
+                                {
+                                    "name": "HorizontalFlip",
+                                    "parameters": {"p": 1.0},
+                                },
+                            ],
+                            "use_case": "Mirror augmentation",
+                        },
+                    ],
+                },
+                "noise_and_artifacts": {
+                    "description": "Noise and distortion effects",
+                    "examples": [
+                        {
+                            "prompt": "add noise",
+                            "transforms": [
+                                {
+                                    "name": "GaussNoise",
+                                    "parameters": {"var_limit": (10.0, 50.0)},
+                                },
+                            ],
+                            "use_case": "Simulate sensor noise",
+                        },
+                    ],
+                },
+            },
+            "common_combinations": [
+                {
+                    "name": "Basic Data Augmentation",
+                    "prompt": "flip and rotate with slight color changes",
+                    "transforms": [
+                        {"name": "HorizontalFlip", "parameters": {"p": 0.5}},
+                        {"name": "Rotate", "parameters": {"limit": 15}},
+                        {
+                            "name": "RandomBrightnessContrast",
+                            "parameters": {
+                                "brightness_limit": 0.1,
+                                "contrast_limit": 0.1,
+                            },
+                        },
+                    ],
+                },
+                {
+                    "name": "Photo Enhancement",
+                    "prompt": "enhance contrast and reduce noise",
+                    "transforms": [
+                        {"name": "CLAHE", "parameters": {"clip_limit": 4.0}},
+                        {
+                            "name": "RandomBrightnessContrast",
+                            "parameters": {"contrast_limit": 0.2},
+                        },
+                    ],
+                },
+            ],
+        }
+
+        return json.dumps(examples, indent=2)
+
+    except Exception as e:
+        error_response = {
+            "error": f"Failed to generate transform examples: {e}",
+            "categories": {},
+            "metadata": {"description": "Error generating examples"},
+        }
+        return json.dumps(error_response, indent=2)
+
+
+@mcp.resource("file://preset_pipelines_best_practices")
+def preset_pipelines_best_practices() -> str:
+    """Best practices for creating and using augmentation presets.
+
+    Returns:
+        Best practices guide in JSON format
+    """
+    try:
+        import json
+
+        best_practices = {
+            "metadata": {
+                "title": "Augmentation Pipeline Best Practices",
+                "version": "1.0",
+                "last_updated": "2024",
+            },
+            "general_principles": {
+                "preserve_semantics": {
+                    "description": "Ensure augmentations don't change the fundamental meaning of the image",
+                    "examples": [
+                        "Don't over-rotate images with text",
+                        "Preserve object boundaries for segmentation tasks",
+                        "Maintain facial features for portrait recognition",
+                    ],
+                },
+                "gradual_intensity": {
+                    "description": "Start with mild augmentations and gradually increase intensity",
+                    "recommendation": "Begin with probability 0.5 and small parameter ranges",
+                },
+                "domain_specific": {
+                    "description": "Tailor augmentations to your specific use case",
+                    "examples": [
+                        "Medical images: Focus on contrast and noise",
+                        "Natural scenes: Use geometric and color transforms",
+                        "Documents: Minimize geometric distortions",
+                    ],
+                },
+            },
+            "preset_guidelines": {
+                "segmentation": {
+                    "focus": "Preserve object boundaries and spatial relationships",
+                    "recommended_transforms": [
+                        "HorizontalFlip",
+                        "RandomBrightnessContrast",
+                        "HueSaturationValue",
+                    ],
+                    "avoid": [
+                        "Heavy rotation",
+                        "Aggressive cropping",
+                        "Strong distortions",
+                    ],
+                    "parameter_tips": "Use low intensity values (< 0.2) for color transforms",
+                },
+                "portrait": {
+                    "focus": "Maintain facial features and natural appearance",
+                    "recommended_transforms": [
+                        "RandomBrightnessContrast",
+                        "HueSaturationValue",
+                        "Blur",
+                    ],
+                    "avoid": [
+                        "Vertical flips",
+                        "Heavy geometric distortions",
+                        "Extreme color shifts",
+                    ],
+                    "parameter_tips": "Keep hue shifts minimal (< 10 degrees)",
+                },
+                "lowlight": {
+                    "focus": "Enhance visibility while preserving details",
+                    "recommended_transforms": [
+                        "CLAHE",
+                        "RandomBrightnessContrast",
+                        "GaussNoise",
+                    ],
+                    "avoid": ["Further darkening", "High contrast reduction"],
+                    "parameter_tips": "Use positive brightness limits and moderate contrast",
+                },
+            },
+            "performance_tips": {
+                "probability_tuning": "Use probabilities < 1.0 to create variation in your dataset",
+                "parameter_ranges": "Define ranges rather than fixed values for more diversity",
+                "pipeline_order": "Apply geometric transforms before photometric ones",
+                "batch_consistency": "Use seeds for reproducible results during testing",
+            },
+            "common_mistakes": [
+                {
+                    "mistake": "Over-augmentation",
+                    "description": "Applying too many or too intense transforms",
+                    "solution": "Start simple and validate results visually",
+                },
+                {
+                    "mistake": "Ignoring data distribution",
+                    "description": "Not considering the original data characteristics",
+                    "solution": "Analyze your dataset before choosing augmentations",
+                },
+                {
+                    "mistake": "Fixed parameters",
+                    "description": "Using the same parameters for all images",
+                    "solution": "Use parameter ranges and probabilities for variation",
+                },
+            ],
+        }
+
+        return json.dumps(best_practices, indent=2)
+
+    except Exception as e:
+        error_response = {
+            "error": f"Failed to generate best practices guide: {e}",
+            "general_principles": {},
+            "metadata": {"title": "Error generating guide"},
+        }
+        return json.dumps(error_response, indent=2)
+
+
+@mcp.resource("file://troubleshooting_common_issues")
+def troubleshooting_common_issues() -> str:
+    """Common issues and solutions for image augmentation.
+
+    Returns:
+        Troubleshooting guide in JSON format
+    """
+    try:
+        import json
+
+        troubleshooting = {
+            "metadata": {
+                "title": "Image Augmentation Troubleshooting Guide",
+                "version": "1.0",
+            },
+            "common_issues": {
+                "parsing_errors": {
+                    "symptoms": [
+                        "Prompt not recognized",
+                        "No transforms applied",
+                        "Unexpected results",
+                    ],
+                    "causes": [
+                        "Ambiguous natural language",
+                        "Unsupported transform names",
+                        "Typos in prompt",
+                    ],
+                    "solutions": [
+                        "Use specific transform names from the available list",
+                        "Try the validate_prompt tool to test your request",
+                        "Check spelling and use simple, clear language",
+                        "Use presets for common augmentation patterns",
+                    ],
+                    "examples": [
+                        "Instead of 'make it blurry', try 'add blur'",
+                        "Instead of 'change colors', try 'adjust hue and saturation'",
+                    ],
+                },
+                "image_quality_issues": {
+                    "symptoms": [
+                        "Artifacts in output",
+                        "Loss of detail",
+                        "Unnatural appearance",
+                    ],
+                    "causes": [
+                        "Excessive parameter values",
+                        "Incompatible transform combinations",
+                        "Poor quality input image",
+                    ],
+                    "solutions": [
+                        "Reduce transform intensity parameters",
+                        "Use presets designed for your use case",
+                        "Check input image quality and format",
+                        "Apply transforms gradually and validate results",
+                    ],
+                },
+                "performance_issues": {
+                    "symptoms": [
+                        "Slow processing",
+                        "Memory errors",
+                        "Timeouts",
+                    ],
+                    "causes": [
+                        "Large image files",
+                        "Complex transform pipelines",
+                        "Resource limitations",
+                    ],
+                    "solutions": [
+                        "Use file path input mode for large images",
+                        "Resize images before processing if appropriate",
+                        "Simplify transform pipelines",
+                        "Process images in smaller batches",
+                    ],
+                },
+                "reproducibility_issues": {
+                    "symptoms": [
+                        "Different results each time",
+                        "Cannot recreate specific output",
+                    ],
+                    "causes": [
+                        "Random seed not set",
+                        "Non-deterministic transforms",
+                        "Different processing environments",
+                    ],
+                    "solutions": [
+                        "Use the seed parameter for consistent results",
+                        "Set default seed with set_default_seed tool",
+                        "Document transform parameters for reproduction",
+                        "Use the same software versions",
+                    ],
+                },
+            },
+            "diagnostic_steps": [
+                {
+                    "step": 1,
+                    "action": "Test with validate_prompt",
+                    "description": "Verify your prompt is understood correctly",
+                },
+                {
+                    "step": 2,
+                    "action": "Check available transforms",
+                    "description": "Use list_available_transforms to see supported operations",
+                },
+                {
+                    "step": 3,
+                    "action": "Try a preset",
+                    "description": "Use a known-good preset to isolate issues",
+                },
+                {
+                    "step": 4,
+                    "action": "Simplify the request",
+                    "description": "Start with a single transform and build up",
+                },
+                {
+                    "step": 5,
+                    "action": "Check logs",
+                    "description": "Review error messages and warnings in the output",
+                },
+            ],
+            "getting_help": {
+                "documentation": "Check the transforms_guide resource for detailed parameter information",
+                "examples": "Use available_transforms_examples resource for usage patterns",
+                "presets": "Try policy_presets resource for pre-configured pipelines",
+                "validation": "Always use validate_prompt before processing important images",
+            },
+        }
+
+        return json.dumps(troubleshooting, indent=2)
+
+    except Exception as e:
+        error_response = {
+            "error": f"Failed to generate troubleshooting guide: {e}",
+            "common_issues": {},
+            "metadata": {"title": "Error generating guide"},
+        }
+        return json.dumps(error_response, indent=2)
+
+
+def _get_transform_category(transform_name: str) -> str:
+    """Get category for a transform name."""
+    blur_transforms = ["Blur", "MotionBlur", "GaussianBlur"]
+    color_transforms = [
+        "RandomBrightnessContrast",
+        "HueSaturationValue",
+        "CLAHE",
+        "Normalize",
+    ]
+    geometric_transforms = [
+        "Rotate",
+        "HorizontalFlip",
+        "VerticalFlip",
+        "RandomCrop",
+        "RandomResizedCrop",
+    ]
+    noise_transforms = ["GaussNoise"]
+
+    if transform_name in blur_transforms:
+        return "blur_effects"
+    if transform_name in color_transforms:
+        return "color_adjustments"
+    if transform_name in geometric_transforms:
+        return "geometric_transforms"
+    if transform_name in noise_transforms:
+        return "noise_and_artifacts"
+    return "other"
+
+
+def _get_preset_recommendations(preset_name: str) -> list[str]:
+    """Get recommendations for when to use a preset."""
+    recommendations = {
+        "segmentation": [
+            "Semantic segmentation tasks",
+            "Instance segmentation",
+            "Object detection training",
+            "When preserving object boundaries is critical",
+        ],
+        "portrait": [
+            "Face recognition systems",
+            "Portrait photography enhancement",
+            "Human pose estimation",
+            "When maintaining facial features is important",
+        ],
+        "lowlight": [
+            "Night vision applications",
+            "Low-light photography enhancement",
+            "Security camera footage",
+            "When improving visibility is the goal",
+        ],
+    }
+    return recommendations.get(preset_name, [])
+
+
 def main():
     """Main entry point for the MCP server."""
     # Validate configuration on startup
-    from .config import validate_config_on_startup, get_config_summary
+    from .config import get_config_summary, validate_config_on_startup
 
     try:
         validate_config_on_startup()
@@ -711,8 +1532,6 @@ def main():
         logger.info("Starting albumentations-mcp server")
         logger.info(get_config_summary())
     except Exception as e:
-        import sys
-
         print(f"❌ Configuration Error: {e}", file=sys.stderr)
         sys.exit(1)
 
