@@ -74,6 +74,8 @@ Or add manually:
 - **`list_available_presets`** - Get available preset configurations
 - **`set_default_seed`** - Set global seed for reproducible results
 - **`get_pipeline_status`** - Check pipeline health and configuration
+- **`get_quick_transform_reference`** - Condensed transform keywords for prompting
+- **`get_getting_started_guide`** - Structured workflow guide for first-time assistants
 
 ## Available Prompts
 
@@ -90,6 +92,7 @@ Or add manually:
 - **`available_transforms_examples`** - Usage examples and patterns organized by categories
 - **`preset_pipelines_best_practices`** - Best practices guide for augmentation workflows
 - **`troubleshooting_common_issues`** - Common issues, solutions, and diagnostic steps
+- **`getting_started_guide`** - Same content as the tool version, resource-style
 
 ## Usage Examples
 
@@ -108,6 +111,11 @@ augment_image(
 
 # Test prompts
 validate_prompt(prompt="increase brightness and add noise")
+
+# Process from URL (two-step)
+session = load_image_for_processing(image_source="https://example.com/image.jpg")
+# Use the returned session_id from the previous call
+augment_image(session_id="<session_id>", prompt="add blur and rotate 10 degrees")
 ```
 
 ## Features
@@ -118,11 +126,18 @@ validate_prompt(prompt="increase brightness and add noise")
 - **MCP Protocol Compliant** - Full MCP implementation with tools, prompts, and resources
 - **Comprehensive Documentation** - Built-in guides, examples, and troubleshooting resources
 - **Production Ready** - Comprehensive testing, error handling, and structured logging
+- **Multi-Source Input** - Works with local file paths, base64 payloads, and URLs (via loader)
 
 ## Documentation
 
 - [Installation & Setup](docs/setup.md)
-- [API Reference](docs/API.md)
+- [Architecture Overview](docs/architecture.md)
+- [Purpose & Rationale](docs/purpose.md)
+- [Preset Configurations](docs/presets.md)
+- [Session Folders (outputs/) Guide](docs/session-folders.md)
+- [Regex Security Analysis](docs/regex_security_analysis.md)
+- [Known Issues](docs/known_issues.md)
+- [Design Philosophy](docs/design_philosophy.md)
 - [Usage Examples](docs/examples.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Contributing](docs/contributing.md)
