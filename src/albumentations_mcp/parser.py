@@ -98,7 +98,12 @@ class PromptParsingError(Exception):
 
 
 class PromptParser:
-    """Simple string-matching based natural language parser."""
+    """Simple string-matching based natural language parser.
+
+    DESIGN CHOICE: We use explicit string matching rather than LLM-based
+    translation to prevent hallucination of non-existent transforms.
+    This ensures all generated transforms actually exist in Albumentations.
+    """
 
     def __init__(self):
         """Initialize parser with transform mappings and defaults."""

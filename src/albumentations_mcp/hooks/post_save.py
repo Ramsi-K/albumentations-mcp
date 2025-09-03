@@ -84,18 +84,7 @@ class PostSaveHook(BaseHook):
             except Exception as e:
                 logger.error(f"Failed to save augmented image: {e}")
 
-        # Save original image
-        if "original_image" in file_paths and hasattr(context, "image_data"):
-            try:
-                from ..image_conversions import base64_to_pil
-
-                if isinstance(context.image_data, bytes):
-                    # Convert bytes to PIL and save
-                    image = base64_to_pil(context.image_data.decode())
-                    image.save(file_paths["original_image"])
-                    logger.info(f"Saved original image: {file_paths['original_image']}")
-            except Exception as e:
-                logger.error(f"Failed to save original image: {e}")
+        # Original image is now saved in pre_save hook
 
         # Save metadata JSON
         if "metadata" in file_paths:

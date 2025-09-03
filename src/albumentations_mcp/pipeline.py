@@ -73,7 +73,10 @@ class AugmentationPipeline:
         if session_id is None:
             session_id = str(uuid.uuid4())
 
-        # Convert base64 to PIL Image
+        # Image is already preprocessed and validated by server
+        # Convert base64 to PIL Image for processing
+        from .image_conversions import base64_to_pil
+
         image = base64_to_pil(image_b64)
 
         # Create session directory with proper structure
@@ -135,7 +138,13 @@ class AugmentationPipeline:
                 logger.warning("Post-MCP stage failed, but continuing")
             context = result.context
 
-            # Stage 4: Pre-transform validation
+            # Stage 4: Pre-save file management (create session dir, save original)
+            result = await execute_stage(HookStage.PRE_SAVE, context)
+            if not result.success:
+                logger.warning("Pre-save stage failed, but continuing")
+            context = result.context
+
+            # Stage 5: Pre-transform validation (now with established session dir)
             result = await execute_stage(HookStage.PRE_TRANSFORM, context)
             if not result.success or not result.should_continue:
                 return self._format_error_response(
@@ -144,7 +153,7 @@ class AugmentationPipeline:
                 )
             context = result.context
 
-            # Stage 5: Apply transforms (core processing)
+            # Stage 6: Apply transforms (core processing)
             processor = get_processor()
             processing_result = processor.process_image(
                 image,
@@ -176,25 +185,19 @@ class AugmentationPipeline:
                 },
             )
 
-            # Stage 6: Post-transform metadata generation
+            # Stage 7: Post-transform metadata generation
             result = await execute_stage(HookStage.POST_TRANSFORM, context)
             if not result.success:
                 logger.warning("Post-transform stage failed, but continuing")
             context = result.context
 
-            # Stage 7: Visual verification
+            # Stage 8: Visual verification
             result = await execute_stage(HookStage.POST_TRANSFORM_VERIFY, context)
             if not result.success:
                 logger.warning("Visual verification failed, but continuing")
             context = result.context
 
-            # Stage 8: Pre-save file management
-            result = await execute_stage(HookStage.PRE_SAVE, context)
-            if not result.success:
-                logger.warning("Pre-save stage failed, but continuing")
-            context = result.context
-
-            # Stage 9: Post-save cleanup
+            # Stage 9: Post-save cleanup (save final outputs)
             result = await execute_stage(HookStage.POST_SAVE, context)
             if not result.success:
                 logger.warning("Post-save stage failed, but continuing")
@@ -341,17 +344,34 @@ class AugmentationPipeline:
 
         output_dir = os.getenv("OUTPUT_DIR", "outputs")
 
-        # Create session directory with timestamp format: YYYYMMDD_HHMMSS_sessionID
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        session_dir_name = f"{timestamp}_{session_id}"
-        session_dir = Path(output_dir) / session_dir_name
+        out_path = Path(output_dir)
+        out_path.mkdir(parents=True, exist_ok=True)
 
-        # Create main session directory and tmp subdirectory
-        session_dir.mkdir(parents=True, exist_ok=True)
+        # If a directory for this session already exists (e.g., created by a prior tool), reuse it
+        existing = sorted(
+            [
+                d
+                for d in out_path.iterdir()
+                if d.is_dir() and d.name.endswith(f"_{session_id}")
+            ],
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+
+        if existing:
+            session_dir = existing[0]
+        else:
+            # Create session directory with timestamp format: YYYYMMDD_HHMMSS_sessionID
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            session_dir_name = f"{timestamp}_{session_id}"
+            session_dir = out_path / session_dir_name
+            session_dir.mkdir(parents=True, exist_ok=True)
+
+        # Ensure tmp subdirectory exists
         tmp_dir = session_dir / "tmp"
         tmp_dir.mkdir(exist_ok=True)
 
-        logger.debug(f"Created session directory: {session_dir}")
+        logger.debug(f"Using session directory: {session_dir}")
         return str(session_dir)
 
 

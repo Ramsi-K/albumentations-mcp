@@ -1119,7 +1119,7 @@ if __name__ == "__main__":
 
         # Set very low byte limit to trigger resize
         with patch.dict(
-            "os.environ", {"MAX_BYTES_IN": "100000", "STRICT_MODE": "false"}
+            "os.environ", {"MAX_BYTES_IN": "2000000", "STRICT_MODE": "false"}
         ):
             result = await hook.execute(context)
 

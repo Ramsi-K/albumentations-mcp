@@ -523,8 +523,14 @@ class PreTransformHook(BaseHook):
     ) -> Path | None:
         """Save image to session temp directory with proper format preservation."""
         try:
-            # Create session temp directory
-            session_dir = Path("outputs") / f"{context.session_id}"
+            # Use existing session directory from pre_save hook
+            session_dir_str = context.metadata.get("session_dir")
+            if not session_dir_str:
+                logger.warning("No session directory found, creating fallback")
+                session_dir = Path("outputs") / f"{context.session_id}"
+            else:
+                session_dir = Path(session_dir_str)
+
             temp_dir = session_dir / "tmp"
             temp_dir.mkdir(parents=True, exist_ok=True)
 

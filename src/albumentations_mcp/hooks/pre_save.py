@@ -60,8 +60,14 @@ class PreSaveHook(BaseHook):
                 },
             )
 
+            # Expose session_dir at top-level for downstream hooks
+            context.metadata["session_dir"] = directory_info["session_dir"]
+
             # Store file paths in context for easy access by other hooks
             context.metadata["output_files"] = file_paths
+
+            # Save original image immediately after creating directory structure
+            self._save_original_image(context, file_paths)
 
             logger.debug("Pre-save preparation completed successfully")
             return HookResult(success=True, context=context)
@@ -80,13 +86,28 @@ class PreSaveHook(BaseHook):
             # Create main output directory
             self.output_dir.mkdir(parents=True, exist_ok=True)
 
-            # Create session-specific subdirectory
-            timestamp = datetime.now(UTC)
-            session_dir_name = (
-                f"{timestamp.strftime('%Y%m%d_%H%M%S')}_{context.session_id[:8]}"
-            )
-            session_dir = self.output_dir / session_dir_name
-            session_dir.mkdir(parents=True, exist_ok=True)
+            # Reuse existing session directory if already created earlier in pipeline
+            existing_session_dir = context.metadata.get("session_dir")
+            if existing_session_dir:
+                session_dir = Path(existing_session_dir)
+                session_dir.mkdir(parents=True, exist_ok=True)
+                session_dir_name = session_dir.name
+                # Best-effort timestamp from folder name prefix
+                try:
+                    ts_str = session_dir_name.split("_", 1)[0]
+                    timestamp = datetime.strptime(ts_str, "%Y%m%d_%H%M%S").replace(
+                        tzinfo=UTC
+                    )
+                except Exception:
+                    timestamp = datetime.now(UTC)
+            else:
+                # Create session-specific subdirectory with timestamp
+                timestamp = datetime.now(UTC)
+                session_dir_name = (
+                    f"{timestamp.strftime('%Y%m%d_%H%M%S')}_{context.session_id[:8]}"
+                )
+                session_dir = self.output_dir / session_dir_name
+                session_dir.mkdir(parents=True, exist_ok=True)
 
             # Create subdirectories for different file types
             subdirs = {
@@ -107,7 +128,10 @@ class PreSaveHook(BaseHook):
                 "created_timestamp": timestamp.isoformat(),
             }
 
-            logger.info(f"Created directory structure: {session_dir}")
+            # Store session_dir at top-level for reuse by all subsequent hooks
+            context.metadata["session_dir"] = str(session_dir)
+
+            logger.info(f"Prepared directory structure: {session_dir}")
             return directory_info
 
         except Exception as e:
@@ -273,3 +297,29 @@ class PreSaveHook(BaseHook):
                 validation_info["all_paths_valid"] = False
 
         return validation_info
+
+    def _save_original_image(
+        self,
+        context: HookContext,
+        file_paths: dict[str, str],
+    ) -> None:
+        """Save original image immediately after directory creation."""
+        if "original_image" in file_paths and hasattr(context, "image_data"):
+            try:
+                from ..image_conversions import base64_to_pil
+
+                if isinstance(context.image_data, bytes):
+                    # Convert bytes to PIL and save
+                    image = base64_to_pil(context.image_data.decode())
+                    image.save(file_paths["original_image"])
+                    logger.info(f"Saved original image: {file_paths['original_image']}")
+
+                    # Track that original was saved
+                    context.metadata["original_image_saved"] = True
+                    context.metadata["original_image_path"] = file_paths[
+                        "original_image"
+                    ]
+            except Exception as e:
+                logger.error(f"Failed to save original image: {e}")
+                context.warnings.append(f"Could not save original image: {e}")
+                context.metadata["original_image_saved"] = False

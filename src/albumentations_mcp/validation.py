@@ -86,13 +86,29 @@ for pattern in SUSPICIOUS_PATTERNS:
         logger.warning(f"Skipping problematic regex pattern {pattern}: {e}")
 
 # Additional security constants
-MAX_SECURITY_CHECK_LENGTH = 10000  # Limit input length for security checks (10KB)
 SECURITY_TIMEOUT_SECONDS = 1.0  # Timeout for regex operations
+
+
+# Get configurable security check length
+def _get_max_security_check_length() -> int:
+    """Get the maximum security check length from configuration."""
+    try:
+        from .config import get_max_security_check_length
+
+        return get_max_security_check_length()
+    except Exception:
+        # Fallback to default if config is not available
+        return int(os.getenv("MAX_SECURITY_CHECK_LENGTH", "2000000"))
+
 
 # Exception classes are now imported from errors.py module
 
 
-def validate_base64_image(image_b64: str, strict: bool = True) -> dict[str, Any]:
+def validate_base64_image(
+    image_b64: str,
+    strict: bool = True,
+    skip_security_length_check: bool = False,
+) -> dict[str, Any]:
     """Validate Base64 image data with comprehensive edge case handling.
 
     Args:
@@ -120,8 +136,8 @@ def validate_base64_image(image_b64: str, strict: bool = True) -> dict[str, Any]
         if not _validate_basic_input(image_b64, validation_result, strict):
             return validation_result
 
-        # Step 2: Security validation
-        _validate_security(image_b64)
+        # Step 2: Security validation (can skip length check for image data)
+        _validate_security(image_b64, skip_length_check=skip_security_length_check)
 
         # Step 3: Sanitize and decode Base64 input
         decoded_data = _sanitize_and_decode_base64(image_b64, validation_result, strict)
@@ -626,16 +642,18 @@ def validate_transform_parameters(
 # Security validation functions
 
 
-def _validate_security(input_data: str) -> None:
+def _validate_security(input_data: str, skip_length_check: bool = False) -> None:
     """Validate input for security issues with comprehensive protection."""
     import time
 
-    # Early length check to prevent DoS
-    if len(input_data) > MAX_SECURITY_CHECK_LENGTH:
-        raise SecurityValidationError(
-            f"Input too large for security check: {len(input_data)} chars "
-            f"(max: {MAX_SECURITY_CHECK_LENGTH})",
-        )
+    # Early length check to prevent DoS (can be skipped for image data)
+    if not skip_length_check:
+        max_security_length = _get_max_security_check_length()
+        if len(input_data) > max_security_length:
+            raise SecurityValidationError(
+                f"Input too large for security check: {len(input_data)} chars "
+                f"(max: {max_security_length})",
+            )
 
     # Check for null bytes and control characters
     if "\x00" in input_data:

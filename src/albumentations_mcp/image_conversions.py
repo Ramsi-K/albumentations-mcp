@@ -41,7 +41,10 @@ def base64_to_pil(image_b64: str) -> Image.Image:
         from .validation import ValidationError, validate_base64_image
 
         try:
-            validation_result = validate_base64_image(image_b64, strict=True)
+            # Skip security length check for image data - hooks will handle size validation
+            validation_result = validate_base64_image(
+                image_b64, strict=True, skip_security_length_check=True
+            )
             clean_b64 = validation_result["sanitized_data"]
         except ValidationError as e:
             # Convert validation errors to image conversion errors for compatibility
@@ -119,6 +122,10 @@ def pil_to_base64(image: Image.Image, format: str = "PNG", quality: int = 95) ->
                 background = Image.new("RGB", image.size, (255, 255, 255))
                 background.paste(image, mask=image.split()[-1])
                 image = background
+        elif format == "WEBP":
+            # Apply quality to WEBP as well for compact output
+            save_kwargs["quality"] = max(1, min(100, quality))
+            # If image has alpha, WEBP will preserve it
         elif format == "PNG":
             save_kwargs["optimize"] = True
 

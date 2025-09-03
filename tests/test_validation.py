@@ -92,7 +92,7 @@ class TestImageValidation:
     def test_large_image_dimensions(self):
         """Test validation of oversized image."""
         # Create image larger than limits
-        large_image_b64 = self.create_test_image(width=10000, height=10000)
+        large_image_b64 = self.create_test_image(width=100000, height=100000)
 
         result = validate_base64_image(large_image_b64, strict=False)
 

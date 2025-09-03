@@ -103,7 +103,7 @@ def validate_mcp_request(tool_name: str, **kwargs) -> tuple[bool, str | None]:
                 validate_string_input(
                     kwargs["image_source"],
                     "image_source",
-                    max_length=10000,
+                    max_length=2000000,
                 )
 
         return True, None
@@ -147,9 +147,20 @@ def _load_session_image(session_id: str) -> tuple[str | None, str | None]:
     from .image_conversions import pil_to_base64
 
     output_dir = os.getenv("OUTPUT_DIR", "outputs")
-    session_dir = Path(output_dir) / f"session_{session_id}"
+    out_path = Path(output_dir)
+    # Locate existing session directory matching *_{session_id}
+    candidates = sorted(
+        [
+            d
+            for d in out_path.iterdir()
+            if d.is_dir() and d.name.endswith(f"_{session_id}")
+        ],
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    session_dir = candidates[0] if candidates else None
 
-    if not session_dir.exists():
+    if session_dir is None or not session_dir.exists():
         return (
             None,
             f"Session '{session_id}' not found. Use load_image_for_processing first to load an image.",
@@ -227,15 +238,42 @@ def _format_success_response(
     returned_session_id = pipeline_result.get("session_id", session_id)
 
     if file_paths and "augmented_image" in file_paths:
-        input_info = ""
-        if input_mode == "file_path":
-            input_info = "\n🔄 Input mode: File path (recommended for large images)"
-        elif input_mode == "base64":
-            input_info = "\n🔄 Input mode: Base64 data"
-        elif input_mode == "session":
-            input_info = "\n🔄 Input mode: Session (legacy)"
+        from pathlib import Path
 
-        return f"✅ Image successfully augmented and saved!{input_info}\n\n📁 Files saved:\n• Augmented image: {file_paths['augmented_image']}\n• Session ID: {returned_session_id}\n\nUse the file path to access your augmented image."
+        augmented_path = file_paths.get("augmented_image")
+        original_path = file_paths.get("original_image")
+        metadata_path = file_paths.get("metadata") or file_paths.get(
+            "transform_spec",
+        )
+
+        # Derive full session folder from any known artifact path
+        session_dir = None
+        for p in (augmented_path, original_path, metadata_path):
+            if p:
+                try:
+                    session_dir = str(Path(p).parent.parent)
+                    break
+                except Exception:
+                    continue
+
+        lines: list[str] = []
+        lines.append("✅ Image successfully augmented and saved!")
+        lines.append("")
+        lines.append("📁 Files saved:")
+        if augmented_path:
+            lines.append(f"- Augmented image: {augmented_path}")
+        if original_path:
+            lines.append(f"- Original image: {original_path}")
+        if metadata_path:
+            lines.append(f"- Metadata: {metadata_path}")
+        if session_dir:
+            lines.append(f"- Full session folder: {session_dir}")
+        lines.append("")
+        lines.append(
+            "💡 All files are accessible via filesystem tools for further analysis.",
+        )
+
+        return "\n".join(lines)
 
     # Fallback if file saving failed
     applied_transforms = (
@@ -268,8 +306,19 @@ def augment_image(
         preset: Optional preset name (segmentation, portrait, lowlight) to use instead of prompt
         output_dir: Directory to save output files (optional, defaults to ./outputs)
 
+    IMPORTANT FOR ASSISTANTS:
+    Use available resources to properly interpret user prompts before calling this tool:
+    1. Use transforms_guide() and get_available_transforms_examples() to understand valid transforms
+    2. Use list_available_presets() to see preset options
+    3. Convert vague user language into specific transform terms from the available list
+    4. If unsure, use validate_prompt() to test your interpretation before augmenting
+    5. Prefer combining multiple specific transforms over vague descriptions
+
+    Example: "make it look cool" → check resources → "add blur and increase contrast"
+
     Returns:
-        Success message with file path where augmented image was saved
+        Success message with file paths. All generated files are accessible via filesystem tools.
+        Includes: augmented image path, original backup, metadata location, and full session folder.
 
     Note:
         Provide either image_path, image_b64, or session_id (in order of preference).
@@ -350,6 +399,19 @@ def augment_image(
         logger = logging.getLogger(__name__)
         logger.error(f"Unexpected error in augment_image: {e}")
         return f"❌ Error: Image augmentation failed due to unexpected error. Please try again or contact support. Details: {e!s}"
+
+
+@mcp.tool()
+def get_quick_transform_reference():
+    """Get condensed list of transform keywords for quick assistant reference"""
+    return {
+        "blur_effects": ["blur", "gaussian blur", "motion blur"],
+        "color_adjustments": ["brightness", "contrast", "hue", "saturation"],
+        "geometric": ["rotate", "flip horizontal", "flip vertical"],
+        "effects": ["noise", "grayscale", "enhance", "clahe"],
+        "cropping": ["crop", "resize crop"],
+        "presets": ["segmentation", "portrait", "lowlight"],
+    }
 
 
 @mcp.tool()
@@ -569,7 +631,7 @@ def _detect_input_mode(
         session_id: Session ID parameter
 
     Returns:
-        Tuple of (mode, error_message) where mode is 'file_path', 'base64', or 'session'
+        Tuple of (mode, error_message) where mode is 'path', 'base64', or 'session'
     """
     # Count non-empty inputs
     inputs_provided = sum(
@@ -587,7 +649,7 @@ def _detect_input_mode(
         return "", "Provide only one of: image_path, image_b64, or session_id"
 
     if image_path and image_path.strip():
-        return "file_path", None
+        return "path", None
     if image_b64 and image_b64.strip():
         return "base64", None
     if session_id and session_id.strip():
@@ -602,44 +664,192 @@ def _load_image_from_input(
     image_b64: str,
     session_id: str,
 ) -> tuple[str | None, str | None]:
-    """Load image based on input mode. Returns (image_b64, error_message)."""
-    if mode == "file_path":
-        try:
-            from pathlib import Path
+    """Load and preprocess image based on input mode. Returns (image_b64, error_message)."""
+    if mode == "path":
+        return _load_and_preprocess_from_file(image_path)
+    elif mode == "base64":
+        return _load_and_preprocess_from_base64(image_b64)
+    elif mode == "session":
+        return _load_session_image(session_id)
+    return None, f"Unknown input mode: {mode}"
 
-            from .image_conversions import (
-                load_image_from_source,
-                pil_to_base64,
+
+def _load_and_preprocess_from_file(
+    image_path: str,
+) -> tuple[str | None, str | None]:
+    """Load image from file path, optionally resize, then return as base64.
+
+    Behavior:
+    - Always prefer decoding with PIL first, then validate dimensions/pixels.
+    - In strict mode: reject oversized images with IMAGE_DIMENSIONS_TOO_LARGE.
+    - In permissive mode: auto-resize to fit constraints, then encode once.
+    - Error taxonomy: FILE_NOT_FOUND when path missing.
+    """
+    try:
+        from pathlib import Path
+        from PIL import Image
+
+        from .config import (
+            get_max_image_size,
+            get_max_pixels_in,
+            is_strict_mode,
+        )
+        from .image_conversions import pil_to_base64
+
+        # Validate file exists early
+        if not Path(image_path).exists():
+            return None, f"FILE_NOT_FOUND: Image file not found: {image_path}"
+
+        # Decode with PIL
+        image = Image.open(image_path)
+        image.load()
+
+        # Determine constraints
+        max_dim = get_max_image_size()
+        max_pixels = get_max_pixels_in()
+
+        width, height = image.size
+        pixels = width * height
+        oversized = width > max_dim or height > max_dim or pixels > max_pixels
+
+        if oversized:
+            if is_strict_mode():
+                return (
+                    None,
+                    (
+                        "IMAGE_DIMENSIONS_TOO_LARGE: "
+                        f"{width}x{height} exceeds limits (max_dim={max_dim}, max_pixels={max_pixels:,})"
+                    ),
+                )
+            image = _resize_image_smart(image, max_dim, max_pixels)
+
+        # Choose compact encoding: JPEG for opaque, WEBP for alpha
+        out_format = "WEBP" if (getattr(image, "mode", "").endswith("A")) else "JPEG"
+        # Encode exactly once for downstream
+        image_b64 = pil_to_base64(image, format=out_format, quality=85)
+        return image_b64, None
+
+    except Exception as e:
+        return None, f"Failed to load image from file: {e}"
+
+
+def _load_and_preprocess_from_base64(
+    image_b64: str,
+) -> tuple[str | None, str | None]:
+    """Sanitize, decode, optionally resize, and re-encode base64 input.
+
+    Behavior:
+    - Light transport sanity check on base64 length to prevent DoS.
+    - Sanitize and decode; invalid base64 → B64_INVALID.
+    - In strict mode: reject oversized images with IMAGE_DIMENSIONS_TOO_LARGE.
+    - In permissive mode: auto-resize using thumbnail-like logic, then re-encode once.
+    - Error taxonomy includes: B64_INVALID, B64_INPUT_TOO_LARGE, IMAGE_DIMENSIONS_TOO_LARGE.
+    """
+    try:
+        import base64
+        from PIL import Image
+        import io
+
+        from .config import (
+            get_max_image_size,
+            get_max_pixels_in,
+            get_max_bytes_in,
+            is_strict_mode,
+        )
+        from .image_conversions import pil_to_base64
+        from .utils.validation_utils import sanitize_base64_input
+
+        # Transport sanity check before decode (very coarse)
+        max_bytes = get_max_bytes_in()
+        # Base64 expands ~4/3; reject only if clearly excessive to avoid DoS
+        if len(image_b64 or "") > int(max_bytes * 2.0):
+            return (
+                None,
+                (
+                    "B64_INPUT_TOO_LARGE: Base64 input length exceeds transport cap "
+                    f"(len={len(image_b64):,}, cap≈{int(max_bytes*2.0):,})"
+                ),
             )
 
-            # Validate file exists
-            if not Path(image_path).exists():
-                return None, f"Image file not found: {image_path}"
-
-            # Load image from file path
-            image = load_image_from_source(image_path)
-            image_b64_data = pil_to_base64(image)
-            return image_b64_data, None
-
-        except Exception as e:
-            return None, f"Failed to load image from file path: {e}"
-
-    elif mode == "base64":
-        # Validate base64 data
+        # Sanitize and decode base64
         try:
-            from .image_conversions import base64_to_pil, pil_to_base64
-
-            # Test conversion to ensure valid base64
-            image = base64_to_pil(image_b64)
-            return image_b64, None
+            clean_b64 = sanitize_base64_input(image_b64)
         except Exception as e:
-            return None, f"Invalid base64 image data: {e}"
+            return None, f"B64_INVALID: {e}"
 
-    elif mode == "session":
-        # Use existing session loading logic
-        return _load_session_image(session_id)
+        try:
+            image_data = base64.b64decode(clean_b64, validate=True)
+        except Exception as e:
+            return None, f"B64_INVALID: Invalid base64 encoding ({e})"
 
-    return None, f"Unknown input mode: {mode}"
+        # Decode to PIL
+        try:
+            with io.BytesIO(image_data) as buffer:
+                image = Image.open(buffer)
+                image.load()
+                image = image.copy()
+        except Exception as e:
+            return None, f"B64_INVALID: Unable to open image from base64 ({e})"
+
+        # Validate/resize by dimensions and pixel count
+        max_dim = get_max_image_size()
+        max_pixels = get_max_pixels_in()
+
+        width, height = image.size
+        pixels = width * height
+        oversized = width > max_dim or height > max_dim or pixels > max_pixels
+
+        if oversized:
+            if is_strict_mode():
+                return (
+                    None,
+                    (
+                        "IMAGE_DIMENSIONS_TOO_LARGE: "
+                        f"{width}x{height} exceeds limits (max_dim={max_dim}, max_pixels={max_pixels:,})"
+                    ),
+                )
+            image = _resize_image_smart(image, max_dim, max_pixels)
+
+        # Choose compact encoding: JPEG for opaque, WEBP for alpha
+        out_format = "WEBP" if (getattr(image, "mode", "").endswith("A")) else "JPEG"
+        # Always return sanitized or re-encoded base64
+        return pil_to_base64(image, format=out_format, quality=85), None
+
+    except Exception as e:
+        return None, f"Failed to load image from base64: {e}"
+
+
+def _resize_image_smart(
+    image: "Image.Image", max_dimension: int, max_pixels: int
+) -> "Image.Image":
+    """Resize image to satisfy both max_dimension and max_pixels.
+
+    Uses high-quality downscaling and preserves aspect ratio.
+    """
+    from math import sqrt
+    from PIL import Image
+
+    width, height = image.size
+    if width <= 0 or height <= 0:
+        return image
+
+    # Compute scale to meet both constraints
+    scale_dim = min(max_dimension / width, max_dimension / height, 1.0)
+    pix_limit_scale = (
+        sqrt(max_pixels / float(width * height)) if (width * height) > 0 else 1.0
+    )
+    scale = min(scale_dim, pix_limit_scale, 1.0)
+
+    # If already within limits, return as-is
+    if scale >= 1.0:
+        return image
+
+    new_w = max(int(width * scale), 32)
+    new_h = max(int(height * scale), 32)
+
+    resized = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
+    resized.format = getattr(image, "format", None)
+    return resized
 
 
 def _create_session_directory(session_id: str) -> str:
@@ -649,14 +859,29 @@ def _create_session_directory(session_id: str) -> str:
     from pathlib import Path
 
     output_dir = os.getenv("OUTPUT_DIR", "outputs")
+    out_path = Path(output_dir)
+    out_path.mkdir(parents=True, exist_ok=True)
 
-    # Create session directory with timestamp format: YYYYMMDD_HHMMSS_sessionID
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    session_dir_name = f"{timestamp}_{session_id}"
-    session_dir = Path(output_dir) / session_dir_name
+    # Reuse existing session directory if found (created by pipeline or prior tool)
+    existing = sorted(
+        [
+            d
+            for d in out_path.iterdir()
+            if d.is_dir() and d.name.endswith(f"_{session_id}")
+        ],
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    if existing:
+        session_dir = existing[0]
+    else:
+        # Create session directory with timestamp format: YYYYMMDD_HHMMSS_sessionID
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        session_dir_name = f"{timestamp}_{session_id}"
+        session_dir = out_path / session_dir_name
+        session_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create main session directory and tmp subdirectory
-    session_dir.mkdir(parents=True, exist_ok=True)
+    # Ensure tmp subdirectory exists
     tmp_dir = session_dir / "tmp"
     tmp_dir.mkdir(exist_ok=True)
 
@@ -971,6 +1196,291 @@ Keep the tone helpful and encouraging. Focus on getting the user back on track q
 
 
 # MCP Resources
+@mcp.tool()
+@mcp.resource("file://getting_started_guide")
+def get_getting_started_guide() -> str:
+    """Getting started guide for first-time assistants.
+
+    Returns structured JSON covering:
+    - Workflow steps
+    - Tool relationship map
+    - Quick examples
+    - Common patterns
+    - Entry points by intent
+    """
+    import json
+
+    guide = {
+        "title": "Albumentations MCP — Getting Started",
+        "version": "1.0",
+        "workflow_steps": [
+            {
+                "step": 1,
+                "title": "Pick input method",
+                "description": "Use image_path directly with augment_image, or preload once with load_image_for_processing to get a session_id (recommended for large images).",
+                "tools": ["augment_image", "load_image_for_processing"],
+            },
+            {
+                "step": 2,
+                "title": "Preview or choose transforms",
+                "description": "Use validate_prompt to check a natural-language prompt, or browse transforms/presets via list_available_transforms, transforms_guide, available_transforms_examples, policy_presets, get_quick_transform_reference.",
+                "tools": [
+                    "validate_prompt",
+                    "list_available_transforms",
+                    "transforms_guide",
+                    "available_transforms_examples",
+                    "policy_presets",
+                    "list_available_presets",
+                    "get_quick_transform_reference",
+                ],
+            },
+            {
+                "step": 3,
+                "title": "Run augmentation",
+                "description": "Call augment_image with either a prompt or a preset (mutually exclusive). Optionally include seed or set a default via set_default_seed for reproducibility.",
+                "tools": ["augment_image", "set_default_seed"],
+            },
+            {
+                "step": 4,
+                "title": "Inspect outputs",
+                "description": "Check the session folder paths returned by augment_image for images, metadata, logs, and analysis.",
+                "tools": ["augment_image", "get_pipeline_status"],
+            },
+        ],
+        "tool_relationships": [
+            {
+                "tool": "load_image_for_processing",
+                "purpose": "Preload an image (URL/file/base64) and save it under a session directory; returns session_id.",
+                "use_when": "Working with large images or multiple successive operations on the same image.",
+                "next": ["augment_image"],
+                "inputs": ["image_source"],
+                "outputs": ["session_id", "original image path"],
+            },
+            {
+                "tool": "validate_prompt",
+                "purpose": "Parse a natural-language prompt into transforms and show warnings.",
+                "use_when": "You want to verify a prompt before running augmentation.",
+                "next": ["augment_image"],
+                "inputs": ["prompt"],
+                "outputs": ["transforms", "confidence", "warnings"],
+            },
+            {
+                "tool": "list_available_transforms",
+                "purpose": "List supported transforms with defaults and parameter ranges.",
+                "use_when": "Browsing capabilities or building structured prompts.",
+                "next": ["validate_prompt", "augment_image"],
+                "inputs": [],
+                "outputs": ["transforms[]"],
+            },
+            {
+                "tool": "transforms_guide",
+                "purpose": "Comprehensive JSON guide of transforms (resource-style).",
+                "use_when": "You need detailed reference data for planning transforms.",
+                "next": ["validate_prompt", "augment_image"],
+                "inputs": [],
+                "outputs": ["json"],
+            },
+            {
+                "tool": "available_transforms_examples",
+                "purpose": "Practical examples and usage patterns grouped by category.",
+                "use_when": "Looking for example phrasing and patterns.",
+                "next": ["validate_prompt", "augment_image"],
+                "inputs": [],
+                "outputs": ["json"],
+            },
+            {
+                "tool": "list_available_presets",
+                "purpose": "Enumerate built-in presets.",
+                "use_when": "You prefer preset-based pipelines.",
+                "next": ["augment_image"],
+                "inputs": [],
+                "outputs": ["presets[]"],
+            },
+            {
+                "tool": "policy_presets",
+                "purpose": "Full preset configurations with transforms and metadata.",
+                "use_when": "You need full JSON of preset policies.",
+                "next": ["augment_image"],
+                "inputs": [],
+                "outputs": ["json"],
+            },
+            {
+                "tool": "get_quick_transform_reference",
+                "purpose": "Condensed keyword reference for quick prompting.",
+                "use_when": "You want a short list of common transform keywords.",
+                "next": ["validate_prompt", "augment_image"],
+                "inputs": [],
+                "outputs": ["keywords by category"],
+            },
+            {
+                "tool": "augment_image",
+                "purpose": "Main processing entry point; runs the pipeline.",
+                "use_when": "You’re ready to apply transforms or a preset to an image.",
+                "next": [],
+                "inputs": [
+                    "image_path | image_b64 | session_id",
+                    "prompt | preset",
+                    "seed?",
+                    "output_dir?",
+                ],
+                "outputs": ["filesystem paths", "status string"],
+            },
+            {
+                "tool": "set_default_seed",
+                "purpose": "Set a default seed used by future augment_image calls.",
+                "use_when": "You want reproducible results across runs.",
+                "next": ["augment_image"],
+                "inputs": ["seed?"],
+                "outputs": ["default_seed"],
+            },
+            {
+                "tool": "get_pipeline_status",
+                "purpose": "Check pipeline health and which hooks are registered.",
+                "use_when": "Diagnostics or capability checks.",
+                "next": [],
+                "inputs": [],
+                "outputs": ["registered_hooks", "pipeline_version"],
+            },
+            {
+                "tool": "troubleshooting_common_issues",
+                "purpose": "Common errors and resolutions.",
+                "use_when": "Recovery guidance after a failed run.",
+                "next": ["validate_prompt", "augment_image"],
+                "inputs": [],
+                "outputs": ["json"],
+            },
+        ],
+        "quick_examples": [
+            {
+                "name": "Quick blur + rotate via path",
+                "calls": [
+                    {
+                        "tool": "augment_image",
+                        "args": {
+                            "image_path": "path/to/photo.jpg",
+                            "prompt": "add gaussian blur and rotate 15 degrees",
+                        },
+                        "result": "Saves augmented image + metadata under outputs/<session>/",
+                    }
+                ],
+            },
+            {
+                "name": "Use preset for segmentation",
+                "calls": [
+                    {
+                        "tool": "augment_image",
+                        "args": {
+                            "image_path": "path/to/mask_image.png",
+                            "preset": "segmentation",
+                        },
+                        "result": "Applies preset transforms and saves outputs.",
+                    }
+                ],
+            },
+            {
+                "name": "Preload then process (large image)",
+                "calls": [
+                    {
+                        "tool": "load_image_for_processing",
+                        "args": {"image_source": "path/to/large.jpg"},
+                        "result": "Returns session_id and stores original image.",
+                    },
+                    {
+                        "tool": "augment_image",
+                        "args": {
+                            "session_id": "<returned>",
+                            "prompt": "increase brightness and add noise",
+                        },
+                        "result": "Processes the preloaded image; outputs in the same session folder.",
+                    },
+                ],
+            },
+            {
+                "name": "Process directly from URL",
+                "calls": [
+                    {
+                        "tool": "load_image_for_processing",
+                        "args": {"image_source": "https://example.com/image.jpg"},
+                        "result": "Downloads and stores original image under a session; returns session_id.",
+                    },
+                    {
+                        "tool": "augment_image",
+                        "args": {
+                            "session_id": "<returned>",
+                            "prompt": "sharpen slightly and adjust saturation",
+                        },
+                        "result": "Applies transforms and writes all artifacts to the same session folder.",
+                    },
+                ],
+            },
+            {
+                "name": "Preview prompt before running",
+                "calls": [
+                    {
+                        "tool": "validate_prompt",
+                        "args": {"prompt": "sharpen slightly and boost contrast"},
+                        "result": "Returns transforms, confidence, and warnings.",
+                    }
+                ],
+            },
+        ],
+        "common_patterns": [
+            {
+                "pattern": "Portrait enhancement",
+                "approach": "Use preset 'portrait' or combine color + mild sharpening transforms.",
+                "tools": [
+                    "list_available_presets",
+                    "policy_presets",
+                    "augment_image",
+                ],
+            },
+            {
+                "pattern": "Low-light improvement",
+                "approach": "Use preset 'lowlight' or increase brightness/contrast + CLAHE.",
+                "tools": [
+                    "list_available_presets",
+                    "policy_presets",
+                    "augment_image",
+                ],
+            },
+            {
+                "pattern": "Geometric tweaks",
+                "approach": "rotate, flips, random scale; validate via validate_prompt then run augment_image.",
+                "tools": [
+                    "list_available_transforms",
+                    "validate_prompt",
+                    "augment_image",
+                ],
+            },
+        ],
+        "entry_points": [
+            {
+                "intent": "I want to augment an image now",
+                "start_with": "augment_image",
+                "notes": "Pass image_path and a simple prompt or a preset.",
+            },
+            {
+                "intent": "I want to test prompts first",
+                "start_with": "validate_prompt",
+                "notes": "Then call augment_image with the refined prompt.",
+            },
+            {
+                "intent": "I have a large image",
+                "start_with": "load_image_for_processing",
+                "notes": "Use returned session_id in augment_image.",
+            },
+            {
+                "intent": "I need reproducible results",
+                "start_with": "set_default_seed",
+                "notes": "Then call augment_image; include per-call seed to override.",
+            },
+        ],
+    }
+
+    return json.dumps(guide, indent=2)
+
+
+@mcp.tool()
 @mcp.resource("file://transforms_guide")
 def transforms_guide() -> str:
     """JSON of supported transforms, defaults, and parameter ranges (auto-generated from parser).
@@ -1015,6 +1525,7 @@ def transforms_guide() -> str:
         return json.dumps(error_response, indent=2)
 
 
+@mcp.tool()
 @mcp.resource("file://policy_presets")
 def policy_presets() -> str:
     """JSON of built-in presets: segmentation, portrait, lowlight.
@@ -1061,6 +1572,7 @@ def policy_presets() -> str:
         return json.dumps(error_response, indent=2)
 
 
+@mcp.tool()
 @mcp.resource("file://available_transforms_examples")
 def available_transforms_examples() -> str:
     """Available transforms with practical examples and usage patterns.
@@ -1215,6 +1727,7 @@ def available_transforms_examples() -> str:
         return json.dumps(error_response, indent=2)
 
 
+@mcp.tool()
 @mcp.resource("file://preset_pipelines_best_practices")
 def preset_pipelines_best_practices() -> str:
     """Best practices for creating and using augmentation presets.
@@ -1329,6 +1842,7 @@ def preset_pipelines_best_practices() -> str:
         return json.dumps(error_response, indent=2)
 
 
+@mcp.tool()
 @mcp.resource("file://troubleshooting_common_issues")
 def troubleshooting_common_issues() -> str:
     """Common issues and solutions for image augmentation.
@@ -1449,7 +1963,7 @@ def troubleshooting_common_issues() -> str:
                 },
             ],
             "getting_help": {
-                "documentation": "Check the transforms_guide resource for detailed parameter information",
+                "documentation": "Check the transforms_guide resource tool for detailed parameter information",
                 "examples": "Use available_transforms_examples resource for usage patterns",
                 "presets": "Try policy_presets resource for pre-configured pipelines",
                 "validation": "Always use validate_prompt before processing important images",

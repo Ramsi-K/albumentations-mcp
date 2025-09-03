@@ -118,6 +118,22 @@ def validate_environment_variables() -> Dict[str, Any]:
             f"ENABLE_VISION_VERIFICATION must be true/false, got: {vision_verify_str}"
         )
 
+    # Validate MAX_SECURITY_CHECK_LENGTH
+    try:
+        max_security_length = int(os.getenv("MAX_SECURITY_CHECK_LENGTH", "10000000"))
+        if max_security_length < 1000:
+            errors.append("MAX_SECURITY_CHECK_LENGTH must be at least 1000 characters")
+        elif max_security_length > 10000000:  # 10MB limit
+            errors.append(
+                "MAX_SECURITY_CHECK_LENGTH must be at most 10MB (10000000 characters)"
+            )
+        else:
+            config["MAX_SECURITY_CHECK_LENGTH"] = max_security_length
+    except ValueError:
+        errors.append(
+            f"MAX_SECURITY_CHECK_LENGTH must be an integer, got: {os.getenv('MAX_SECURITY_CHECK_LENGTH')}"
+        )
+
     if errors:
         error_msg = "Configuration validation failed:\n" + "\n".join(
             f"  - {error}" for error in errors
@@ -177,6 +193,7 @@ def get_config_summary() -> str:
             f"  • Output Directory: {config['OUTPUT_DIR']}",
             f"  • Log Level: {config['MCP_LOG_LEVEL']}",
             f"  • Vision Verification: {'Enabled' if config['ENABLE_VISION_VERIFICATION'] else 'Disabled'}",
+            f"  • Max Security Check Length: {config['MAX_SECURITY_CHECK_LENGTH']:,} chars ({config['MAX_SECURITY_CHECK_LENGTH'] / 1024:.1f}KB)",
         ]
 
         if "DEFAULT_SEED" in config:
@@ -207,3 +224,8 @@ def get_max_bytes_in() -> int:
 def is_strict_mode() -> bool:
     """Get validated STRICT_MODE value."""
     return get_validated_config()["STRICT_MODE"]
+
+
+def get_max_security_check_length() -> int:
+    """Get validated MAX_SECURITY_CHECK_LENGTH value."""
+    return get_validated_config()["MAX_SECURITY_CHECK_LENGTH"]
