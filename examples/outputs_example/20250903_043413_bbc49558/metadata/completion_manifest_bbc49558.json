@@ -15,42 +15,42 @@
   },
   "output_files": {
     "augmented_image": {
-      "path": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\images\\20250903_043413_bbc49558_add blur_augmented.png",
+      "path": "albumentations-mcp\\outputs\\20250903_043413_bbc49558\\images\\20250903_043413_bbc49558_add blur_augmented.png",
       "exists": true,
       "size": 28790
     },
     "original_image": {
-      "path": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\images\\20250903_043413_bbc49558_add blur_original.png",
+      "path": "albumentations-mcp\\outputs\\20250903_043413_bbc49558\\images\\20250903_043413_bbc49558_add blur_original.png",
       "exists": true,
       "size": 38376
     },
     "metadata": {
-      "path": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\metadata\\20250903_043413_bbc49558_add blur_metadata.json",
+      "path": "albumentations-mcp\\outputs\\20250903_043413_bbc49558\\metadata\\20250903_043413_bbc49558_add blur_metadata.json",
       "exists": true,
       "size": 14553
     },
     "transform_spec": {
-      "path": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\metadata\\20250903_043413_bbc49558_add blur_transforms.json",
+      "path": "albumentations-mcp\\outputs\\20250903_043413_bbc49558\\metadata\\20250903_043413_bbc49558_add blur_transforms.json",
       "exists": true,
       "size": 725
     },
     "quality_report": {
-      "path": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\metadata\\20250903_043413_bbc49558_add blur_quality.json",
+      "path": "albumentations-mcp\\outputs\\20250903_043413_bbc49558\\metadata\\20250903_043413_bbc49558_add blur_quality.json",
       "exists": true,
       "size": 1144
     },
     "processing_log": {
-      "path": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\logs\\20250903_043413_bbc49558_add blur_processing.log",
+      "path": "albumentations-mcp\\outputs\\20250903_043413_bbc49558\\logs\\20250903_043413_bbc49558_add blur_processing.log",
       "exists": true,
       "size": 345
     },
     "visual_eval": {
-      "path": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\analysis\\20250903_043413_bbc49558_add blur_visual_eval.md",
+      "path": "albumentations-mcp\\outputs\\20250903_043413_bbc49558\\analysis\\20250903_043413_bbc49558_add blur_visual_eval.md",
       "exists": true,
       "size": 2384
     },
     "classification_report": {
-      "path": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\analysis\\20250903_043413_bbc49558_add blur_classification.json",
+      "path": "albumentations-mcp\\outputs\\20250903_043413_bbc49558\\analysis\\20250903_043413_bbc49558_add blur_classification.json",
       "exists": true,
       "size": 130
     }
