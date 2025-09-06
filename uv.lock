@@ -41,7 +41,7 @@ wheels = [
 
 [[package]]
 name = "albumentations-mcp"
-version = "0.1.0b7"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "albumentations" },
