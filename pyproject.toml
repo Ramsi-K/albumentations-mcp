@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "albumentations-mcp"
-version = "0.1.0b7"
+version = "1.0.0"
 description = "MCP-compliant image augmentation server using Albumentations"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -12,7 +12,7 @@ license = { file = "LICENSE" }
 authors = [{ name = "Ramsi Kalia", email = "ramsi.kalia@gmail.com" }]
 keywords = ["mcp", "albumentations", "computer-vision", "image-augmentation", "ai"]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
