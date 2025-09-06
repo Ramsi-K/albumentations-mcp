@@ -4,19 +4,23 @@ build-backend = "hatchling.build"
 
 [project]
 name = "albumentations-mcp"
-version = "0.1.0b6"
+version = "0.1.0b7"
 description = "MCP-compliant image augmentation server using Albumentations"
 readme = "README.md"
-requires-python = ">=3.12"  # set to 3.12 since tools target 3.12
+requires-python = ">=3.12"
 license = { file = "LICENSE" }
-authors = [{ name = "ramsi-k", email = "ramsi.kalia@gmail.com" }]
+authors = [{ name = "Ramsi Kalia", email = "ramsi.kalia@gmail.com" }]
 keywords = ["mcp", "albumentations", "computer-vision", "image-augmentation", "ai"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.12",
+  "Typing :: Typed",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Software Development :: Libraries :: Python Modules",
 ]
@@ -51,7 +55,15 @@ Issues = "https://github.com/ramsi-k/albumentations-mcp/issues"
 [tool.ruff]
 line-length = 88
 target-version = "py312"
-select = ["E","F","W","I","UP","B","A","COM","Q","RET","SIM","TRY","PL","RUF"]
+
+[tool.ruff.lint]
+# Keep linting focused and low-noise on src/examples
+select = ["E","F","I","B","UP"]
+# Avoid formatter conflicts
+ignore = ["COM812"]
+
+# Keep tests lighter: allow magic numbers, long lines in fixtures/strings, local imports, and TRY003
+per-file-ignores = { "tests/**/*" = ["PLR2004", "TRY003", "PLC0415", "E501"] }
 
 [tool.black]
 line-length = 88
@@ -62,6 +74,24 @@ python_version = "3.12"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+  "albumentations_mcp.server",
+  "albumentations_mcp.__init__",
+  "albumentations_mcp.hooks.*",
+  "albumentations_mcp.recovery",
+  "albumentations_mcp.presets",
+  "albumentations_mcp.config",
+  "albumentations_mcp.validation",
+  "albumentations_mcp.parser",
+  "albumentations_mcp.utils.*",
+  "albumentations_mcp.image_conversions",
+  "albumentations_mcp.processor",
+  "albumentations_mcp.pipeline",
+]
+ignore_errors = true
 
 [dependency-groups]
 dev = [
@@ -69,3 +99,13 @@ dev = [
     "ruff>=0.12.7",
     "twine>=6.1.0",
 ]
+
+# Ensure PEP 561 type information is included in wheels
+[tool.hatch.build.targets.wheel]
+packages = ["src/albumentations_mcp"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/albumentations_mcp/py.typed" = "albumentations_mcp/py.typed"
+
+[tool.hatch.build.targets.sdist]
+include = ["src/albumentations_mcp/py.typed"]
