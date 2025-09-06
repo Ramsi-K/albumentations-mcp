@@ -9,23 +9,26 @@ prevents base64 conversion crashes.
 Requirements: 2.1, 2.2, 2.3, 2.4
 """
 
-import os
-import tempfile
-import pytest
 import json
-from pathlib import Path
-from PIL import Image
 import shutil
-from typing import Dict, Any
+import tempfile
+from pathlib import Path
 
+import pytest
+from PIL import Image
+
+from src.albumentations_mcp.image_conversions import (
+    load_image_from_source,
+    pil_to_base64,
+)
 from src.albumentations_mcp.server import (
     augment_image,
-    list_available_transforms,
-    validate_prompt,
     get_pipeline_status,
-    set_default_seed,
     list_available_presets,
+    list_available_transforms,
     load_image_for_processing,
+    set_default_seed,
+    validate_prompt,
 )
 
 
@@ -59,9 +62,9 @@ class TestMCPClientCompatibility:
         assert isinstance(result, str)
         assert ("✅" in result) or ("❌" in result)
 
-        # If successful, should indicate file path mode
+        # If successful, should include saved files information
         if "✅" in result:
-            assert "File path" in result or "Session ID:" in result
+            assert "Files saved:" in result
 
     def test_large_image_claude_integration(self):
         """Test large image handling that would crash base64 conversion."""
@@ -73,7 +76,8 @@ class TestMCPClientCompatibility:
             large_image_path = Path(temp_dir) / "large_claude_image.png"
             large_image.save(large_image_path, format="PNG")
 
-            # This would crash with base64 conversion in Claude, but should work with file path
+            # This would crash with base64 conversion in Claude,
+            # but should work with file path
             result = augment_image(
                 image_path=str(large_image_path),
                 prompt="add motion blur and increase saturation",
@@ -194,9 +198,9 @@ class TestFilePathModeSpecific:
             # Test file path mode
             result = augment_image(image_path=str(image_path), prompt="add brightness")
 
-            # Should indicate file path mode if successful
+            # If successful, should mention saved files
             if "✅" in result:
-                assert ("File path" in result) or ("Session ID:" in result)
+                assert "Files saved:" in result
 
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
@@ -213,13 +217,9 @@ class TestFilePathModeSpecific:
 
             # Test file path mode
             result_file = augment_image(
-                image_path=str(image_path), prompt="add blur", seed=42
-            )
-
-            # Test base64 mode
-            from src.albumentations_mcp.image_conversions import (
-                load_image_from_source,
-                pil_to_base64,
+                image_path=str(image_path),
+                prompt="add blur",
+                seed=42,
             )
 
             image_loaded = load_image_from_source(str(image_path))
@@ -265,9 +265,9 @@ class TestFilePathModeSpecific:
             # Should handle output directory
             assert isinstance(result, str)
 
-            # If successful, should mention the output location
+            # If successful, should mention saved files
             if "✅" in result:
-                assert "Session ID:" in result
+                assert "Files saved:" in result
 
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
@@ -295,7 +295,7 @@ class TestResourceManagement:
             for i, image_path in enumerate(image_paths):
                 result = augment_image(
                     image_path=image_path,
-                    prompt=f"add blur level {i+1}",
+                    prompt=f"add blur level {i + 1}",
                     seed=i,
                 )
                 results.append(result)
@@ -329,7 +329,7 @@ class TestResourceManagement:
             for i, image_path in enumerate(image_paths):
                 result = augment_image(
                     image_path=image_path,
-                    prompt=f"add noise level {i+1}",
+                    prompt=f"add noise level {i + 1}",
                     seed=i * 10,
                 )
                 results.append(result)
@@ -384,12 +384,6 @@ class TestBackwardCompatibility:
             image = Image.new("RGB", (128, 128), color=(70, 90, 110))
             image_path = Path(temp_dir) / "base64_test.png"
             image.save(image_path)
-
-            # Convert to base64
-            from src.albumentations_mcp.image_conversions import (
-                load_image_from_source,
-                pil_to_base64,
-            )
 
             image_loaded = load_image_from_source(str(image_path))
             image_b64 = pil_to_base64(image_loaded)

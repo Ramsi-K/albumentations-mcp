@@ -1,19 +1,25 @@
 """Tests for file path support in augment_image tool.
 
-This module tests the new file path functionality added to fix Claude base64 conversion crashes.
+This module tests the new file path functionality added to fix
+Claude base64 conversion crashes.
 """
 
 import os
 import tempfile
-import pytest
 from pathlib import Path
+
 from PIL import Image
 
 from src.albumentations_mcp.server import (
     _detect_input_mode,
     _load_image_from_input,
+    get_pipeline_status,
+    list_available_presets,
+    list_available_transforms,
+    load_image_for_processing,
+    set_default_seed,
     validate_mcp_request,
-    augment_image,
+    validate_prompt,
 )
 
 
@@ -23,7 +29,7 @@ class TestInputModeDetection:
     def test_file_path_mode(self):
         """Test detection of file path input mode."""
         mode, error = _detect_input_mode("test.jpg", "", "")
-        assert mode == "file_path"
+        assert mode == "path"
         assert error is None
 
     def test_base64_mode(self):
@@ -62,21 +68,30 @@ class TestImageLoading:
 
     def test_load_from_valid_file_path(self):
         """Test loading image from valid file path."""
-        # Use the existing test image
-        result = _load_image_from_input("file_path", "examples/cat.jpg", "", "")
+        # Create a temporary valid image file
+        with tempfile.TemporaryDirectory() as td:
+            img_path = Path(td) / "valid_test.png"
+            Image.new("RGB", (16, 16), color=(128, 128, 128)).save(
+                img_path,
+                format="PNG",
+            )
+            result = _load_image_from_input("path", str(img_path), "", "")
         assert result[0] is not None  # Should return base64 data
         assert result[1] is None  # No error
 
     def test_load_from_invalid_file_path(self):
         """Test loading image from invalid file path."""
-        result = _load_image_from_input("file_path", "nonexistent.jpg", "", "")
+        result = _load_image_from_input("path", "nonexistent.jpg", "", "")
         assert result[0] is None  # Should return None
         assert "Image file not found" in result[1]
 
     def test_load_from_valid_base64(self):
         """Test loading image from valid base64 data."""
         # Create a minimal valid PNG base64
-        test_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI9jU77yQAAAABJRU5ErkJggg=="
+        test_b64 = (
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI9"
+            "jU77yQAAAABJRU5ErkJggg=="
+        )
         result = _load_image_from_input("base64", "", test_b64, "")
         assert result[0] is not None  # Should return base64 data
         assert result[1] is None  # No error
@@ -101,7 +116,7 @@ class TestMCPValidation:
         """Test validation for file path mode."""
         valid, error = validate_mcp_request(
             "augment_image",
-            image_path="examples/cat.jpg",
+            image_path="example.jpg",
             prompt="add blur",
             seed=42,
         )
@@ -110,9 +125,15 @@ class TestMCPValidation:
 
     def test_validate_base64_mode(self):
         """Test validation for base64 mode."""
-        test_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI9jU77yQAAAABJRU5ErkJggg=="
+        test_b64 = (
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI9"
+            "jU77yQAAAABJRU5ErkJggg=="
+        )
         valid, error = validate_mcp_request(
-            "augment_image", image_b64=test_b64, prompt="add blur", seed=42
+            "augment_image",
+            image_b64=test_b64,
+            prompt="add blur",
+            seed=42,
         )
         assert valid is True
         assert error is None
@@ -120,7 +141,10 @@ class TestMCPValidation:
     def test_validate_session_mode(self):
         """Test validation for session mode (backward compatibility)."""
         valid, error = validate_mcp_request(
-            "augment_image", session_id="test123", prompt="add blur", seed=42
+            "augment_image",
+            session_id="test123",
+            prompt="add blur",
+            seed=42,
         )
         assert valid is True
         assert error is None
@@ -129,7 +153,7 @@ class TestMCPValidation:
         """Test validation for output_dir parameter."""
         valid, error = validate_mcp_request(
             "augment_image",
-            image_path="examples/cat.jpg",
+            image_path="example.jpg",
             prompt="add blur",
             output_dir="/tmp/outputs",
         )
@@ -158,7 +182,7 @@ class TestErrorHandling:
             restricted_path = Path(temp_dir) / "restricted" / "image.jpg"
 
             # Try to load from non-existent directory (simulates permission issues)
-            result = _load_image_from_input("file_path", str(restricted_path), "", "")
+            result = _load_image_from_input("path", str(restricted_path), "", "")
             assert result[0] is None
             assert "Image file not found" in result[1]
 
@@ -170,7 +194,7 @@ class TestErrorHandling:
             temp_path = f.name
 
         try:
-            result = _load_image_from_input("file_path", temp_path, "", "")
+            result = _load_image_from_input("path", temp_path, "", "")
             assert result[0] is None
             assert "Failed to load image" in result[1]
         finally:
@@ -184,7 +208,8 @@ class TestErrorHandling:
         )
         result = _load_image_from_input("base64", "", corrupted_b64, "")
         assert result[0] is None
-        assert "Invalid base64" in result[1]
+        # Implementation returns taxonomy with B64_INVALID for decode/open failures
+        assert ("B64_INVALID" in result[1]) or ("Invalid base64" in result[1])
 
 
 class TestBackwardCompatibility:
@@ -195,16 +220,23 @@ class TestBackwardCompatibility:
         # This test would require setting up a session first
         # For now, just test that the validation works
         valid, error = validate_mcp_request(
-            "augment_image", session_id="test_session", prompt="add blur"
+            "augment_image",
+            session_id="test_session",
+            prompt="add blur",
         )
         assert valid is True
         assert error is None
 
     def test_base64_mode_still_works(self):
         """Test that base64 mode still works for backward compatibility."""
-        test_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI9jU77yQAAAABJRU5ErkJggg=="
+        test_b64 = (
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI9"
+            "jU77yQAAAABJRU5ErkJggg=="
+        )
         valid, error = validate_mcp_request(
-            "augment_image", image_b64=test_b64, prompt="add blur"
+            "augment_image",
+            image_b64=test_b64,
+            prompt="add blur",
         )
         assert valid is True
         assert error is None
@@ -241,8 +273,6 @@ class TestIntegrationWithExistingTools:
 
     def test_list_available_transforms_still_works(self):
         """Test that list_available_transforms tool still works."""
-        from src.albumentations_mcp.server import list_available_transforms
-
         result = list_available_transforms()
         assert isinstance(result, dict)
         assert "transforms" in result
@@ -250,8 +280,6 @@ class TestIntegrationWithExistingTools:
 
     def test_validate_prompt_still_works(self):
         """Test that validate_prompt tool still works."""
-        from src.albumentations_mcp.server import validate_prompt
-
         result = validate_prompt("add blur")
         assert isinstance(result, dict)
         assert "valid" in result
@@ -259,24 +287,18 @@ class TestIntegrationWithExistingTools:
 
     def test_get_pipeline_status_still_works(self):
         """Test that get_pipeline_status tool still works."""
-        from src.albumentations_mcp.server import get_pipeline_status
-
         result = get_pipeline_status()
         assert isinstance(result, dict)
         # Should have either status info or error info
 
     def test_set_default_seed_still_works(self):
         """Test that set_default_seed tool still works."""
-        from src.albumentations_mcp.server import set_default_seed
-
         result = set_default_seed(42)
         assert isinstance(result, dict)
         assert "success" in result
 
     def test_list_available_presets_still_works(self):
         """Test that list_available_presets tool still works."""
-        from src.albumentations_mcp.server import list_available_presets
-
         result = list_available_presets()
         assert isinstance(result, dict)
         assert "presets" in result
@@ -284,10 +306,11 @@ class TestIntegrationWithExistingTools:
 
     def test_load_image_for_processing_still_works(self):
         """Test that load_image_for_processing tool still works."""
-        from src.albumentations_mcp.server import load_image_for_processing
-
-        # Test with the existing test image
-        result = load_image_for_processing("examples/cat.jpg")
+        # Create a temporary image and load it
+        with tempfile.TemporaryDirectory() as td:
+            img_path = Path(td) / "load_test.png"
+            Image.new("RGB", (16, 16), color=(64, 64, 64)).save(img_path, format="PNG")
+            result = load_image_for_processing(str(img_path))
         assert isinstance(result, str)
         assert "✅" in result  # Success message
         assert "Session ID:" in result

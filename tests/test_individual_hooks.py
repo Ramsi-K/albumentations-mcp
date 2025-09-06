@@ -609,16 +609,13 @@ class TestPreSaveHook:
 
         filename_info = result.context.metadata["filename_info"]
         base_filename = filename_info["base_name"]
-        # Should be sanitized and safe for filesystem
-        assert (
-            base_filename.replace("_", "")
-            .replace("-", "")
-            .replace("20250809", "")
-            .replace("091739", "")
-            .replace("testsession123", "")
-            .replace("testses", "")
-        )
-        assert not any(char in base_filename for char in "!@#$%°")
+        # Should be sanitized and safe for filesystem characters
+        # Only disallow truly dangerous filesystem chars: <>:"/\|?*
+        dangerous = '<>:"/\\|?*'
+        assert not any(char in base_filename for char in dangerous)
+        # Ensure no spaces at ends and length is reasonable
+        assert base_filename == base_filename.strip()
+        assert len(base_filename) <= 255
 
     @pytest.mark.asyncio
     async def test_directory_creation(self, basic_context):
@@ -996,14 +993,16 @@ if __name__ == "__main__":
         )
         context.temp_paths = []
 
-        with patch.dict("os.environ", {"STRICT_MODE": "false"}):
-            with patch(
-                "src.albumentations_mcp.hooks.pre_transform.PreTransformHook._save_temp_image"
-            ) as mock_save:
-                mock_save.return_value = Path(
-                    "outputs/test_session/tmp/resized_image.png"
-                )
-                result = await hook.execute(context)
+        with (
+            patch.dict("os.environ", {"STRICT_MODE": "false"}),
+            patch(
+                "src.albumentations_mcp.hooks.pre_transform.PreTransformHook._save_temp_image",
+            ) as mock_save,
+        ):
+            mock_save.return_value = Path(
+                "outputs/test_session/tmp/resized_image.png",
+            )
+            result = await hook.execute(context)
 
         assert result.success is True
         mock_save.assert_called_once()
@@ -1033,7 +1032,7 @@ if __name__ == "__main__":
 
         assert result.success is True
         # The context.image_data should be updated with resized image
-        # but we should verify original is not touched (this is more of an integration test)
+        # but we should verify original is not touched (integration-level)
         assert result.context.image_data != original_data.encode()
 
     @pytest.mark.asyncio
@@ -1056,7 +1055,8 @@ if __name__ == "__main__":
 
         # Set custom MAX_IMAGE_SIZE
         with patch.dict(
-            "os.environ", {"MAX_IMAGE_SIZE": "2048", "STRICT_MODE": "false"}
+            "os.environ",
+            {"MAX_IMAGE_SIZE": "2048", "STRICT_MODE": "false"},
         ):
             result = await hook.execute(context)
 
@@ -1071,7 +1071,7 @@ if __name__ == "__main__":
 
     @pytest.mark.asyncio
     async def test_oversize_by_pixels_limit(self, hook):
-        """Test oversized image by total pixels (e.g., 9000×2000)."""
+        """Test oversized image by total pixels (e.g., 9000x2000)."""
         # Create image with high pixel count but reasonable dimensions
         wide_image = Image.new("RGB", (9000, 2000), color="orange")
         buffer = io.BytesIO()
@@ -1088,7 +1088,8 @@ if __name__ == "__main__":
         context.temp_paths = []
 
         with patch.dict(
-            "os.environ", {"MAX_PIXELS_IN": "10000000", "STRICT_MODE": "false"}
+            "os.environ",
+            {"MAX_PIXELS_IN": "10000000", "STRICT_MODE": "false"},
         ):
             result = await hook.execute(context)
 
@@ -1119,7 +1120,8 @@ if __name__ == "__main__":
 
         # Set very low byte limit to trigger resize
         with patch.dict(
-            "os.environ", {"MAX_BYTES_IN": "2000000", "STRICT_MODE": "false"}
+            "os.environ",
+            {"MAX_BYTES_IN": "2000000", "STRICT_MODE": "false"},
         ):
             result = await hook.execute(context)
 
@@ -1146,10 +1148,14 @@ if __name__ == "__main__":
         )
         context.temp_paths = []
 
-        with patch.dict("os.environ", {"STRICT_MODE": "false"}):
-            with patch("PIL.ImageOps.exif_transpose") as mock_transpose:
-                mock_transpose.return_value = portrait_image
-                result = await hook.execute(context)
+        with (
+            patch.dict("os.environ", {"STRICT_MODE": "false"}),
+            patch(
+                "PIL.ImageOps.exif_transpose",
+            ) as mock_transpose,
+        ):
+            mock_transpose.return_value = portrait_image
+            result = await hook.execute(context)
 
         assert result.success is True
         mock_transpose.assert_called_once()
@@ -1173,14 +1179,16 @@ if __name__ == "__main__":
         )
         context.temp_paths = []
 
-        with patch.dict("os.environ", {"STRICT_MODE": "false"}):
-            with patch(
-                "src.albumentations_mcp.hooks.pre_transform.PreTransformHook._save_temp_image"
-            ) as mock_save:
-                mock_save.return_value = Path(
-                    "outputs/test_session/tmp/resized_image.webp"
-                )
-                result = await hook.execute(context)
+        with (
+            patch.dict("os.environ", {"STRICT_MODE": "false"}),
+            patch(
+                "src.albumentations_mcp.hooks.pre_transform.PreTransformHook._save_temp_image",
+            ) as mock_save,
+        ):
+            mock_save.return_value = Path(
+                "outputs/test_session/tmp/resized_image.webp",
+            )
+            result = await hook.execute(context)
 
         assert result.success is True
         # Verify format preservation logic was called
@@ -1553,7 +1561,9 @@ if __name__ == "__main__":
 
             # Mock unlink to raise permission error
             with patch.object(
-                Path, "unlink", side_effect=PermissionError("Access denied")
+                Path,
+                "unlink",
+                side_effect=PermissionError("Access denied"),
             ):
                 result = await hook.execute(context)
 

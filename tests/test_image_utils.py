@@ -11,10 +11,6 @@ from src.albumentations_mcp.errors import (
     ImageConversionError,
     ImageValidationError,
 )
-from src.albumentations_mcp.utils.image_handler import (
-    MAX_IMAGE_SIZE,
-    SUPPORTED_FORMATS,
-)
 from src.albumentations_mcp.image_conversions import (
     base64_to_pil,
     numpy_to_pil,
@@ -22,6 +18,8 @@ from src.albumentations_mcp.image_conversions import (
     pil_to_numpy,
 )
 from src.albumentations_mcp.utils.image_handler import (
+    MAX_IMAGE_SIZE,
+    SUPPORTED_FORMATS,
     get_image_info,
     get_supported_formats,
     is_supported_format,
@@ -32,11 +30,11 @@ from src.albumentations_mcp.utils.image_handler import (
 class TestBase64ToPil:
     """Test base64 to PIL Image conversion."""
 
-    def create_test_image(self, size=(100, 100), mode="RGB", format="PNG"):
+    def create_test_image(self, size=(100, 100), mode="RGB", fmt="PNG"):
         """Create a test image and return its base64 representation."""
         image = Image.new(mode, size, color="red")
         buffer = io.BytesIO()
-        image.save(buffer, format=format)
+        image.save(buffer, format=fmt)
         return base64.b64encode(buffer.getvalue()).decode("utf-8"), image
 
     def test_valid_base64_conversion(self):
@@ -58,8 +56,8 @@ class TestBase64ToPil:
 
     def test_different_image_formats(self):
         """Test conversion of different image formats."""
-        for format in ["PNG", "JPEG"]:
-            base64_data, original = self.create_test_image(format=format)
+        for fmt in ["PNG", "JPEG"]:
+            base64_data, original = self.create_test_image(fmt=fmt)
             converted = base64_to_pil(base64_data)
             assert converted.size == original.size
 
@@ -146,9 +144,9 @@ class TestPilToBase64:
         """Test conversion to different formats."""
         image = self.create_test_image()
 
-        for format in ["PNG", "JPEG", "WEBP"]:
-            if format in SUPPORTED_FORMATS:
-                base64_data = pil_to_base64(image, format=format)
+        for fmt in ["PNG", "JPEG", "WEBP"]:
+            if fmt in SUPPORTED_FORMATS:
+                base64_data = pil_to_base64(image, format=fmt)
                 assert isinstance(base64_data, str)
                 assert len(base64_data) > 0
 

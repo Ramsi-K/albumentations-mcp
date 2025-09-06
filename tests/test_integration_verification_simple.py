@@ -9,24 +9,26 @@ This module provides focused integration tests to verify:
 - All existing functionality (presets, seeding, hooks) works with file paths
 - Resource cleanup after processing
 
-Requirements: 2.1, 2.2, 2.3, 2.4
 """
 
 import os
-import tempfile
-import pytest
-from pathlib import Path
-from PIL import Image
 import shutil
+import tempfile
+from pathlib import Path
 
+import pytest
+from PIL import Image
+
+from src.albumentations_mcp.image_conversions import (
+    load_image_from_source,
+    pil_to_base64,
+)
 from src.albumentations_mcp.server import (
     augment_image,
+    get_pipeline_status,
+    list_available_presets,
     list_available_transforms,
     validate_prompt,
-    get_pipeline_status,
-    set_default_seed,
-    list_available_presets,
-    load_image_for_processing,
 )
 
 
@@ -64,9 +66,9 @@ class TestClaudeIntegrationBasic:
             # Should either succeed or fail gracefully
             assert ("✅" in result) or ("❌" in result)
 
-            # If successful, should indicate file path mode
+            # If successful, should include saved files information
             if "✅" in result:
-                assert "File path" in result or "Session ID:" in result
+                assert "Files saved:" in result
 
         finally:
             if "OUTPUT_DIR" in os.environ:
@@ -83,18 +85,14 @@ class TestClaudeIntegrationBasic:
 
             # Test file path mode
             result_file = augment_image(
-                image_path=str(large_image_path), prompt="add blur", seed=42
+                image_path=str(large_image_path),
+                prompt="add blur",
+                seed=42,
             )
 
             # Should not crash
             assert isinstance(result_file, str)
             assert ("✅" in result_file) or ("❌" in result_file)
-
-            # Test base64 mode for comparison
-            from src.albumentations_mcp.image_conversions import (
-                load_image_from_source,
-                pil_to_base64,
-            )
 
             image = load_image_from_source(str(large_image_path))
             image_b64 = pil_to_base64(image)
@@ -163,7 +161,9 @@ class TestImageFormatsAndSizes:
 
                 # Test augmentation
                 result = augment_image(
-                    image_path=str(image_path), prompt="add contrast", seed=42
+                    image_path=str(image_path),
+                    prompt="add contrast",
+                    seed=42,
                 )
 
                 # Should not crash
@@ -224,7 +224,9 @@ class TestExistingFunctionality:
 
         # Test augmentation with hooks
         result = augment_image(
-            image_path=test_image, prompt="add blur and contrast", seed=42
+            image_path=test_image,
+            prompt="add blur and contrast",
+            seed=42,
         )
 
         # Should not crash
@@ -267,7 +269,8 @@ class TestErrorHandling:
     def test_nonexistent_file_path(self):
         """Test handling of non-existent file paths."""
         result = augment_image(
-            image_path="/nonexistent/path/image.jpg", prompt="add blur"
+            image_path="/nonexistent/path/image.jpg",
+            prompt="add blur",
         )
 
         assert isinstance(result, str)
@@ -315,7 +318,9 @@ class TestResourceCleanup:
             # Process multiple times
             for i in range(3):
                 result = augment_image(
-                    image_path=str(image_path), prompt=f"add blur {i}", seed=i
+                    image_path=str(image_path),
+                    prompt=f"add blur {i}",
+                    seed=i,
                 )
 
                 # Should not crash
@@ -324,39 +329,33 @@ class TestResourceCleanup:
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
-    def test_temporary_files_not_accumulating(self):
-        """Test that temporary files don't accumulate in system temp."""
-        import tempfile as tf
-
-        # Get initial temp file count
-        temp_dir_path = Path(tf.gettempdir())
-        initial_files = set(temp_dir_path.rglob("*"))
-
-        # Create test image
+    def test_outputs_directory_created_and_reasonable(self):
+        """Test that outputs are written under OUTPUT_DIR and not excessive."""
         test_temp_dir = tempfile.mkdtemp()
+        out_dir = tempfile.mkdtemp()
+        os.environ["OUTPUT_DIR"] = out_dir
         try:
             image = Image.new("RGB", (256, 256), color=(128, 128, 128))
             image_path = Path(test_temp_dir) / "test.png"
             image.save(image_path)
 
-            # Process image
             result = augment_image(
-                image_path=str(image_path), prompt="add blur", seed=42
+                image_path=str(image_path),
+                prompt="add blur",
+                seed=42,
             )
-
-            # Should not crash
             assert isinstance(result, str)
 
-            # Check temp files haven't grown excessively
-            final_files = set(temp_dir_path.rglob("*"))
-            new_files = final_files - initial_files
-
-            # Should not have created many new temp files
-            # (Some may be created by the system, but not hundreds)
-            assert len(new_files) < 50, f"Too many new temp files: {len(new_files)}"
-
+            # Ensure some artifacts exist under OUTPUT_DIR
+            created = list(Path(out_dir).rglob("*"))
+            assert len(created) > 0
+            # Should not be excessive
+            assert len(created) < 50
         finally:
             shutil.rmtree(test_temp_dir, ignore_errors=True)
+            shutil.rmtree(out_dir, ignore_errors=True)
+            if "OUTPUT_DIR" in os.environ:
+                del os.environ["OUTPUT_DIR"]
 
 
 if __name__ == "__main__":

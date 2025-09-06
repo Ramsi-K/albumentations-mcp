@@ -6,6 +6,7 @@ import io
 import pytest
 from PIL import Image
 
+import src.albumentations_mcp.validation as v
 from src.albumentations_mcp.validation import (
     ImageValidationError,
     PromptValidationError,
@@ -90,14 +91,23 @@ class TestImageValidation:
         assert "Invalid data URL format" in result["error"]
 
     def test_large_image_dimensions(self):
-        """Test validation of oversized image."""
-        # Create image larger than limits
-        large_image_b64 = self.create_test_image(width=100000, height=100000)
+        """Test validation of oversized image without huge allocations.
 
-        result = validate_base64_image(large_image_b64, strict=False)
+        Temporarily lower module limits, then validate a modestly sized image.
+        """
+        old_w, old_h = v.MAX_IMAGE_WIDTH, v.MAX_IMAGE_HEIGHT
+        try:
+            v.MAX_IMAGE_WIDTH = 256
+            v.MAX_IMAGE_HEIGHT = 256
 
-        assert result["valid"] is False
-        assert "too large" in result["error"]  # Could be security or image size limit
+            large_image_b64 = self.create_test_image(width=512, height=512)
+
+            result = validate_base64_image(large_image_b64, strict=False)
+
+            assert result["valid"] is False
+            assert "too large" in (result.get("error") or "")
+        finally:
+            v.MAX_IMAGE_WIDTH, v.MAX_IMAGE_HEIGHT = old_w, old_h
 
     def test_large_file_size(self):
         """Test validation of large file size."""

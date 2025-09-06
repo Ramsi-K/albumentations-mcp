@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -9,22 +9,27 @@ repos:
       - id: check-merge-conflict
 
   - repo: https://github.com/psf/black
-    rev: 23.12.1
+    rev: 25.1.0
     hooks:
       - id: black
-        language_version: python3
+        language_version: python3.12
 
-  # Temporarily disabled due to extensive linting issues to be addressed incrementally
-  # - repo: https://github.com/astral-sh/ruff-pre-commit
-  #   rev: v0.1.9
-  #   hooks:
-  #     - id: ruff
-  #       args: [--fix, --exit-non-zero-on-fix]
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.12
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: "^src/|^examples/"
 
-  # Temporarily disabled due to types-all dependency conflicts
-  # - repo: https://github.com/pre-commit/mirrors-mypy
-  #   rev: v1.8.0
-  #   hooks:
-  #     - id: mypy
-  #     additional_dependencies: [types-all]
-  #     args: [--strict]
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.17.1
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - types-Pillow
+          - types-requests
+          - numpy>=1.26
+          - pydantic>=2
+          - types-psutil
+        args: ["--strict", "--python-version=3.12"]
+        files: "^src/|^examples/"

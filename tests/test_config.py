@@ -100,7 +100,7 @@ class TestConfigurationValidation:
             with pytest.raises(ConfigurationError) as exc_info:
                 validate_environment_variables()
             assert "MAX_PIXELS_IN must be at most 1 billion pixels" in str(
-                exc_info.value
+                exc_info.value,
             )
 
     def test_max_bytes_validation(self):
@@ -163,14 +163,14 @@ class TestConfigurationValidation:
             with pytest.raises(ConfigurationError) as exc_info:
                 validate_environment_variables()
             assert "DEFAULT_SEED must be between 0 and 4294967295" in str(
-                exc_info.value
+                exc_info.value,
             )
 
         with patch.dict(os.environ, {"DEFAULT_SEED": "4294967296"}):
             with pytest.raises(ConfigurationError) as exc_info:
                 validate_environment_variables()
             assert "DEFAULT_SEED must be between 0 and 4294967295" in str(
-                exc_info.value
+                exc_info.value,
             )
 
         # Test non-integer
@@ -245,6 +245,8 @@ class TestConfigurationValidation:
             config = get_validated_config()
             assert config["MAX_IMAGE_SIZE"] == 2048
 
-        with patch.dict(os.environ, {"STRICT_MODE": "invalid"}):
-            with pytest.raises(ConfigurationError):
-                get_validated_config()
+        with (
+            patch.dict(os.environ, {"STRICT_MODE": "invalid"}),
+            pytest.raises(ConfigurationError),
+        ):
+            get_validated_config()

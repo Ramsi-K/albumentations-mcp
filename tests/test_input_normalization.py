@@ -1,10 +1,11 @@
 import base64
 import io
+
 from PIL import Image
 
 from albumentations_mcp.server import (
-    _load_and_preprocess_from_file,
     _load_and_preprocess_from_base64,
+    _load_and_preprocess_from_file,
 )
 
 
