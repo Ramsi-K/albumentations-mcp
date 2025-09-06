@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Albumentations MCP Server - Legacy Entry Point
+Dev convenience runner.
 
-This file is kept for backward compatibility.
-The main server implementation has moved to src/albumentations_mcp/server.py
+Allows: python main.py
+This simply forwards to albumentations_mcp.server.main().
+Not included in package distributions.
 """
 
-from src.albumentations_mcp import main
+from src.albumentations_mcp.server import main
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
