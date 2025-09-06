@@ -1,0 +1,38 @@
+{
+  "session_id": "bbc49558",
+  "transforms": [
+    {
+      "name": "Blur",
+      "parameters": {
+        "blur_limit": 7,
+        "p": 1.0
+      },
+      "probability": 1.0
+    }
+  ],
+  "transformation_summary": {
+    "total_transforms": 1,
+    "transform_details": [
+      {
+        "index": 0,
+        "name": "Blur",
+        "category": "blur",
+        "probability": 1.0,
+        "parameter_count": 2,
+        "parameters": {
+          "blur_limit": 7,
+          "p": 1.0
+        },
+        "complexity": 4
+      }
+    ],
+    "categories": {
+      "blur": 1
+    },
+    "complexity_score": 4,
+    "average_complexity": 4.0,
+    "high_complexity_transforms": [
+      "Blur"
+    ]
+  }
+}

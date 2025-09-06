@@ -1,0 +1,276 @@
+{
+  "session_id": "bbc49558",
+  "original_prompt": "add blur",
+  "transforms": [
+    {
+      "name": "Blur",
+      "parameters": {
+        "blur_limit": 7,
+        "p": 1.0
+      },
+      "probability": 1.0
+    }
+  ],
+  "metadata": {
+    "timestamp": "2025-09-03T04:34:13.926501+00:00",
+    "pipeline_version": "1.0.0",
+    "seed": null,
+    "session_dir": "outputs\\20250903_100413_bbc49558",
+    "pre_mcp_processed": true,
+    "prompt_length": 8,
+    "prompt_word_count": 2,
+    "parser_confidence": 1.0,
+    "parser_warnings": [],
+    "parser_suggestions": [],
+    "post_mcp_processed": true,
+    "json_spec": {
+      "session_id": "bbc49558",
+      "original_prompt": "add blur",
+      "transforms": [
+        {
+          "name": "Blur",
+          "parameters": {
+            "blur_limit": 7,
+            "p": 1.0
+          },
+          "probability": 1.0
+        }
+      ],
+      "metadata": {
+        "timestamp": "2025-09-03T04:34:13.926501+00:00",
+        "prompt_length": 8,
+        "prompt_word_count": 2,
+        "transforms_count": 1
+      },
+      "warnings": [
+        "Unsupported image format: None. Supported formats: JPEG, TIFF, WEBP, PNG"
+      ],
+      "errors": []
+    },
+    "transforms_count": 1,
+    "validation_warnings": [],
+    "pre_save_processed": true,
+    "directory_info": {
+      "output_dir": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs",
+      "session_dir": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558",
+      "session_dir_name": "20250903_043413_bbc49558",
+      "subdirectories": {
+        "images": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\images",
+        "metadata": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\metadata",
+        "logs": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\logs",
+        "analysis": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\analysis"
+      },
+      "created_timestamp": "2025-09-03T04:34:13.940691+00:00"
+    },
+    "filename_info": {
+      "base_name": "20250903_043413_bbc49558_add blur",
+      "timestamp": "20250903_043413",
+      "session_short": "bbc49558",
+      "prompt_part": "add blur",
+      "original_filenames": {
+        "augmented_image": "20250903_043413_bbc49558_add blur_augmented.png",
+        "original_image": "20250903_043413_bbc49558_add blur_original.png",
+        "metadata": "20250903_043413_bbc49558_add blur_metadata.json",
+        "processing_log": "20250903_043413_bbc49558_add blur_processing.log",
+        "transform_spec": "20250903_043413_bbc49558_add blur_transforms.json",
+        "quality_report": "20250903_043413_bbc49558_add blur_quality.json",
+        "visual_eval": "20250903_043413_bbc49558_add blur_visual_eval.md",
+        "classification_report": "20250903_043413_bbc49558_add blur_classification.json"
+      },
+      "versioned_filenames": {
+        "augmented_image": "20250903_043413_bbc49558_add blur_augmented.png",
+        "original_image": "20250903_043413_bbc49558_add blur_original.png",
+        "metadata": "20250903_043413_bbc49558_add blur_metadata.json",
+        "processing_log": "20250903_043413_bbc49558_add blur_processing.log",
+        "transform_spec": "20250903_043413_bbc49558_add blur_transforms.json",
+        "quality_report": "20250903_043413_bbc49558_add blur_quality.json",
+        "visual_eval": "20250903_043413_bbc49558_add blur_visual_eval.md",
+        "classification_report": "20250903_043413_bbc49558_add blur_classification.json"
+      }
+    },
+    "file_paths": {
+      "augmented_image": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\images\\20250903_043413_bbc49558_add blur_augmented.png",
+      "original_image": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\images\\20250903_043413_bbc49558_add blur_original.png",
+      "metadata": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\metadata\\20250903_043413_bbc49558_add blur_metadata.json",
+      "transform_spec": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\metadata\\20250903_043413_bbc49558_add blur_transforms.json",
+      "quality_report": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\metadata\\20250903_043413_bbc49558_add blur_quality.json",
+      "processing_log": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\logs\\20250903_043413_bbc49558_add blur_processing.log",
+      "visual_eval": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\analysis\\20250903_043413_bbc49558_add blur_visual_eval.md",
+      "classification_report": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\analysis\\20250903_043413_bbc49558_add blur_classification.json"
+    },
+    "path_validation": {
+      "all_paths_valid": true,
+      "writable_paths": [
+        "augmented_image",
+        "original_image",
+        "metadata",
+        "transform_spec",
+        "quality_report",
+        "processing_log",
+        "visual_eval",
+        "classification_report"
+      ],
+      "invalid_paths": [],
+      "permission_issues": []
+    },
+    "save_timestamp": "2025-09-03T04:34:13.946241+00:00",
+    "output_files": {
+      "augmented_image": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\images\\20250903_043413_bbc49558_add blur_augmented.png",
+      "original_image": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\images\\20250903_043413_bbc49558_add blur_original.png",
+      "metadata": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\metadata\\20250903_043413_bbc49558_add blur_metadata.json",
+      "transform_spec": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\metadata\\20250903_043413_bbc49558_add blur_transforms.json",
+      "quality_report": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\metadata\\20250903_043413_bbc49558_add blur_quality.json",
+      "processing_log": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\logs\\20250903_043413_bbc49558_add blur_processing.log",
+      "visual_eval": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\analysis\\20250903_043413_bbc49558_add blur_visual_eval.md",
+      "classification_report": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\analysis\\20250903_043413_bbc49558_add blur_classification.json"
+    },
+    "original_image_saved": true,
+    "original_image_path": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs\\20250903_043413_bbc49558\\images\\20250903_043413_bbc49558_add blur_original.png",
+    "pre_transform_processed": true,
+    "image_validation": {
+      "valid": true,
+      "critical": false,
+      "warnings": [
+        "Unsupported image format: None. Supported formats: JPEG, TIFF, WEBP, PNG"
+      ],
+      "image_info": {
+        "format": null,
+        "mode": "RGB",
+        "size": [
+          300,
+          300
+        ],
+        "width": 300,
+        "height": 300,
+        "pixels": 90000,
+        "bytes": 10008
+      },
+      "resize_applied": false,
+      "original_dimensions": "300x300",
+      "resized_dimensions": null,
+      "original_bytes": 10008,
+      "resized_bytes": null,
+      "resize_reason": null
+    },
+    "config_validation": {
+      "valid": true,
+      "warnings": [],
+      "transform_analysis": [
+        {
+          "transform_index": 0,
+          "transform_name": "Blur",
+          "warnings": [],
+          "parameter_issues": []
+        }
+      ]
+    },
+    "validation_warnings_count": 1,
+    "processing_result": {
+      "applied_transforms": [
+        {
+          "name": "Blur",
+          "parameters": {
+            "blur_limit": 7,
+            "p": 1.0
+          },
+          "probability": 1.0
+        }
+      ],
+      "skipped_transforms": [],
+      "execution_time": 0.04102802276611328,
+      "success": true
+    },
+    "original_image": "<PIL.Image.Image image mode=RGB size=300x300 at 0x25B06103F20>",
+    "augmented_image": "<PIL.Image.Image image mode=RGB size=300x300 at 0x25B2D28CCE0>",
+    "post_transform_processed": true,
+    "processing_statistics": {
+      "transforms_requested": 1,
+      "transforms_applied": 1,
+      "transforms_skipped": 0,
+      "processing_success": true,
+      "has_original_image": true,
+      "has_augmented_image": true,
+      "execution_time": 0.04102802276611328,
+      "success_rate": 1.0,
+      "processing_status": "complete"
+    },
+    "quality_metrics": {
+      "comparison_available": true,
+      "size_change": {
+        "width_change": 0,
+        "height_change": 0,
+        "area_change": 0,
+        "aspect_ratio_change": 0.0
+      },
+      "format_preserved": true,
+      "mode_preserved": true,
+      "original_size": [
+        300,
+        300
+      ],
+      "augmented_size": [
+        300,
+        300
+      ],
+      "original_format": null,
+      "augmented_format": null,
+      "original_mode": "RGB",
+      "augmented_mode": "RGB",
+      "similarity_metrics": {
+        "mse": 326.6144185185185,
+        "psnr": 22.99045007947937,
+        "correlation": 0.9543381940198762,
+        "mean_difference": 0.00031481481480000184,
+        "std_difference": 3.779699390151926,
+        "pixel_change_percentage": 21.39
+      }
+    },
+    "transformation_summary": {
+      "total_transforms": 1,
+      "transform_details": [
+        {
+          "index": 0,
+          "name": "Blur",
+          "category": "blur",
+          "probability": 1.0,
+          "parameter_count": 2,
+          "parameters": {
+            "blur_limit": 7,
+            "p": 1.0
+          },
+          "complexity": 4
+        }
+      ],
+      "categories": {
+        "blur": 1
+      },
+      "complexity_score": 4,
+      "average_complexity": 4.0,
+      "high_complexity_transforms": [
+        "Blur"
+      ]
+    },
+    "timing_data": {
+      "total_pipeline_time": null,
+      "processing_time": 0.04102802276611328,
+      "hook_execution_times": {},
+      "performance_metrics": {
+        "time_per_transform": 0.04102802276611328,
+        "transforms_per_second": 24.373584993375328,
+        "performance_rating": "excellent"
+      },
+      "metadata_generation_timestamp": 1756874054.0328305
+    },
+    "metadata_generation_time": 1756874054.0328305,
+    "verification_files": {
+      "original": "C:\\Users\\ramsi\\AppData\\Local\\Temp\\albumentations_verification\\original_bbc49558_20250903_100414_227e0443.png",
+      "augmented": "C:\\Users\\ramsi\\AppData\\Local\\Temp\\albumentations_verification\\augmented_bbc49558_20250903_100414_227e0443.png"
+    },
+    "verification_report_path": "C:\\Users\\ramsi\\AppData\\Local\\Temp\\albumentations_verification\\visual_eval_bbc49558_20250903_100414.md",
+    "verification_report_content": "# Visual Verification Report\n\n**Generated:** 2025-09-03 10:04:14\n**Session ID:** bbc49558\n**Transformation Prompt:** \"add blur\"\n\n## Images for Review\n\n### Original Image\nFile: `original_bbc49558_20250903_100414_227e0443.png`\nPath: `C:\\Users\\ramsi\\AppData\\Local\\Temp\\albumentations_verification\\original_bbc49558_20250903_100414_227e0443.png`\n\n### Augmented Image  \nFile: `augmented_bbc49558_20250903_100414_227e0443.png`\nPath: `C:\\Users\\ramsi\\AppData\\Local\\Temp\\albumentations_verification\\augmented_bbc49558_20250903_100414_227e0443.png`\n\n## Verification Instructions\n\nPlease review both images and evaluate the transformation success:\n\n### 1. Visual Comparison\n- Compare the original and augmented images\n- Identify what changes were applied\n- Assess if the changes match the intended transformation: \"add blur\"\n\n### 2. Transformation Success Rating\nPlease rate the transformation success on a scale of 1-5:\n- **1**: Transformation failed completely - no visible changes\n- **2**: Transformation partially applied - minimal changes visible  \n- **3**: Transformation applied adequately - changes visible but could be stronger\n- **4**: Transformation applied well - clear changes matching the prompt\n- **5**: Transformation applied perfectly - excellent results matching the prompt\n\n### 3. Detailed Analysis\nPlease provide:\n- **Observed Changes:** List specific visual changes you can see\n- **Success Assessment:** Does the augmented image match the transformation intent?\n- **Quality Notes:** Any observations about the transformation quality\n- **Recommendations:** Any suggestions for improvement (if applicable)\n\n## Evaluation Template\n\n```\nTRANSFORMATION SUCCESS RATING: [1-5]\n\nOBSERVED CHANGES:\n- [List specific visual changes you observe]\n\nSUCCESS ASSESSMENT:\n[Does the transformation match the intended prompt? Explain why or why not]\n\nQUALITY NOTES:\n[Any observations about the quality, artifacts, or effectiveness]\n\nRECOMMENDATIONS:\n[Any suggestions for improvement, or \"None\" if satisfied]\n```\n\n\n## Additional Metadata\n\n- **Session Id:** bbc49558\n- **Processing Time:** 0\n- **Transforms Applied:** 0\n- **Transforms Skipped:** 0\n- **Pipeline Version:** 1.0.0\n- **Seed Used:** False\n- **Seed Value:** None\n- **Reproducible:** False\n\n---\n*Report generated by Albumentations MCP Visual Verification System*\n"
+  },
+  "warnings": [
+    "Unsupported image format: None. Supported formats: JPEG, TIFF, WEBP, PNG"
+  ],
+  "errors": []
+}

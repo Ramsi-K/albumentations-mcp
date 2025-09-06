@@ -1,0 +1,276 @@
+{
+  "session_id": "354672f8",
+  "original_prompt": "rotate",
+  "transforms": [
+    {
+      "name": "Rotate",
+      "parameters": {
+        "limit": 45,
+        "p": 1.0
+      },
+      "probability": 1.0
+    }
+  ],
+  "metadata": {
+    "timestamp": "2025-09-03T09:59:34.673659+00:00",
+    "pipeline_version": "1.0.0",
+    "seed": null,
+    "session_dir": "outputs\\20250903_152934_354672f8",
+    "pre_mcp_processed": true,
+    "prompt_length": 6,
+    "prompt_word_count": 1,
+    "parser_confidence": 1.0,
+    "parser_warnings": [],
+    "parser_suggestions": [],
+    "post_mcp_processed": true,
+    "json_spec": {
+      "session_id": "354672f8",
+      "original_prompt": "rotate",
+      "transforms": [
+        {
+          "name": "Rotate",
+          "parameters": {
+            "limit": 45,
+            "p": 1.0
+          },
+          "probability": 1.0
+        }
+      ],
+      "metadata": {
+        "timestamp": "2025-09-03T09:59:34.673659+00:00",
+        "prompt_length": 6,
+        "prompt_word_count": 1,
+        "transforms_count": 1
+      },
+      "warnings": [
+        "Unsupported image format: None. Supported formats: JPEG, TIFF, WEBP, PNG"
+      ],
+      "errors": []
+    },
+    "transforms_count": 1,
+    "validation_warnings": [],
+    "pre_save_processed": true,
+    "directory_info": {
+      "output_dir": "C:\\Users\\ramsi\\OneDrive\\Documents\\Github Projects\\albumentations-mcp\\outputs",
+      "session_dir": "outputs\\20250903_152934_354672f8",
+      "session_dir_name": "20250903_152934_354672f8",
+      "subdirectories": {
+        "images": "outputs\\20250903_152934_354672f8\\images",
+        "metadata": "outputs\\20250903_152934_354672f8\\metadata",
+        "logs": "outputs\\20250903_152934_354672f8\\logs",
+        "analysis": "outputs\\20250903_152934_354672f8\\analysis"
+      },
+      "created_timestamp": "2025-09-03T09:59:34.692577+00:00"
+    },
+    "filename_info": {
+      "base_name": "20250903_095934_354672f8_rotate",
+      "timestamp": "20250903_095934",
+      "session_short": "354672f8",
+      "prompt_part": "rotate",
+      "original_filenames": {
+        "augmented_image": "20250903_095934_354672f8_rotate_augmented.png",
+        "original_image": "20250903_095934_354672f8_rotate_original.png",
+        "metadata": "20250903_095934_354672f8_rotate_metadata.json",
+        "processing_log": "20250903_095934_354672f8_rotate_processing.log",
+        "transform_spec": "20250903_095934_354672f8_rotate_transforms.json",
+        "quality_report": "20250903_095934_354672f8_rotate_quality.json",
+        "visual_eval": "20250903_095934_354672f8_rotate_visual_eval.md",
+        "classification_report": "20250903_095934_354672f8_rotate_classification.json"
+      },
+      "versioned_filenames": {
+        "augmented_image": "20250903_095934_354672f8_rotate_augmented.png",
+        "original_image": "20250903_095934_354672f8_rotate_original.png",
+        "metadata": "20250903_095934_354672f8_rotate_metadata.json",
+        "processing_log": "20250903_095934_354672f8_rotate_processing.log",
+        "transform_spec": "20250903_095934_354672f8_rotate_transforms.json",
+        "quality_report": "20250903_095934_354672f8_rotate_quality.json",
+        "visual_eval": "20250903_095934_354672f8_rotate_visual_eval.md",
+        "classification_report": "20250903_095934_354672f8_rotate_classification.json"
+      }
+    },
+    "file_paths": {
+      "augmented_image": "outputs\\20250903_152934_354672f8\\images\\20250903_095934_354672f8_rotate_augmented.png",
+      "original_image": "outputs\\20250903_152934_354672f8\\images\\20250903_095934_354672f8_rotate_original.png",
+      "metadata": "outputs\\20250903_152934_354672f8\\metadata\\20250903_095934_354672f8_rotate_metadata.json",
+      "transform_spec": "outputs\\20250903_152934_354672f8\\metadata\\20250903_095934_354672f8_rotate_transforms.json",
+      "quality_report": "outputs\\20250903_152934_354672f8\\metadata\\20250903_095934_354672f8_rotate_quality.json",
+      "processing_log": "outputs\\20250903_152934_354672f8\\logs\\20250903_095934_354672f8_rotate_processing.log",
+      "visual_eval": "outputs\\20250903_152934_354672f8\\analysis\\20250903_095934_354672f8_rotate_visual_eval.md",
+      "classification_report": "outputs\\20250903_152934_354672f8\\analysis\\20250903_095934_354672f8_rotate_classification.json"
+    },
+    "path_validation": {
+      "all_paths_valid": true,
+      "writable_paths": [
+        "augmented_image",
+        "original_image",
+        "metadata",
+        "transform_spec",
+        "quality_report",
+        "processing_log",
+        "visual_eval",
+        "classification_report"
+      ],
+      "invalid_paths": [],
+      "permission_issues": []
+    },
+    "save_timestamp": "2025-09-03T09:59:34.700650+00:00",
+    "output_files": {
+      "augmented_image": "outputs\\20250903_152934_354672f8\\images\\20250903_095934_354672f8_rotate_augmented.png",
+      "original_image": "outputs\\20250903_152934_354672f8\\images\\20250903_095934_354672f8_rotate_original.png",
+      "metadata": "outputs\\20250903_152934_354672f8\\metadata\\20250903_095934_354672f8_rotate_metadata.json",
+      "transform_spec": "outputs\\20250903_152934_354672f8\\metadata\\20250903_095934_354672f8_rotate_transforms.json",
+      "quality_report": "outputs\\20250903_152934_354672f8\\metadata\\20250903_095934_354672f8_rotate_quality.json",
+      "processing_log": "outputs\\20250903_152934_354672f8\\logs\\20250903_095934_354672f8_rotate_processing.log",
+      "visual_eval": "outputs\\20250903_152934_354672f8\\analysis\\20250903_095934_354672f8_rotate_visual_eval.md",
+      "classification_report": "outputs\\20250903_152934_354672f8\\analysis\\20250903_095934_354672f8_rotate_classification.json"
+    },
+    "original_image_saved": true,
+    "original_image_path": "outputs\\20250903_152934_354672f8\\images\\20250903_095934_354672f8_rotate_original.png",
+    "pre_transform_processed": true,
+    "image_validation": {
+      "valid": true,
+      "critical": false,
+      "warnings": [
+        "Unsupported image format: None. Supported formats: JPEG, TIFF, WEBP, PNG"
+      ],
+      "image_info": {
+        "format": null,
+        "mode": "RGB",
+        "size": [
+          400,
+          300
+        ],
+        "width": 400,
+        "height": 300,
+        "pixels": 120000,
+        "bytes": 9988
+      },
+      "resize_applied": false,
+      "original_dimensions": "400x300",
+      "resized_dimensions": null,
+      "original_bytes": 9988,
+      "resized_bytes": null,
+      "resize_reason": null
+    },
+    "config_validation": {
+      "valid": true,
+      "warnings": [],
+      "transform_analysis": [
+        {
+          "transform_index": 0,
+          "transform_name": "Rotate",
+          "warnings": [],
+          "parameter_issues": []
+        }
+      ]
+    },
+    "validation_warnings_count": 1,
+    "processing_result": {
+      "applied_transforms": [
+        {
+          "name": "Rotate",
+          "parameters": {
+            "limit": 45,
+            "p": 1.0
+          },
+          "probability": 1.0
+        }
+      ],
+      "skipped_transforms": [],
+      "execution_time": 0.003340482711791992,
+      "success": true
+    },
+    "original_image": "<PIL.Image.Image image mode=RGB size=400x300 at 0x1D87F13A120>",
+    "augmented_image": "<PIL.Image.Image image mode=RGB size=400x300 at 0x1D87F1F66F0>",
+    "post_transform_processed": true,
+    "processing_statistics": {
+      "transforms_requested": 1,
+      "transforms_applied": 1,
+      "transforms_skipped": 0,
+      "processing_success": true,
+      "has_original_image": true,
+      "has_augmented_image": true,
+      "execution_time": 0.003340482711791992,
+      "success_rate": 1.0,
+      "processing_status": "complete"
+    },
+    "quality_metrics": {
+      "comparison_available": true,
+      "size_change": {
+        "width_change": 0,
+        "height_change": 0,
+        "area_change": 0,
+        "aspect_ratio_change": 0.0
+      },
+      "format_preserved": true,
+      "mode_preserved": true,
+      "original_size": [
+        400,
+        300
+      ],
+      "augmented_size": [
+        400,
+        300
+      ],
+      "original_format": null,
+      "augmented_format": null,
+      "original_mode": "RGB",
+      "augmented_mode": "RGB",
+      "similarity_metrics": {
+        "mse": 10621.686527777778,
+        "psnr": 7.868868806992361,
+        "correlation": 0.4619093815480973,
+        "mean_difference": 22.758244444444443,
+        "std_difference": 17.867933561376034,
+        "pixel_change_percentage": 32.11555555555556
+      }
+    },
+    "transformation_summary": {
+      "total_transforms": 1,
+      "transform_details": [
+        {
+          "index": 0,
+          "name": "Rotate",
+          "category": "geometric",
+          "probability": 1.0,
+          "parameter_count": 2,
+          "parameters": {
+            "limit": 45,
+            "p": 1.0
+          },
+          "complexity": 5
+        }
+      ],
+      "categories": {
+        "geometric": 1
+      },
+      "complexity_score": 5,
+      "average_complexity": 5.0,
+      "high_complexity_transforms": [
+        "Rotate"
+      ]
+    },
+    "timing_data": {
+      "total_pipeline_time": null,
+      "processing_time": 0.003340482711791992,
+      "hook_execution_times": {},
+      "performance_metrics": {
+        "time_per_transform": 0.003340482711791992,
+        "transforms_per_second": 299.35793305260154,
+        "performance_rating": "excellent"
+      },
+      "metadata_generation_timestamp": 1756893574.8186944
+    },
+    "metadata_generation_time": 1756893574.8186944,
+    "verification_files": {
+      "original": "C:\\Users\\ramsi\\AppData\\Local\\Temp\\albumentations_verification\\original_354672f8_20250903_152934_fe96e43d.png",
+      "augmented": "C:\\Users\\ramsi\\AppData\\Local\\Temp\\albumentations_verification\\augmented_354672f8_20250903_152934_fe96e43d.png"
+    },
+    "verification_report_path": "C:\\Users\\ramsi\\AppData\\Local\\Temp\\albumentations_verification\\visual_eval_354672f8_20250903_152934.md",
+    "verification_report_content": "# Visual Verification Report\n\n**Generated:** 2025-09-03 15:29:34\n**Session ID:** 354672f8\n**Transformation Prompt:** \"rotate\"\n\n## Images for Review\n\n### Original Image\nFile: `original_354672f8_20250903_152934_fe96e43d.png`\nPath: `C:\\Users\\ramsi\\AppData\\Local\\Temp\\albumentations_verification\\original_354672f8_20250903_152934_fe96e43d.png`\n\n### Augmented Image  \nFile: `augmented_354672f8_20250903_152934_fe96e43d.png`\nPath: `C:\\Users\\ramsi\\AppData\\Local\\Temp\\albumentations_verification\\augmented_354672f8_20250903_152934_fe96e43d.png`\n\n## Verification Instructions\n\nPlease review both images and evaluate the transformation success:\n\n### 1. Visual Comparison\n- Compare the original and augmented images\n- Identify what changes were applied\n- Assess if the changes match the intended transformation: \"rotate\"\n\n### 2. Transformation Success Rating\nPlease rate the transformation success on a scale of 1-5:\n- **1**: Transformation failed completely - no visible changes\n- **2**: Transformation partially applied - minimal changes visible  \n- **3**: Transformation applied adequately - changes visible but could be stronger\n- **4**: Transformation applied well - clear changes matching the prompt\n- **5**: Transformation applied perfectly - excellent results matching the prompt\n\n### 3. Detailed Analysis\nPlease provide:\n- **Observed Changes:** List specific visual changes you can see\n- **Success Assessment:** Does the augmented image match the transformation intent?\n- **Quality Notes:** Any observations about the transformation quality\n- **Recommendations:** Any suggestions for improvement (if applicable)\n\n## Evaluation Template\n\n```\nTRANSFORMATION SUCCESS RATING: [1-5]\n\nOBSERVED CHANGES:\n- [List specific visual changes you observe]\n\nSUCCESS ASSESSMENT:\n[Does the transformation match the intended prompt? Explain why or why not]\n\nQUALITY NOTES:\n[Any observations about the quality, artifacts, or effectiveness]\n\nRECOMMENDATIONS:\n[Any suggestions for improvement, or \"None\" if satisfied]\n```\n\n\n## Additional Metadata\n\n- **Session Id:** 354672f8\n- **Processing Time:** 0\n- **Transforms Applied:** 0\n- **Transforms Skipped:** 0\n- **Pipeline Version:** 1.0.0\n- **Seed Used:** False\n- **Seed Value:** None\n- **Reproducible:** False\n\n---\n*Report generated by Albumentations MCP Visual Verification System*\n"
+  },
+  "warnings": [
+    "Unsupported image format: None. Supported formats: JPEG, TIFF, WEBP, PNG"
+  ],
+  "errors": []
+}

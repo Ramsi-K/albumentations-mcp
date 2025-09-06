@@ -1,0 +1,38 @@
+{
+  "session_id": "354672f8",
+  "transforms": [
+    {
+      "name": "Rotate",
+      "parameters": {
+        "limit": 45,
+        "p": 1.0
+      },
+      "probability": 1.0
+    }
+  ],
+  "transformation_summary": {
+    "total_transforms": 1,
+    "transform_details": [
+      {
+        "index": 0,
+        "name": "Rotate",
+        "category": "geometric",
+        "probability": 1.0,
+        "parameter_count": 2,
+        "parameters": {
+          "limit": 45,
+          "p": 1.0
+        },
+        "complexity": 5
+      }
+    ],
+    "categories": {
+      "geometric": 1
+    },
+    "complexity_score": 5,
+    "average_complexity": 5.0,
+    "high_complexity_transforms": [
+      "Rotate"
+    ]
+  }
+}

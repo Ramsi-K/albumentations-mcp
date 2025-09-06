@@ -1,0 +1,45 @@
+{
+  "session_id": "354672f8",
+  "quality_metrics": {
+    "comparison_available": true,
+    "size_change": {
+      "width_change": 0,
+      "height_change": 0,
+      "area_change": 0,
+      "aspect_ratio_change": 0.0
+    },
+    "format_preserved": true,
+    "mode_preserved": true,
+    "original_size": [
+      400,
+      300
+    ],
+    "augmented_size": [
+      400,
+      300
+    ],
+    "original_format": null,
+    "augmented_format": null,
+    "original_mode": "RGB",
+    "augmented_mode": "RGB",
+    "similarity_metrics": {
+      "mse": 10621.686527777778,
+      "psnr": 7.868868806992361,
+      "correlation": 0.4619093815480973,
+      "mean_difference": 22.758244444444443,
+      "std_difference": 17.867933561376034,
+      "pixel_change_percentage": 32.11555555555556
+    }
+  },
+  "processing_statistics": {
+    "transforms_requested": 1,
+    "transforms_applied": 1,
+    "transforms_skipped": 0,
+    "processing_success": true,
+    "has_original_image": true,
+    "has_augmented_image": true,
+    "execution_time": 0.003340482711791992,
+    "success_rate": 1.0,
+    "processing_status": "complete"
+  }
+}

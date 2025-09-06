@@ -1,0 +1,45 @@
+{
+  "session_id": "bbc49558",
+  "quality_metrics": {
+    "comparison_available": true,
+    "size_change": {
+      "width_change": 0,
+      "height_change": 0,
+      "area_change": 0,
+      "aspect_ratio_change": 0.0
+    },
+    "format_preserved": true,
+    "mode_preserved": true,
+    "original_size": [
+      300,
+      300
+    ],
+    "augmented_size": [
+      300,
+      300
+    ],
+    "original_format": null,
+    "augmented_format": null,
+    "original_mode": "RGB",
+    "augmented_mode": "RGB",
+    "similarity_metrics": {
+      "mse": 326.6144185185185,
+      "psnr": 22.99045007947937,
+      "correlation": 0.9543381940198762,
+      "mean_difference": 0.00031481481480000184,
+      "std_difference": 3.779699390151926,
+      "pixel_change_percentage": 21.39
+    }
+  },
+  "processing_statistics": {
+    "transforms_requested": 1,
+    "transforms_applied": 1,
+    "transforms_skipped": 0,
+    "processing_success": true,
+    "has_original_image": true,
+    "has_augmented_image": true,
+    "execution_time": 0.04102802276611328,
+    "success_rate": 1.0,
+    "processing_status": "complete"
+  }
+}

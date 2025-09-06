@@ -1,0 +1,138 @@
+{
+  "session_id": "354672f8",
+  "completion_timestamp": 1756893575.0852616,
+  "pipeline_version": "1.0.0",
+  "original_request": {
+    "prompt": "rotate",
+    "timestamp": "2025-09-03T09:59:34.673659+00:00"
+  },
+  "processing_results": {
+    "success": true,
+    "warnings": [
+      "Unsupported image format: None. Supported formats: JPEG, TIFF, WEBP, PNG"
+    ],
+    "errors": []
+  },
+  "output_files": {
+    "augmented_image": {
+      "path": "outputs\\20250903_152934_354672f8\\images\\20250903_095934_354672f8_rotate_augmented.png",
+      "exists": true,
+      "size": 38706
+    },
+    "original_image": {
+      "path": "outputs\\20250903_152934_354672f8\\images\\20250903_095934_354672f8_rotate_original.png",
+      "exists": true,
+      "size": 28209
+    },
+    "metadata": {
+      "path": "outputs\\20250903_152934_354672f8\\metadata\\20250903_095934_354672f8_rotate_metadata.json",
+      "exists": true,
+      "size": 12822
+    },
+    "transform_spec": {
+      "path": "outputs\\20250903_152934_354672f8\\metadata\\20250903_095934_354672f8_rotate_transforms.json",
+      "exists": true,
+      "size": 733
+    },
+    "quality_report": {
+      "path": "outputs\\20250903_152934_354672f8\\metadata\\20250903_095934_354672f8_rotate_quality.json",
+      "exists": true,
+      "size": 1155
+    },
+    "processing_log": {
+      "path": "outputs\\20250903_152934_354672f8\\logs\\20250903_095934_354672f8_rotate_processing.log",
+      "exists": true,
+      "size": 344
+    },
+    "visual_eval": {
+      "path": "outputs\\20250903_152934_354672f8\\analysis\\20250903_095934_354672f8_rotate_visual_eval.md",
+      "exists": true,
+      "size": 2380
+    },
+    "classification_report": {
+      "path": "outputs\\20250903_152934_354672f8\\analysis\\20250903_095934_354672f8_rotate_classification.json",
+      "exists": true,
+      "size": 130
+    }
+  },
+  "metadata_summary": {
+    "processing_statistics": {
+      "transforms_requested": 1,
+      "transforms_applied": 1,
+      "transforms_skipped": 0,
+      "processing_success": true,
+      "has_original_image": true,
+      "has_augmented_image": true,
+      "execution_time": 0.003340482711791992,
+      "success_rate": 1.0,
+      "processing_status": "complete"
+    },
+    "quality_metrics": {
+      "comparison_available": true,
+      "size_change": {
+        "width_change": 0,
+        "height_change": 0,
+        "area_change": 0,
+        "aspect_ratio_change": 0.0
+      },
+      "format_preserved": true,
+      "mode_preserved": true,
+      "original_size": [
+        400,
+        300
+      ],
+      "augmented_size": [
+        400,
+        300
+      ],
+      "original_format": null,
+      "augmented_format": null,
+      "original_mode": "RGB",
+      "augmented_mode": "RGB",
+      "similarity_metrics": {
+        "mse": 10621.686527777778,
+        "psnr": 7.868868806992361,
+        "correlation": 0.4619093815480973,
+        "mean_difference": 22.758244444444443,
+        "std_difference": 17.867933561376034,
+        "pixel_change_percentage": 32.11555555555556
+      }
+    },
+    "transformation_summary": {
+      "total_transforms": 1,
+      "transform_details": [
+        {
+          "index": 0,
+          "name": "Rotate",
+          "category": "geometric",
+          "probability": 1.0,
+          "parameter_count": 2,
+          "parameters": {
+            "limit": 45,
+            "p": 1.0
+          },
+          "complexity": 5
+        }
+      ],
+      "categories": {
+        "geometric": 1
+      },
+      "complexity_score": 5,
+      "average_complexity": 5.0,
+      "high_complexity_transforms": [
+        "Rotate"
+      ]
+    },
+    "timing_data": {
+      "total_pipeline_time": null,
+      "processing_time": 0.003340482711791992,
+      "hook_execution_times": {},
+      "performance_metrics": {
+        "time_per_transform": 0.003340482711791992,
+        "transforms_per_second": 299.35793305260154,
+        "performance_rating": "excellent"
+      },
+      "metadata_generation_timestamp": 1756893574.8186944
+    }
+  }
+}
