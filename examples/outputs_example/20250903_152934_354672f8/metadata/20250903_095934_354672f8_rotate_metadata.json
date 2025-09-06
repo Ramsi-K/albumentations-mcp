@@ -52,6 +52,7 @@
     "pre_save_processed": true,
     "directory_info": {
       "output_dir": "outputs",
+      "output_dir": "outputs",
       "session_dir": "outputs\\20250903_152934_354672f8",
       "session_dir_name": "20250903_152934_354672f8",
       "subdirectories": {
@@ -263,6 +264,8 @@
     },
     "metadata_generation_time": 1756893574.8186944,
     "verification_files": {
+      "original": "Temp\\albumentations_verification\\original_354672f8_20250903_152934_fe96e43d.png",
+      "augmented": "Temp\\albumentations_verification\\augmented_354672f8_20250903_152934_fe96e43d.png"
       "original": "Temp\\albumentations_verification\\original_354672f8_20250903_152934_fe96e43d.png",
       "augmented": "Temp\\albumentations_verification\\augmented_354672f8_20250903_152934_fe96e43d.png"
     },
