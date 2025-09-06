@@ -7,7 +7,6 @@ files and resources, and performs final housekeeping tasks.
 import json
 import logging
 import os
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -370,7 +369,7 @@ Success: {context.metadata.get('processing_result', {}).get('success', False)}
             # Clean up tracked temporary files from context.temp_paths
             if hasattr(context, "temp_paths") and context.temp_paths:
                 logger.debug(
-                    f"Cleaning up {len(context.temp_paths)} tracked temp files"
+                    f"Cleaning up {len(context.temp_paths)} tracked temp files",
                 )
 
                 for temp_path in context.temp_paths:
@@ -380,7 +379,7 @@ Success: {context.metadata.get('processing_result', {}).get('success', False)}
                         # Validate path security - never touch user originals
                         if not self._is_safe_to_delete(path_obj, context):
                             cleanup_info["cleanup_warnings"].append(
-                                f"Skipped unsafe path: {temp_path}"
+                                f"Skipped unsafe path: {temp_path}",
                             )
                             continue
 
@@ -388,7 +387,7 @@ Success: {context.metadata.get('processing_result', {}).get('success', False)}
                             if path_obj.is_file():
                                 path_obj.unlink()
                                 cleanup_info["temp_files_cleaned"].append(
-                                    str(temp_path)
+                                    str(temp_path),
                                 )
                                 logger.debug(f"Cleaned up temp file: {temp_path}")
                             elif path_obj.is_dir():
@@ -402,7 +401,7 @@ Success: {context.metadata.get('processing_result', {}).get('success', False)}
 
                     except Exception as e:
                         cleanup_info["cleanup_errors"].append(
-                            {"file": str(temp_path), "error": str(e)}
+                            {"file": str(temp_path), "error": str(e)},
                         )
                         logger.warning(f"Failed to clean up {temp_path}: {e}")
 
@@ -422,21 +421,21 @@ Success: {context.metadata.get('processing_result', {}).get('success', False)}
                                     if remaining_file.is_file():
                                         remaining_file.unlink()
                                         cleanup_info["temp_files_cleaned"].append(
-                                            str(remaining_file)
+                                            str(remaining_file),
                                         )
                                     elif remaining_file.is_dir():
                                         import shutil
 
                                         shutil.rmtree(remaining_file)
                                         cleanup_info["temp_dirs_cleaned"].append(
-                                            str(remaining_file)
+                                            str(remaining_file),
                                         )
                                 except Exception as e:
                                     cleanup_info["cleanup_errors"].append(
                                         {
                                             "file": str(remaining_file),
                                             "error": str(e),
-                                        }
+                                        },
                                     )
 
                         # Try to remove the temp directory if it's now empty
@@ -444,23 +443,23 @@ Success: {context.metadata.get('processing_result', {}).get('success', False)}
                             if not list(session_temp_dir.iterdir()):  # Check if empty
                                 session_temp_dir.rmdir()
                                 cleanup_info["temp_dirs_cleaned"].append(
-                                    str(session_temp_dir)
+                                    str(session_temp_dir),
                                 )
                                 logger.debug(
-                                    f"Removed empty session temp directory: {session_temp_dir}"
+                                    f"Removed empty session temp directory: {session_temp_dir}",
                                 )
                             else:
                                 cleanup_info["cleanup_warnings"].append(
-                                    f"Session temp directory not empty, keeping: {session_temp_dir}"
+                                    f"Session temp directory not empty, keeping: {session_temp_dir}",
                                 )
                         except Exception as e:
                             cleanup_info["cleanup_warnings"].append(
-                                f"Could not remove session temp directory: {e}"
+                                f"Could not remove session temp directory: {e}",
                             )
 
                 except Exception as e:
                     cleanup_info["cleanup_errors"].append(
-                        {"session_temp_cleanup": str(e)}
+                        {"session_temp_cleanup": str(e)},
                     )
                     logger.warning(f"Error cleaning session temp directory: {e}")
 
@@ -486,7 +485,7 @@ Success: {context.metadata.get('processing_result', {}).get('success', False)}
             logger.info(
                 f"Cleanup completed for session {context.session_id}: "
                 f"{files_count} files, {dirs_count} directories removed, "
-                f"{warnings_count} warnings"
+                f"{warnings_count} warnings",
             )
 
         except Exception as e:
@@ -728,7 +727,7 @@ Success: {context.metadata.get('processing_result', {}).get('success', False)}
 
             # Don't delete user original files (they should be outside session dir anyway)
             if "original" in path.name and not path.name.startswith(
-                ("temp_", "resized_", "url_", "pasted_")
+                ("temp_", "resized_", "url_", "pasted_"),
             ):
                 return False
 

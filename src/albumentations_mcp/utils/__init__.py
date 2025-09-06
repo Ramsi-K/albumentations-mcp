@@ -10,6 +10,8 @@ This package contains utility functions organized into focused modules:
 """
 
 # Import commonly used functions for backward compatibility
+# Import from validation.py for security-focused implementation
+from ..validation import sanitize_filename
 from .async_utils import run_async_safely, timed_operation
 from .error_utils import (
     chain_exceptions,
@@ -48,9 +50,6 @@ from .validation_utils import (
     validate_numeric_range,
     validate_string_input,
 )
-
-# Import from validation.py for security-focused implementation
-from ..validation import sanitize_filename
 
 __all__ = [
     # Async utilities

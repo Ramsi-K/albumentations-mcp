@@ -892,40 +892,45 @@ def validate_file_path(file_path: str, allowed_dirs: list[str] | None = None) ->
 def sanitize_filename(filename: str, max_length: int = 255) -> str:
     """Sanitize filename for safe file system operations.
 
-    Args:
-        filename: Original filename
-        max_length: Maximum allowed filename length
-
-    Returns:
-        Sanitized filename
-
-    Raises:
-        SecurityValidationError: If filename cannot be sanitized
+    Behavior aligned with tests:
+    - Empty or non-string → "untitled"
+    - Replace filesystem-dangerous characters with underscore
+    - Remove control characters and trim spaces/dots
+    - If base name starts with a digit, prefix with "file_"
+    - Preserve extension; enforce max_length
     """
-    if not filename or not isinstance(filename, str):
-        raise SecurityValidationError("Filename must be a non-empty string")
+    # Handle empty or non-string inputs gracefully
+    if not isinstance(filename, str) or not filename:
+        return "untitled"
 
-    # Remove or replace dangerous characters
+    # Replace dangerous characters
     dangerous_chars = '<>:"/\\|?*'
     sanitized = filename
-
-    for char in dangerous_chars:
-        sanitized = sanitized.replace(char, "_")
+    for ch in dangerous_chars:
+        sanitized = sanitized.replace(ch, "_")
 
     # Remove control characters
     sanitized = "".join(c for c in sanitized if ord(c) >= 32)
 
-    # Trim whitespace and dots from ends
+    # Trim whitespace and trailing dots
     sanitized = sanitized.strip(" .")
 
-    # Check length
+    # Fallback if becomes empty
+    if not sanitized or sanitized in (".", ".."):
+        sanitized = "untitled"
+
+    # Ensure base name doesn't start with a digit
+    name, ext = os.path.splitext(sanitized)
+    if not name:
+        name = "untitled"
+    if name and name[0].isdigit():
+        name = f"file_{name}"
+    sanitized = name + ext
+
+    # Enforce max length while preserving extension when possible
     if len(sanitized) > max_length:
         name, ext = os.path.splitext(sanitized)
-        max_name_length = max_length - len(ext)
+        max_name_length = max(1, max_length - len(ext))
         sanitized = name[:max_name_length] + ext
-
-    # Ensure we have a valid filename
-    if not sanitized or sanitized in [".", ".."]:
-        sanitized = "file"
 
     return sanitized

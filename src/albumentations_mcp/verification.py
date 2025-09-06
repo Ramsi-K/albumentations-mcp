@@ -150,7 +150,7 @@ class VisualVerificationManager:
 File: `{os.path.basename(image_paths['original'])}`
 Path: `{image_paths['original']}`
 
-### Augmented Image  
+### Augmented Image
 File: `{os.path.basename(image_paths['augmented'])}`
 Path: `{image_paths['augmented']}`
 
@@ -166,7 +166,7 @@ Please review both images and evaluate the transformation success:
 ### 2. Transformation Success Rating
 Please rate the transformation success on a scale of 1-5:
 - **1**: Transformation failed completely - no visible changes
-- **2**: Transformation partially applied - minimal changes visible  
+- **2**: Transformation partially applied - minimal changes visible
 - **3**: Transformation applied adequately - changes visible but could be stronger
 - **4**: Transformation applied well - clear changes matching the prompt
 - **5**: Transformation applied perfectly - excellent results matching the prompt

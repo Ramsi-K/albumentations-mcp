@@ -165,7 +165,9 @@ def validate_image_dimensions(image: Image.Image) -> None:
 
 
 def load_image_from_source(
-    image_source: str, session_dir: str = None, temp_paths: list = None
+    image_source: str,
+    session_dir: str = None,
+    temp_paths: list = None,
 ) -> Image.Image:
     """Load PIL Image from various sources (URL, file path, or base64).
 
@@ -203,7 +205,10 @@ def load_image_from_source(
             # Save URL-loaded image to session temp directory if provided
             if session_dir and temp_paths is not None:
                 temp_path = _save_temp_image_to_session(
-                    image, session_dir, "url_download", temp_paths
+                    image,
+                    session_dir,
+                    "url_download",
+                    temp_paths,
                 )
                 logger.debug(f"Saved URL image to temp: {temp_path}")
 
@@ -233,7 +238,10 @@ def load_image_from_source(
                 and not _is_user_original_file(source, session_dir)
             ):
                 temp_path = _save_temp_image_to_session(
-                    image, session_dir, "pasted_file", temp_paths
+                    image,
+                    session_dir,
+                    "pasted_file",
+                    temp_paths,
                 )
                 logger.debug(f"Saved pasted image to temp: {temp_path}")
 
@@ -291,12 +299,15 @@ def validate_image(image: Image.Image) -> None:
         raise ImageValidationError(f"Cannot convert image to numpy array: {e!s}")
 
     logger.debug(
-        f"Image validation passed: {image.size[0]}x{image.size[1]}, mode: {image.mode}"
+        f"Image validation passed: {image.size[0]}x{image.size[1]}, mode: {image.mode}",
     )
 
 
 def _save_temp_image_to_session(
-    image: Image.Image, session_dir: str, prefix: str, temp_paths: list
+    image: Image.Image,
+    session_dir: str,
+    prefix: str,
+    temp_paths: list,
 ) -> str | None:
     """Save image to session temp directory with proper format preservation."""
     try:

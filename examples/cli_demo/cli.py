@@ -31,22 +31,22 @@ _ensure_src_on_path()
 try:
     from albumentations_mcp.server import (
         augment_image,
-        validate_prompt,
-        list_available_transforms,
-        list_available_presets,
-        load_image_for_processing,
-        set_default_seed,
+        augmentation_parser,
+        available_transforms_examples,
+        compose_preset,
+        error_handler,
+        explain_effects,
         get_pipeline_status,
         get_quick_transform_reference,
-        transforms_guide,
+        list_available_presets,
+        list_available_transforms,
+        load_image_for_processing,
         policy_presets,
-        available_transforms_examples,
+        set_default_seed,
+        transforms_guide,
         troubleshooting_common_issues,
-        compose_preset,
-        explain_effects,
-        augmentation_parser,
+        validate_prompt,
         vision_verification,
-        error_handler,
     )
 except Exception as e:  # pragma: no cover - import-time guard for local runs
     print(f"Failed to import server functions: {e}", file=sys.stderr)
@@ -84,7 +84,8 @@ def cmd_augment(args: argparse.Namespace) -> int:
 
     if bool(args.prompt) == bool(args.preset):
         print(
-            "Error: Provide either --prompt or --preset (but not both)", file=sys.stderr
+            "Error: Provide either --prompt or --preset (but not both)",
+            file=sys.stderr,
         )
         return 2
 
@@ -197,7 +198,9 @@ def cmd_augmentation_parser(args: argparse.Namespace) -> int:
 
 def cmd_vision_verification(args: argparse.Namespace) -> int:
     text = vision_verification(
-        args.original_image_path, args.augmented_image_path, args.requested_transforms
+        args.original_image_path,
+        args.augmented_image_path,
+        args.requested_transforms,
     )
     print(text)
     return 0
@@ -230,7 +233,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_aug.add_argument("--seed", type=int, help="Random seed for reproducibility")
     p_aug.add_argument(
-        "--output-dir", help="Output directory for artifacts (default: outputs)"
+        "--output-dir",
+        help="Output directory for artifacts (default: outputs)",
     )
     p_aug.set_defaults(func=cmd_augment)
 
@@ -249,17 +253,22 @@ def build_parser() -> argparse.ArgumentParser:
 
     # load image (session)
     p_load = sub.add_parser(
-        "load", help="Load image (path/URL/base64) and get a session_id"
+        "load",
+        help="Load image (path/URL/base64) and get a session_id",
     )
     p_load.add_argument(
-        "--image-source", required=True, help="File path, URL, or base64 image data"
+        "--image-source",
+        required=True,
+        help="File path, URL, or base64 image data",
     )
     p_load.set_defaults(func=cmd_load)
 
     # set default seed
     p_seed = sub.add_parser("set-seed", help="Set or clear the default seed")
     p_seed.add_argument(
-        "--seed", type=int, help="Seed value; omit to clear the default seed"
+        "--seed",
+        type=int,
+        help="Seed value; omit to clear the default seed",
     )
     p_seed.set_defaults(func=cmd_set_seed)
 
@@ -286,7 +295,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     # prompt-generating helpers
     p_cp = sub.add_parser(
-        "compose-preset", help="Generate a policy prompt from a preset"
+        "compose-preset",
+        help="Generate a policy prompt from a preset",
     )
     p_cp.add_argument(
         "--base",
@@ -310,16 +320,20 @@ def build_parser() -> argparse.ArgumentParser:
     group = p_ee.add_mutually_exclusive_group(required=True)
     group.add_argument("--pipeline-json", help="Pipeline JSON string")
     group.add_argument(
-        "--pipeline-json-file", help="Path to a file containing pipeline JSON"
+        "--pipeline-json-file",
+        help="Path to a file containing pipeline JSON",
     )
     p_ee.add_argument("--image-context", help="Optional image/use-case context")
     p_ee.set_defaults(func=cmd_explain_effects)
 
     p_ap = sub.add_parser(
-        "augmentation-parser", help="Generate a parsing prompt for a user request"
+        "augmentation-parser",
+        help="Generate a parsing prompt for a user request",
     )
     p_ap.add_argument(
-        "--user-prompt", required=True, help="User's natural language request"
+        "--user-prompt",
+        required=True,
+        help="User's natural language request",
     )
     p_ap.set_defaults(func=cmd_augmentation_parser)
 
@@ -328,10 +342,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="Generate a verification prompt for comparing two images",
     )
     p_vv.add_argument(
-        "--original-image-path", required=True, help="Path to the original image"
+        "--original-image-path",
+        required=True,
+        help="Path to the original image",
     )
     p_vv.add_argument(
-        "--augmented-image-path", required=True, help="Path to the augmented image"
+        "--augmented-image-path",
+        required=True,
+        help="Path to the augmented image",
     )
     p_vv.add_argument(
         "--requested-transforms",
@@ -341,7 +359,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_vv.set_defaults(func=cmd_vision_verification)
 
     p_err = sub.add_parser(
-        "error-handler", help="Generate helpful error messaging text"
+        "error-handler",
+        help="Generate helpful error messaging text",
     )
     p_err.add_argument(
         "--error-type",
@@ -350,7 +369,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_err.add_argument("--error-message", required=True, help="Technical error message")
     p_err.add_argument(
-        "--user-context", help="Optional description of what the user was doing"
+        "--user-context",
+        help="Optional description of what the user was doing",
     )
     p_err.set_defaults(func=cmd_error_handler)
 

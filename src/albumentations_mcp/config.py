@@ -6,7 +6,7 @@ configuration defaults for the MCP server.
 
 import logging
 import os
-from typing import Any, Dict, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ class ConfigurationError(Exception):
     pass
 
 
-def validate_environment_variables() -> Dict[str, Any]:
+def validate_environment_variables() -> dict[str, Any]:
     """Validate all environment variables and return validated configuration.
 
     Returns:
@@ -49,7 +49,7 @@ def validate_environment_variables() -> Dict[str, Any]:
             config["MAX_IMAGE_SIZE"] = max_image_size
     except ValueError:
         errors.append(
-            f"MAX_IMAGE_SIZE must be an integer, got: {os.getenv('MAX_IMAGE_SIZE')}"
+            f"MAX_IMAGE_SIZE must be an integer, got: {os.getenv('MAX_IMAGE_SIZE')}",
         )
 
     # Validate MAX_PIXELS_IN
@@ -63,7 +63,7 @@ def validate_environment_variables() -> Dict[str, Any]:
             config["MAX_PIXELS_IN"] = max_pixels
     except ValueError:
         errors.append(
-            f"MAX_PIXELS_IN must be an integer, got: {os.getenv('MAX_PIXELS_IN')}"
+            f"MAX_PIXELS_IN must be an integer, got: {os.getenv('MAX_PIXELS_IN')}",
         )
 
     # Validate MAX_BYTES_IN
@@ -77,7 +77,7 @@ def validate_environment_variables() -> Dict[str, Any]:
             config["MAX_BYTES_IN"] = max_bytes
     except ValueError:
         errors.append(
-            f"MAX_BYTES_IN must be an integer, got: {os.getenv('MAX_BYTES_IN')}"
+            f"MAX_BYTES_IN must be an integer, got: {os.getenv('MAX_BYTES_IN')}",
         )
 
     # Validate OUTPUT_DIR
@@ -115,7 +115,7 @@ def validate_environment_variables() -> Dict[str, Any]:
         config["ENABLE_VISION_VERIFICATION"] = False
     else:
         errors.append(
-            f"ENABLE_VISION_VERIFICATION must be true/false, got: {vision_verify_str}"
+            f"ENABLE_VISION_VERIFICATION must be true/false, got: {vision_verify_str}",
         )
 
     # Validate MAX_SECURITY_CHECK_LENGTH
@@ -125,13 +125,13 @@ def validate_environment_variables() -> Dict[str, Any]:
             errors.append("MAX_SECURITY_CHECK_LENGTH must be at least 1000 characters")
         elif max_security_length > 10000000:  # 10MB limit
             errors.append(
-                "MAX_SECURITY_CHECK_LENGTH must be at most 10MB (10000000 characters)"
+                "MAX_SECURITY_CHECK_LENGTH must be at most 10MB (10000000 characters)",
             )
         else:
             config["MAX_SECURITY_CHECK_LENGTH"] = max_security_length
     except ValueError:
         errors.append(
-            f"MAX_SECURITY_CHECK_LENGTH must be an integer, got: {os.getenv('MAX_SECURITY_CHECK_LENGTH')}"
+            f"MAX_SECURITY_CHECK_LENGTH must be an integer, got: {os.getenv('MAX_SECURITY_CHECK_LENGTH')}",
         )
 
     if errors:
@@ -143,7 +143,7 @@ def validate_environment_variables() -> Dict[str, Any]:
     return config
 
 
-def get_validated_config() -> Dict[str, Any]:
+def get_validated_config() -> dict[str, Any]:
     """Get validated configuration with helpful error messages.
 
     Returns:

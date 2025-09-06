@@ -10,7 +10,6 @@ import json
 import logging
 import os
 import sys
-import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -139,8 +138,6 @@ def _validate_augmentation_inputs(
 
 def _load_session_image(session_id: str) -> tuple[str | None, str | None]:
     """Load image from session directory. Returns (image_b64, error_message)."""
-    import os
-    from pathlib import Path
 
     from PIL import Image
 
@@ -667,9 +664,9 @@ def _load_image_from_input(
     """Load and preprocess image based on input mode. Returns (image_b64, error_message)."""
     if mode == "path":
         return _load_and_preprocess_from_file(image_path)
-    elif mode == "base64":
+    if mode == "base64":
         return _load_and_preprocess_from_base64(image_b64)
-    elif mode == "session":
+    if mode == "session":
         return _load_session_image(session_id)
     return None, f"Unknown input mode: {mode}"
 
@@ -687,6 +684,7 @@ def _load_and_preprocess_from_file(
     """
     try:
         from pathlib import Path
+
         from PIL import Image
 
         from .config import (
@@ -747,13 +745,14 @@ def _load_and_preprocess_from_base64(
     """
     try:
         import base64
-        from PIL import Image
         import io
 
+        from PIL import Image
+
         from .config import (
+            get_max_bytes_in,
             get_max_image_size,
             get_max_pixels_in,
-            get_max_bytes_in,
             is_strict_mode,
         )
         from .image_conversions import pil_to_base64
@@ -820,13 +819,16 @@ def _load_and_preprocess_from_base64(
 
 
 def _resize_image_smart(
-    image: "Image.Image", max_dimension: int, max_pixels: int
+    image: "Image.Image",
+    max_dimension: int,
+    max_pixels: int,
 ) -> "Image.Image":
     """Resize image to satisfy both max_dimension and max_pixels.
 
     Uses high-quality downscaling and preserves aspect ratio.
     """
     from math import sqrt
+
     from PIL import Image
 
     width, height = image.size
@@ -854,8 +856,6 @@ def _resize_image_smart(
 
 def _create_session_directory(session_id: str) -> str:
     """Create session directory with proper structure and return path."""
-    import os
-    from datetime import datetime
     from pathlib import Path
 
     output_dir = os.getenv("OUTPUT_DIR", "outputs")
@@ -1058,7 +1058,8 @@ Please provide:
 
 @mcp.prompt()
 def augmentation_parser(
-    user_prompt: str, available_transforms: list | None = None
+    user_prompt: str,
+    available_transforms: list | None = None,
 ) -> str:
     """Parse natural language into Albumentations transforms.
 
@@ -1208,7 +1209,6 @@ def get_getting_started_guide() -> str:
     - Common patterns
     - Entry points by intent
     """
-    import json
 
     guide = {
         "title": "Albumentations MCP — Getting Started",
@@ -1361,7 +1361,7 @@ def get_getting_started_guide() -> str:
                             "prompt": "add gaussian blur and rotate 15 degrees",
                         },
                         "result": "Saves augmented image + metadata under outputs/<session>/",
-                    }
+                    },
                 ],
             },
             {
@@ -1374,7 +1374,7 @@ def get_getting_started_guide() -> str:
                             "preset": "segmentation",
                         },
                         "result": "Applies preset transforms and saves outputs.",
-                    }
+                    },
                 ],
             },
             {
@@ -1420,7 +1420,7 @@ def get_getting_started_guide() -> str:
                         "tool": "validate_prompt",
                         "args": {"prompt": "sharpen slightly and boost contrast"},
                         "result": "Returns transforms, confidence, and warnings.",
-                    }
+                    },
                 ],
             },
         ],

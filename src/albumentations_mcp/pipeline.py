@@ -75,7 +75,6 @@ class AugmentationPipeline:
 
         # Image is already preprocessed and validated by server
         # Convert base64 to PIL Image for processing
-        from .image_conversions import base64_to_pil
 
         image = base64_to_pil(image_b64)
 

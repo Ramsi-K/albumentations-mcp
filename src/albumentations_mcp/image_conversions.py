@@ -8,7 +8,6 @@ These are the only conversions actually used by the MCP tools.
 import base64
 import io
 import logging
-from typing import Any
 
 import numpy as np
 from PIL import Image, ImageFile
@@ -20,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 # Import configuration and exceptions
 from .errors import ImageConversionError, ImageValidationError
-from .utils.image_handler import MAX_IMAGE_SIZE, SUPPORTED_FORMATS
+from .utils.image_handler import SUPPORTED_FORMATS
 
 
 def base64_to_pil(image_b64: str) -> Image.Image:
@@ -43,7 +42,9 @@ def base64_to_pil(image_b64: str) -> Image.Image:
         try:
             # Skip security length check for image data - hooks will handle size validation
             validation_result = validate_base64_image(
-                image_b64, strict=True, skip_security_length_check=True
+                image_b64,
+                strict=True,
+                skip_security_length_check=True,
             )
             clean_b64 = validation_result["sanitized_data"]
         except ValidationError as e:
@@ -250,7 +251,9 @@ def pil_to_numpy(image: Image.Image) -> np.ndarray:
 
 
 def load_image_from_source(
-    image_source: str, session_dir: str = None, temp_paths: list = None
+    image_source: str,
+    session_dir: str = None,
+    temp_paths: list = None,
 ) -> Image.Image:
     """Load PIL Image from various sources - delegates to image handler."""
     from .utils.image_handler import load_image_from_source

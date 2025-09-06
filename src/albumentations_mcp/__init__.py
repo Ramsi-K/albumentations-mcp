@@ -14,7 +14,8 @@ This package provides:
 # Package metadata
 from __future__ import annotations
 
-from importlib.metadata import PackageNotFoundError, version as _pkg_version
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 from pathlib import Path as _Path
 
 

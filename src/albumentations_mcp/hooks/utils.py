@@ -5,7 +5,6 @@ to reduce code duplication and improve maintainability.
 """
 
 import logging
-import re
 from pathlib import Path
 from typing import Any
 

@@ -96,7 +96,7 @@ class PreSaveHook(BaseHook):
                 try:
                     ts_str = session_dir_name.split("_", 1)[0]
                     timestamp = datetime.strptime(ts_str, "%Y%m%d_%H%M%S").replace(
-                        tzinfo=UTC
+                        tzinfo=UTC,
                     )
                 except Exception:
                     timestamp = datetime.now(UTC)

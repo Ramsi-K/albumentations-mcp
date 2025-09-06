@@ -31,9 +31,9 @@ logger = logging.getLogger(__name__)
 
 # Configuration constants - validated from environment variables
 from ..config import (
+    get_max_bytes_in,
     get_max_image_size,
     get_max_pixels_in,
-    get_max_bytes_in,
     is_strict_mode,
 )
 
@@ -159,9 +159,9 @@ class PreTransformHook(BaseHook):
                 "pixels": original_pixels,
                 "bytes": original_bytes,
             }
-            validation_result[
-                "original_dimensions"
-            ] = f"{original_width}x{original_height}"
+            validation_result["original_dimensions"] = (
+                f"{original_width}x{original_height}"
+            )
             validation_result["original_bytes"] = original_bytes
 
             # Validate image format
@@ -173,16 +173,15 @@ class PreTransformHook(BaseHook):
                             "valid": False,
                             "critical": True,
                             "warnings": [
-                                f"Unsupported image format: {image.format}. Supported formats: {', '.join(SUPPORTED_FORMATS)}"
+                                f"Unsupported image format: {image.format}. Supported formats: {', '.join(SUPPORTED_FORMATS)}",
                             ],
-                        }
+                        },
                     )
                     return validation_result
-                else:
-                    validation_result["warnings"].append(
-                        f"Unsupported image format: {image.format}. "
-                        f"Supported formats: {', '.join(SUPPORTED_FORMATS)}",
-                    )
+                validation_result["warnings"].append(
+                    f"Unsupported image format: {image.format}. "
+                    f"Supported formats: {', '.join(SUPPORTED_FORMATS)}",
+                )
 
             # Validate image mode
             if not validate_image_mode(image.mode):
@@ -207,49 +206,49 @@ class PreTransformHook(BaseHook):
                             "valid": False,
                             "critical": True,
                             "warnings": [
-                                f"Image exceeds size limits: {resize_reason}. Enable auto-resize by setting STRICT_MODE=false"
+                                f"Image exceeds size limits: {resize_reason}. Enable auto-resize by setting STRICT_MODE=false",
                             ],
-                        }
+                        },
                     )
                     return validation_result
+                # Auto-resize the image
+                resized_image, resize_info = self._resize_image(image, context)
+                if resized_image:
+                    # Update context with resized image
+                    context.image_data = pil_to_base64(
+                        resized_image,
+                        format=image.format or "PNG",
+                    ).encode()
+
+                    validation_result.update(
+                        {
+                            "resize_applied": True,
+                            "resized_dimensions": f"{resized_image.width}x{resized_image.height}",
+                            "resized_bytes": len(context.image_data),
+                            "resize_reason": resize_reason,
+                        },
+                    )
+
+                    # Update image info with resized dimensions
+                    validation_result["image_info"].update(
+                        {
+                            "width": resized_image.width,
+                            "height": resized_image.height,
+                            "size": resized_image.size,
+                            "pixels": resized_image.width * resized_image.height,
+                            "bytes": len(context.image_data),
+                        },
+                    )
+
+                    logger.info(
+                        f"Auto-resized image: {original_width}x{original_height} -> "
+                        f"{resized_image.width}x{resized_image.height}, "
+                        f"reason: {resize_reason}",
+                    )
                 else:
-                    # Auto-resize the image
-                    resized_image, resize_info = self._resize_image(image, context)
-                    if resized_image:
-                        # Update context with resized image
-                        context.image_data = pil_to_base64(
-                            resized_image, format=image.format or "PNG"
-                        ).encode()
-
-                        validation_result.update(
-                            {
-                                "resize_applied": True,
-                                "resized_dimensions": f"{resized_image.width}x{resized_image.height}",
-                                "resized_bytes": len(context.image_data),
-                                "resize_reason": resize_reason,
-                            }
-                        )
-
-                        # Update image info with resized dimensions
-                        validation_result["image_info"].update(
-                            {
-                                "width": resized_image.width,
-                                "height": resized_image.height,
-                                "size": resized_image.size,
-                                "pixels": resized_image.width * resized_image.height,
-                                "bytes": len(context.image_data),
-                            }
-                        )
-
-                        logger.info(
-                            f"Auto-resized image: {original_width}x{original_height} -> "
-                            f"{resized_image.width}x{resized_image.height}, "
-                            f"reason: {resize_reason}"
-                        )
-                    else:
-                        validation_result["warnings"].append(
-                            f"Failed to auto-resize oversized image: {resize_reason}"
-                        )
+                    validation_result["warnings"].append(
+                        f"Failed to auto-resize oversized image: {resize_reason}",
+                    )
 
             # Add size warnings for remaining issues
             current_width = validation_result["image_info"]["width"]
@@ -271,7 +270,7 @@ class PreTransformHook(BaseHook):
                 f"Image validation complete - resize_applied: {validation_result['resize_applied']}, "
                 f"original: {validation_result['original_dimensions']}, "
                 f"final: {current_width}x{current_height}, "
-                f"reason: {validation_result['resize_reason']}"
+                f"reason: {validation_result['resize_reason']}",
             )
 
         except Exception as e:
@@ -436,7 +435,11 @@ class PreTransformHook(BaseHook):
             return image
 
     def _check_resize_needed(
-        self, width: int, height: int, pixels: int, bytes_size: int
+        self,
+        width: int,
+        height: int,
+        pixels: int,
+        bytes_size: int,
     ) -> tuple[bool, str]:
         """Check if image needs resizing based on various limits."""
         config = _get_config_values()
@@ -446,7 +449,7 @@ class PreTransformHook(BaseHook):
         max_dimension = max(width, height)
         if max_dimension > config["MAX_IMAGE_SIZE"]:
             reasons.append(
-                f"max dimension {max_dimension}px > {config['MAX_IMAGE_SIZE']}px"
+                f"max dimension {max_dimension}px > {config['MAX_IMAGE_SIZE']}px",
             )
 
         # Check total pixels
@@ -456,7 +459,7 @@ class PreTransformHook(BaseHook):
         # Check file size
         if bytes_size > config["MAX_BYTES_IN"]:
             reasons.append(
-                f"file size {bytes_size:,} bytes > {config['MAX_BYTES_IN']:,} bytes"
+                f"file size {bytes_size:,} bytes > {config['MAX_BYTES_IN']:,} bytes",
             )
 
         if reasons:
@@ -465,7 +468,9 @@ class PreTransformHook(BaseHook):
         return False, ""
 
     def _resize_image(
-        self, image: Image.Image, context: HookContext
+        self,
+        image: Image.Image,
+        context: HookContext,
     ) -> tuple[Image.Image | None, dict[str, Any]]:
         """Resize image while preserving aspect ratio and format."""
         try:
@@ -489,7 +494,8 @@ class PreTransformHook(BaseHook):
 
             # Resize using high-quality LANCZOS filter
             resized_image = image.resize(
-                (new_width, new_height), Image.Resampling.LANCZOS
+                (new_width, new_height),
+                Image.Resampling.LANCZOS,
             )
 
             # Preserve format information
@@ -509,7 +515,7 @@ class PreTransformHook(BaseHook):
             }
 
             logger.debug(
-                f"Image resized: {original_width}x{original_height} -> {new_width}x{new_height}"
+                f"Image resized: {original_width}x{original_height} -> {new_width}x{new_height}",
             )
 
             return resized_image, resize_info
@@ -519,7 +525,10 @@ class PreTransformHook(BaseHook):
             return None, {"error": str(e)}
 
     def _save_temp_image(
-        self, image: Image.Image, context: HookContext, suffix: str = ""
+        self,
+        image: Image.Image,
+        context: HookContext,
+        suffix: str = "",
     ) -> Path | None:
         """Save image to session temp directory with proper format preservation."""
         try:

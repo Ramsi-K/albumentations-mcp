@@ -6,8 +6,8 @@ Albumentations MCP provides predefined preset configurations optimized for speci
 
 ### Segmentation
 
-**Use Case**: Semantic segmentation, instance segmentation, object detection  
-**Intensity**: Mild  
+**Use Case**: Semantic segmentation, instance segmentation, object detection
+**Intensity**: Mild
 **Preserves Geometry**: Yes
 
 Mild augmentations that preserve object boundaries, making them ideal for segmentation tasks where precise pixel-level accuracy is crucial.
@@ -32,8 +32,8 @@ augment_image(image_b64="...", preset="segmentation", seed=42)
 
 ### Portrait
 
-**Use Case**: Face recognition, portrait enhancement, facial analysis  
-**Intensity**: Moderate  
+**Use Case**: Face recognition, portrait enhancement, facial analysis
+**Intensity**: Moderate
 **Preserves Geometry**: Partially
 
 Transforms suitable for human faces and portrait photography, focusing on color enhancement and mild geometric changes that don't distort facial features significantly.
@@ -59,8 +59,8 @@ augment_image(image_b64="...", preset="portrait")
 
 ### Low Light
 
-**Use Case**: Night photography, indoor scenes, low-light enhancement  
-**Intensity**: Strong  
+**Use Case**: Night photography, indoor scenes, low-light enhancement
+**Intensity**: Strong
 **Preserves Geometry**: Yes
 
 Enhancements specifically designed for low-light and dark images, focusing on brightness, contrast, and detail enhancement.
