@@ -1,0 +1,6 @@
+{
+  "enabled": true,
+  "provider": "google",
+  "model": "gemini-2.5-flash-image-preview",
+  "api_key": "AIzaSyAl6KN7mOHtD8W2bmIvlAnk-dr-o0Tb3cY"
+}

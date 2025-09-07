@@ -16,6 +16,7 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 from PIL import Image
 
+from .config import get_prompt_max_length, get_vlm_prompt_max_length
 from .parser import get_available_transforms
 from .pipeline import get_pipeline, parse_prompt_with_hooks
 from .presets import get_available_presets, get_preset
@@ -59,11 +60,19 @@ def validate_mcp_request(tool_name: str, **kwargs) -> tuple[bool, str | None]:
                     max_length=50000000,
                 )  # ~50MB base64
             if kwargs.get("session_id"):
-                validate_string_input(kwargs["session_id"], "session_id", max_length=50)
+                validate_string_input(
+                    kwargs["session_id"], "session_id", max_length=50
+                )
             if kwargs.get("prompt"):
-                validate_string_input(kwargs["prompt"], "prompt", max_length=1000)
+                validate_string_input(
+                    kwargs["prompt"],
+                    "prompt",
+                    max_length=get_prompt_max_length(),
+                )
             if kwargs.get("preset"):
-                validate_string_input(kwargs["preset"], "preset", max_length=50)
+                validate_string_input(
+                    kwargs["preset"], "preset", max_length=50
+                )
                 if kwargs["preset"] not in [
                     "segmentation",
                     "portrait",
@@ -89,7 +98,11 @@ def validate_mcp_request(tool_name: str, **kwargs) -> tuple[bool, str | None]:
 
         elif tool_name == "validate_prompt":
             if "prompt" in kwargs:
-                validate_string_input(kwargs["prompt"], "prompt", max_length=1000)
+                validate_string_input(
+                    kwargs["prompt"],
+                    "prompt",
+                    max_length=get_prompt_max_length(),
+                )
 
         elif tool_name == "set_default_seed":
             if "seed" in kwargs and kwargs["seed"] is not None:
@@ -338,7 +351,9 @@ def augment_image(
 
     try:
         # 1. Detect input mode and validate
-        input_mode, error = _detect_input_mode(image_path, image_b64, session_id)
+        input_mode, error = _detect_input_mode(
+            image_path, image_b64, session_id
+        )
         if error:
             return f"❌ Error: {error}"
 
@@ -389,7 +404,9 @@ def augment_image(
         )
 
         if pipeline_result["success"]:
-            return _format_success_response(pipeline_result, session_id, input_mode)
+            return _format_success_response(
+                pipeline_result, session_id, input_mode
+            )
         error_msg = pipeline_result.get("message", "Unknown error")
         return f"❌ Error: {error_msg}. Use validate_prompt tool to test your prompt or list_available_transforms tool to see available transforms."
 
@@ -587,7 +604,9 @@ def list_available_presets() -> dict:
                     "description": config["description"],
                     "use_cases": config.get("use_cases", []),
                     "transforms_count": len(config["transforms"]),
-                    "transforms": config["transforms"],  # Include actual transforms
+                    "transforms": config[
+                        "transforms"
+                    ],  # Include actual transforms
                     "metadata": config.get("metadata", {}),
                 },
             )
@@ -612,7 +631,10 @@ def _detect_image_source_type(image_source: str) -> str:
         return "url"
     if image_source.startswith("data:image/") or (
         len(image_source) > 100
-        and image_source.replace("=", "").replace("+", "").replace("/", "").isalnum()
+        and image_source.replace("=", "")
+        .replace("+", "")
+        .replace("/", "")
+        .isalnum()
     ):
         return "base64"
     return "file"
@@ -725,7 +747,9 @@ def _load_and_preprocess_from_file(
             image = _resize_image_smart(image, max_dim, max_pixels)
 
         # Choose compact encoding: JPEG for opaque, WEBP for alpha
-        out_format = "WEBP" if (getattr(image, "mode", "").endswith("A")) else "JPEG"
+        out_format = (
+            "WEBP" if (getattr(image, "mode", "").endswith("A")) else "JPEG"
+        )
         # Encode exactly once for downstream
         image_b64 = pil_to_base64(image, format=out_format, quality=85)
         return image_b64, None
@@ -813,7 +837,9 @@ def _load_and_preprocess_from_base64(
             image = _resize_image_smart(image, max_dim, max_pixels)
 
         # Choose compact encoding: JPEG for opaque, WEBP for alpha
-        out_format = "WEBP" if (getattr(image, "mode", "").endswith("A")) else "JPEG"
+        out_format = (
+            "WEBP" if (getattr(image, "mode", "").endswith("A")) else "JPEG"
+        )
         # Always return sanitized or re-encoded base64
         return pil_to_base64(image, format=out_format, quality=85), None
 
@@ -841,7 +867,9 @@ def _resize_image_smart(
     # Compute scale to meet both constraints
     scale_dim = min(max_dimension / width, max_dimension / height, 1.0)
     pix_limit_scale = (
-        sqrt(max_pixels / float(width * height)) if (width * height) > 0 else 1.0
+        sqrt(max_pixels / float(width * height))
+        if (width * height) > 0
+        else 1.0
     )
     scale = min(scale_dim, pix_limit_scale, 1.0)
 
@@ -993,7 +1021,9 @@ def check_vlm_config() -> dict:
         if not provider:
             suggestions.append("Set provider='google' in VLM config")
         if not model:
-            suggestions.append("Set model, e.g. 'gemini-2.5-flash-image-preview'")
+            suggestions.append(
+                "Set model, e.g. 'gemini-2.5-flash-image-preview'"
+            )
         if enabled and not api_key_present:
             suggestions.append(
                 "Provide API key in config file (api_key) or set GOOGLE_API_KEY in env"
@@ -1032,7 +1062,10 @@ def vlm_test_prompt(
     try:
         cfg = load_vlm_config()
         if not cfg.get("enabled"):
-            return {"success": False, "message": "VLM disabled. Enable in config."}
+            return {
+                "success": False,
+                "message": "VLM disabled. Enable in config.",
+            }
 
         provider = (cfg.get("provider") or "").lower()
         if provider != "google":
@@ -1041,8 +1074,19 @@ def vlm_test_prompt(
                 "message": f"Unsupported provider '{provider}'. Only 'google' is wired for MVP.",
             }
 
+        # Validate prompt length for VLM
+        from .utils.validation_utils import validate_string_input
+
+        validate_string_input(
+            prompt,
+            "prompt",
+            max_length=get_vlm_prompt_max_length(),
+        )
+
         # Resolve model and API key
-        use_model = model or cfg.get("model") or "gemini-2.5-flash-image-preview"
+        use_model = (
+            model or cfg.get("model") or "gemini-2.5-flash-image-preview"
+        )
         api_key = get_vlm_api_key()
 
         # Lazy import adapter to avoid import-time errors if deps missing
@@ -1078,9 +1122,72 @@ def vlm_test_prompt(
         return {"success": False, "error": str(e)}
 
 
+# Gemini Prompt Templates & Guide
+@mcp.tool()
+@mcp.resource("file://gemini_prompt_templates")
+def get_gemini_prompt_templates() -> str:
+    """JSON guide of Gemini image generation tips and templates.
+
+    Contains:
+    - recommended model name (preview)
+    - safety notes
+    - example prompts by scenario
+    - response handling tips
+    """
+    guide = {
+        "provider": "google",
+        "recommended_model": "gemini-2.5-flash-image-preview",
+        "notes": [
+            "The preview model returns candidates with content.parts; images are in parts[n].inline_data.data.",
+            "Use concise, visual descriptions; specify style, environment, lighting, camera if relevant.",
+            "Keep generation resolution reasonable for latency; upscale separately if needed.",
+        ],
+        "best_practices": [
+            "Be hyper-specific about subjects, colors, lighting, and composition",
+            "Provide context and intent (purpose and desired mood)",
+            "Iterate and refine prompts; adjust based on outputs",
+            "Use step-by-step instructions for complex scenes",
+            "Prefer positive framing (describe what you want instead of 'no X')",
+            "Control the camera (e.g., wide-angle, macro, low-angle perspective)",
+        ],
+        "response_parsing": {
+            "python": "for part in response.candidates[0].content.parts: if part.inline_data: Image.open(BytesIO(part.inline_data.data))",
+        },
+        "templates": {
+            "product_style": [
+                "Generate a studio photo of a [subject] on a seamless background, soft diffused lighting, 85mm lens look, high detail",
+                "Create a lifestyle image of [subject] in a modern living room, natural window light, shallow depth of field",
+            ],
+            "environment_shift": [
+                "Create an image of a [subject] in a night street scene with neon lights and light rain, cinematic contrast",
+                "Create an image of a [subject] in a forest at golden hour, warm rim lighting, soft haze",
+            ],
+            "branding_theme": [
+                "Design a [theme] visual featuring [subject] with a minimal composition and a color palette of [colors]",
+                "Poster-style artwork of [subject] with bold typography spelling '[brand]', complementary color scheme",
+            ],
+            "technical_specs": [
+                "Ultra-detailed macro photograph of [subject], 1:1 magnification, focus stacking look, softbox lighting",
+                "Architectural photograph of [subject] at blue hour, long exposure look, reflections on wet ground",
+            ],
+        },
+        "safety": [
+            "Follow content policy and avoid sensitive topics. For medical/automotive damage depiction, add 'for research and simulation only'.",
+            "Do not request or produce disallowed content.",
+        ],
+        "attribution": "See https://ai.google.dev/gemini-api/docs/image-generation for official guidance.",
+    }
+
+    import json as _json
+
+    return _json.dumps(guide, indent=2)
+
+
 # MCP Prompt Templates
 @mcp.prompt()
-def compose_preset(base: str, tweak_note: str = "", output_format: str = "json") -> str:
+def compose_preset(
+    base: str, tweak_note: str = "", output_format: str = "json"
+) -> str:
     """Generate a policy skeleton based on presets with optional tweaks.
 
     Args:
@@ -1110,7 +1217,9 @@ BASE TRANSFORMS:
 """
 
     for i, transform in enumerate(base_transforms, 1):
-        prompt += f"{i}. {transform['name']}: {transform.get('parameters', {})}\n"
+        prompt += (
+            f"{i}. {transform['name']}: {transform.get('parameters', {})}\n"
+        )
 
     if tweak_note:
         prompt += f"\nREQUESTED MODIFICATIONS:\n{tweak_note}\n"
@@ -1277,7 +1386,9 @@ Please be specific about what you observe and provide constructive feedback."""
 
 
 @mcp.prompt()
-def error_handler(error_type: str, error_message: str, user_context: str = "") -> str:
+def error_handler(
+    error_type: str, error_message: str, user_context: str = ""
+) -> str:
     """Generate user-friendly error messages and recovery suggestions.
 
     Args:
@@ -1519,7 +1630,9 @@ def get_getting_started_guide() -> str:
                 "calls": [
                     {
                         "tool": "load_image_for_processing",
-                        "args": {"image_source": "https://example.com/image.jpg"},
+                        "args": {
+                            "image_source": "https://example.com/image.jpg"
+                        },
                         "result": "Downloads and stores original image under a session; returns session_id.",
                     },
                     {
@@ -1537,7 +1650,9 @@ def get_getting_started_guide() -> str:
                 "calls": [
                     {
                         "tool": "validate_prompt",
-                        "args": {"prompt": "sharpen slightly and boost contrast"},
+                        "args": {
+                            "prompt": "sharpen slightly and boost contrast"
+                        },
                         "result": "Returns transforms, confidence, and warnings.",
                     },
                 ],
@@ -1626,7 +1741,9 @@ def transforms_guide() -> str:
 
         for name, info in transforms_info.items():
             guide["transforms"][name] = {
-                "description": info.get("description", f"Apply {name} transformation"),
+                "description": info.get(
+                    "description", f"Apply {name} transformation"
+                ),
                 "example_phrases": info.get("example_phrases", []),
                 "default_parameters": info.get("default_parameters", {}),
                 "parameter_ranges": info.get("parameter_ranges", {}),
@@ -1672,7 +1789,9 @@ def policy_presets() -> str:
         for name, config in presets_info.items():
             policy_guide["presets"][name] = {
                 "display_name": config.get("name", name.title()),
-                "description": config.get("description", f"{name.title()} preset"),
+                "description": config.get(
+                    "description", f"{name.title()} preset"
+                ),
                 "use_cases": config.get("use_cases", []),
                 "transforms": config.get("transforms", []),
                 "metadata": config.get("metadata", {}),

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "albumentations-mcp"
-version = "1.0.0"
+version = "1.0.2a0"
 description = "MCP-compliant image augmentation server using Albumentations"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -12,7 +12,7 @@ license = { file = "LICENSE" }
 authors = [{ name = "Ramsi Kalia", email = "ramsi.kalia@gmail.com" }]
 keywords = ["mcp", "albumentations", "computer-vision", "image-augmentation", "ai"]
 classifiers = [
-  "Development Status :: 5 - Production/Stable",
+  "Development Status :: 2 - Pre-Alpha",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
@@ -42,6 +42,10 @@ dev = [
   "ruff>=0.1.0",
   "mypy>=1.0.0",
   "pre-commit>=3.0.0",
+]
+vlm = [
+  # Google Gemini SDK used by the optional VLM adapter/tools
+  "google-genai>=0.2.0",
 ]
 
 [project.scripts]

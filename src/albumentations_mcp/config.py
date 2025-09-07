@@ -134,6 +134,38 @@ def validate_environment_variables() -> dict[str, Any]:
             f"MAX_SECURITY_CHECK_LENGTH must be an integer, got: {os.getenv('MAX_SECURITY_CHECK_LENGTH')}",
         )
 
+    # Validate PROMPT_MAX_LENGTH (for Alb tools)
+    try:
+        prompt_max_len = int(os.getenv("PROMPT_MAX_LENGTH", "4000"))
+        if prompt_max_len < 256:
+            errors.append("PROMPT_MAX_LENGTH must be at least 256 characters")
+        elif prompt_max_len > 200000:  # 200k hard cap
+            errors.append("PROMPT_MAX_LENGTH must be at most 200000 characters")
+        else:
+            config["PROMPT_MAX_LENGTH"] = prompt_max_len
+    except ValueError:
+        errors.append(
+            f"PROMPT_MAX_LENGTH must be an integer, got: {os.getenv('PROMPT_MAX_LENGTH')}",
+        )
+
+    # Validate VLM_PROMPT_MAX_LENGTH (for VLM tools)
+    try:
+        vlm_prompt_max_len = int(os.getenv("VLM_PROMPT_MAX_LENGTH", "6000"))
+        if vlm_prompt_max_len < 512:
+            errors.append(
+                "VLM_PROMPT_MAX_LENGTH must be at least 512 characters",
+            )
+        elif vlm_prompt_max_len > 200000:
+            errors.append(
+                "VLM_PROMPT_MAX_LENGTH must be at most 200000 characters",
+            )
+        else:
+            config["VLM_PROMPT_MAX_LENGTH"] = vlm_prompt_max_len
+    except ValueError:
+        errors.append(
+            f"VLM_PROMPT_MAX_LENGTH must be an integer, got: {os.getenv('VLM_PROMPT_MAX_LENGTH')}",
+        )
+
     if errors:
         error_msg = "Configuration validation failed:\n" + "\n".join(
             f"  - {error}" for error in errors
@@ -194,6 +226,8 @@ def get_config_summary() -> str:
             f"  • Log Level: {config['MCP_LOG_LEVEL']}",
             f"  • Vision Verification: {'Enabled' if config['ENABLE_VISION_VERIFICATION'] else 'Disabled'}",
             f"  • Max Security Check Length: {config['MAX_SECURITY_CHECK_LENGTH']:,} chars ({config['MAX_SECURITY_CHECK_LENGTH'] / 1024:.1f}KB)",
+            f"  • Prompt Max Length: {config['PROMPT_MAX_LENGTH']:,} chars",
+            f"  • VLM Prompt Max Length: {config['VLM_PROMPT_MAX_LENGTH']:,} chars",
         ]
 
         if "DEFAULT_SEED" in config:
@@ -297,3 +331,13 @@ def has_vlm_api_key() -> bool:
             "GEMINI_API_KEY",
         ]
         return any((os.getenv(name) or "").strip() for name in candidates)
+
+
+def get_prompt_max_length() -> int:
+    """Get validated PROMPT_MAX_LENGTH value for Alb tools."""
+    return get_validated_config()["PROMPT_MAX_LENGTH"]
+
+
+def get_vlm_prompt_max_length() -> int:
+    """Get validated VLM_PROMPT_MAX_LENGTH value for VLM tools."""
+    return get_validated_config()["VLM_PROMPT_MAX_LENGTH"]
