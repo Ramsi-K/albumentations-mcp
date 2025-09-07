@@ -20,6 +20,9 @@ from .parser import get_available_transforms
 from .pipeline import get_pipeline, parse_prompt_with_hooks
 from .presets import get_available_presets, get_preset
 
+# VLM config loader (file-first)
+from .vlm.config import get_vlm_api_key, load_vlm_config
+
 # Initialize FastMCP server
 mcp = FastMCP("albumentations-mcp")
 
@@ -957,6 +960,122 @@ def get_pipeline_status() -> dict:
             "error": str(e),
             "message": f"Error getting pipeline status: {e!s}",
         }
+
+
+# VLM Tools
+@mcp.tool()
+def check_vlm_config() -> dict:
+    """Report VLM readiness without exposing secrets.
+
+    Returns:
+        { status, provider, model, config_path, api_key_present, source, suggestions }
+    """
+    try:
+        cfg = load_vlm_config()
+        enabled = bool(cfg.get("enabled", False))
+        provider = cfg.get("provider") or ""
+        model = cfg.get("model") or ""
+        api_key_present = bool(cfg.get("api_key_present", False))
+        source = cfg.get("source") or "none"
+        config_path = cfg.get("config_path") or ""
+
+        status = (
+            "ready"
+            if (enabled and provider and model and api_key_present)
+            else ("partial" if enabled else "disabled")
+        )
+
+        suggestions: list[str] = []
+        if not enabled:
+            suggestions.append(
+                "Set enabled=true in your VLM config file or ENABLE_VLM=true in env"
+            )
+        if not provider:
+            suggestions.append("Set provider='google' in VLM config")
+        if not model:
+            suggestions.append("Set model, e.g. 'gemini-2.5-flash-image-preview'")
+        if enabled and not api_key_present:
+            suggestions.append(
+                "Provide API key in config file (api_key) or set GOOGLE_API_KEY in env"
+            )
+
+        return {
+            "status": status,
+            "provider": provider,
+            "model": model,
+            "config_path": config_path,
+            "api_key_present": api_key_present,
+            "source": source,
+            "suggestions": suggestions,
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "suggestions": ["Verify your VLM_CONFIG_PATH and JSON format"],
+        }
+
+
+@mcp.tool()
+def vlm_test_prompt(
+    prompt: str,
+    model: str | None = None,
+    output_dir: str | None = None,
+) -> dict:
+    """Generate a single image from a prompt using Google Gemini preview.
+
+    Notes:
+    - Requires 'google-genai' package and a valid API key.
+    - Saves image to a simple test folder under OUTPUT_DIR (vlm_tests).
+    """
+    try:
+        cfg = load_vlm_config()
+        if not cfg.get("enabled"):
+            return {"success": False, "message": "VLM disabled. Enable in config."}
+
+        provider = (cfg.get("provider") or "").lower()
+        if provider != "google":
+            return {
+                "success": False,
+                "message": f"Unsupported provider '{provider}'. Only 'google' is wired for MVP.",
+            }
+
+        # Resolve model and API key
+        use_model = model or cfg.get("model") or "gemini-2.5-flash-image-preview"
+        api_key = get_vlm_api_key()
+
+        # Lazy import adapter to avoid import-time errors if deps missing
+        from PIL import Image
+
+        from .vlm.google_gemini import GoogleGeminiClient
+
+        client = GoogleGeminiClient(model=use_model, api_key=api_key)
+
+        # For MVP test, we don't use an input image; pass a tiny blank image placeholder
+        temp_img = Image.new("RGB", (16, 16), color=(0, 0, 0))
+        generated = client.apply(temp_img, prompt)
+
+        # Save to OUTPUT_DIR/vlm_tests
+        out_base = output_dir or os.getenv("OUTPUT_DIR", "outputs")
+        from datetime import datetime
+        from pathlib import Path
+
+        tests_dir = Path(out_base) / "vlm_tests"
+        tests_dir.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        out_path = tests_dir / f"gemini_preview_{ts}.png"
+        generated.save(out_path)
+
+        return {
+            "success": True,
+            "message": "Image generated",
+            "model": use_model,
+            "path": str(out_path.resolve()),
+        }
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 # MCP Prompt Templates
