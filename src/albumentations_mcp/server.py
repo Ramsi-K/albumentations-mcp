@@ -1390,6 +1390,250 @@ def vlm_edit_image(
     )
 
 
+@mcp.tool()
+def vlm_suggest_recipe(
+    task: str,
+    constraints_json: str = "",
+    image_path: str = "",
+    session_id: str = "",
+    save: bool = False,
+    output_dir: str | None = None,
+) -> dict:
+    """Suggest a reproducible augmentation recipe for the given task.
+
+    Planning-only tool. Returns a structured recipe (Alb Compose + optional
+    VLMEdit prompt template) with rationale and an execution plan. Does not
+    call any external APIs or write files.
+
+    Args:
+        task: One of {classification, segmentation, domain_shift, style_transfer}
+        constraints_json: Optional JSON to tune the plan (keys supported):
+          - output_count: int
+          - photometric_strength: "mild" | "moderate"
+          - identity_preserve: bool
+          - avoid_ops: list[str] of Alb op names to exclude
+          - order: "alb_then_vlm" | "vlm_then_alb"
+        image_path: Optional context path (not read); used only for rationale text
+        session_id: Optional context session (not read)
+
+    Returns:
+        { recipe, rationale, execution_plan, recipe_hash, paths? }
+    """
+    import hashlib
+    import json as _json
+
+    def _parse_constraints(raw: str) -> dict:
+        if not raw or not raw.strip():
+            return {}
+        try:
+            data = _json.loads(raw)
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+
+    def _strength_to_limits(level: str) -> tuple[float, float]:
+        lvl = (level or "mild").strip().lower()
+        if lvl == "moderate":
+            return (0.2, 0.2)
+        return (0.12, 0.12)
+
+    constraints = _parse_constraints(constraints_json)
+    task_norm = (task or "").strip().lower()
+    if task_norm not in {
+        "classification",
+        "segmentation",
+        "domain_shift",
+        "style_transfer",
+    }:
+        task_norm = "classification"
+
+    avoid_ops = set(constraints.get("avoid_ops") or [])
+    strength = constraints.get("photometric_strength") or "mild"
+    b_lim, c_lim = _strength_to_limits(strength)
+    out_count = int(constraints.get("output_count") or 6)
+    identity_preserve = bool(
+        constraints.get("identity_preserve") or (task_norm != "style_transfer")
+    )
+
+    # Alb block defaults by task
+    alb_ops: list[dict] = []
+
+    def add_op(name: str, params: dict, p: float) -> None:
+        if name not in avoid_ops:
+            alb_ops.append({"name": name, "parameters": params, "probability": p})
+
+    if task_norm in {"classification", "domain_shift"}:
+        add_op(
+            "RandomBrightnessContrast",
+            {"brightness_limit": b_lim, "contrast_limit": c_lim},
+            0.7,
+        )
+        add_op("HueSaturationValue", {"hue_shift_limit": 6, "sat_shift_limit": 12}, 0.5)
+        add_op("MotionBlur", {"blur_limit": [3, 7]}, 0.3)
+    elif task_norm == "segmentation":
+        add_op("CLAHE", {"clip_limit": 2.0, "tile_grid_size": [8, 8]}, 0.5)
+        add_op("HueSaturationValue", {"hue_shift_limit": 4, "sat_shift_limit": 8}, 0.4)
+        add_op("GaussianBlur", {"blur_limit": [3, 5]}, 0.2)
+    elif task_norm == "style_transfer":
+        # Minimal Alb; primarily VLM driven
+        add_op("Normalize", {}, 1.0)
+
+    # VLM readiness
+    try:
+        cfg = load_vlm_config()
+        vlm_ready = bool(
+            cfg.get("enabled")
+            and cfg.get("provider")
+            and cfg.get("model")
+            and cfg.get("api_key_present")
+        )
+    except Exception:
+        vlm_ready = False
+
+    # Choose VLM template
+    vlm_block = None
+    if vlm_ready:
+        try:
+            guide = _json.loads(get_gemini_prompt_templates())
+            edits = (
+                (guide.get("editing_templates") or {})
+                if isinstance(guide, dict)
+                else {}
+            )
+        except Exception:
+            edits = {}
+
+        if task_norm == "style_transfer":
+            templates = edits.get("style_transfer") or []
+            etype = "style_transfer"
+        elif task_norm == "segmentation":
+            templates = edits.get("edit") or []
+            etype = "edit"
+        elif task_norm == "domain_shift":
+            templates = edits.get("edit") or []
+            etype = "edit"
+        else:
+            templates = edits.get("edit") or []
+            etype = "edit"
+
+        prompt_template = (
+            templates[0]
+            if templates
+            else "Using the provided image, make a minimal, scoped change while preserving identity and composition."
+        )
+        if identity_preserve:
+            prompt_template += (
+                " Preserve subject identity, pose, lighting, and composition."
+            )
+
+        vlm_block = {
+            "VLMEdit": {
+                "prompt_template": prompt_template,
+                "edit_type": etype,
+                "vlm_required": True,
+            }
+        }
+
+    recipe = {
+        "alb": {"Compose": alb_ops},
+    }
+    if vlm_block:
+        recipe["vlm"] = vlm_block
+
+    # Execution plan
+    order_default = (
+        "alb_then_vlm"
+        if task_norm in {"classification", "domain_shift", "segmentation"}
+        else "vlm_then_alb"
+    )
+    order = constraints.get("order") or order_default
+    execution_plan = {
+        "order": order,
+        "output_count": out_count,
+        "seed_strategy": "fixed_per_variant",
+        "naming": "session/<timestamp>_<task>_<variant>",
+    }
+
+    rationale = {
+        "task": task_norm,
+        "summary": (
+            "Mild photometric Alb ops for label stability; optional VLMEdit for environment/style changes"
+            if vlm_block
+            else "Alb-only plan due to VLM not ready; photometric ops tuned for stability"
+        ),
+        "identity_preserve": identity_preserve,
+        "notes": [
+            "Review and adjust ranges/probabilities to fit your dataset",
+            "Use vlm_edit_image for the VLM step; use augment_image for Alb-only",
+        ],
+    }
+
+    # Stable hash over canonical JSON
+    canonical = _json.dumps(recipe, sort_keys=True, separators=(",", ":"))
+    recipe_hash = hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
+
+    result = {
+        "recipe": recipe,
+        "rationale": rationale,
+        "execution_plan": execution_plan,
+        "recipe_hash": recipe_hash,
+    }
+
+    # Optional: persist planning artifacts for later execution by clients/agents
+    if save:
+        try:
+            from datetime import datetime
+            from pathlib import Path as _Path
+
+            base = output_dir or os.getenv("OUTPUT_DIR", "outputs")
+            root = _Path(base) / "recipes"
+            root.mkdir(parents=True, exist_ok=True)
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            plan_dir = root / f"{ts}_{task_norm}_{recipe_hash}"
+            plan_dir.mkdir(parents=True, exist_ok=True)
+
+            # Write files
+            (plan_dir / "recipe.json").write_text(
+                _json.dumps(recipe, indent=2), encoding="utf-8"
+            )
+            (plan_dir / "rationale.json").write_text(
+                _json.dumps(rationale, indent=2), encoding="utf-8"
+            )
+            (plan_dir / "execution_plan.json").write_text(
+                _json.dumps(execution_plan, indent=2), encoding="utf-8"
+            )
+
+            manifest = {
+                "task": task_norm,
+                "recipe_hash": recipe_hash,
+                "created": ts,
+                "files": {
+                    "recipe": str((plan_dir / "recipe.json").resolve()),
+                    "rationale": str((plan_dir / "rationale.json").resolve()),
+                    "execution_plan": str((plan_dir / "execution_plan.json").resolve()),
+                },
+                "hints": {
+                    "edit_call": "vlm_edit_image(image_path=..., prompt=<fill_template>, edit_type=<from recipe>)",
+                    "alb_call": "augment_image(image_path=..., prompt=<describe Alb ops or use presets>)",
+                },
+            }
+            (plan_dir / "manifest.json").write_text(
+                _json.dumps(manifest, indent=2), encoding="utf-8"
+            )
+
+            result["paths"] = {
+                "dir": str(plan_dir.resolve()),
+                "recipe": str((plan_dir / "recipe.json").resolve()),
+                "rationale": str((plan_dir / "rationale.json").resolve()),
+                "execution_plan": str((plan_dir / "execution_plan.json").resolve()),
+                "manifest": str((plan_dir / "manifest.json").resolve()),
+            }
+        except Exception as e:
+            result["save_error"] = f"Failed to save recipe artifacts: {e}"
+
+    return result
+
+
 # Gemini Prompt Templates & Guide
 @mcp.tool()
 @mcp.resource("file://gemini_prompt_templates")
