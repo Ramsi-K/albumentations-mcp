@@ -31,7 +31,10 @@ dependencies = [
   "Pillow>=10.0.0",
   "numpy>=1.26.0",
   "pydantic>=2.0.0",
-  "mcp[cli]>=1.12.3", # confirm this is the correct SDK name/version
+  "mcp[cli]>=1.12,<2",
+  # Temporary compatibility cap: httpx_sse (via mcp) breaks on httpx >= 0.28
+  "httpx<0.28",
+  "pre-commit>=4.2.0",
 ]
 
 [project.optional-dependencies]
@@ -40,16 +43,15 @@ dev = [
   "pytest-asyncio>=0.21.0",
   "black>=23.0.0",
   "ruff>=0.1.0",
-  "mypy>=1.0.0",
   "pre-commit>=3.0.0",
 ]
+
 vlm = [
-  # Google Gemini SDK used by the optional VLM adapter/tools
-  "google-genai>=0.2.0",
+  "google-genai>=0.2.0",  # one place only
 ]
 
 [project.scripts]
-albumentations-mcp = "albumentations_mcp.__main__:main"
+albumentations-mcp = "albumentations_mcp.server:main"
 
 [project.urls]
 Homepage = "https://github.com/ramsi-k/albumentations-mcp"
@@ -59,15 +61,16 @@ Issues = "https://github.com/ramsi-k/albumentations-mcp/issues"
 [tool.ruff]
 line-length = 88
 target-version = "py312"
+extend-exclude = ["dist", "build", ".venv", "outputs", "examples/outputs_example"]
 
 [tool.ruff.lint]
 # Keep linting focused and low-noise on src/examples
 select = ["E","F","I","B","UP"]
-# Avoid formatter conflicts
-ignore = ["COM812"]
+# Make Ruff play nice with Black and reduce noise
+ignore = ["E501", "COM812"]
 
-# Keep tests lighter: allow magic numbers, long lines in fixtures/strings, local imports, and TRY003
-per-file-ignores = { "tests/**/*" = ["PLR2004", "TRY003", "PLC0415", "E501"] }
+# Keep tests lighter: allow magic numbers, local imports, and TRY003
+per-file-ignores = { "tests/**/*" = ["PLR2004", "TRY003", "PLC0415"] }
 
 [tool.black]
 line-length = 88
@@ -75,27 +78,11 @@ target-version = ["py312"]
 
 [tool.mypy]
 python_version = "3.12"
-strict = true
-warn_return_any = true
-warn_unused_configs = true
 ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = [
-  "albumentations_mcp.server",
-  "albumentations_mcp.__init__",
-  "albumentations_mcp.hooks.*",
-  "albumentations_mcp.recovery",
-  "albumentations_mcp.presets",
-  "albumentations_mcp.config",
-  "albumentations_mcp.validation",
-  "albumentations_mcp.parser",
-  "albumentations_mcp.utils.*",
-  "albumentations_mcp.image_conversions",
-  "albumentations_mcp.processor",
-  "albumentations_mcp.pipeline",
-]
-ignore_errors = true
+warn_return_any = false
+warn_unused_configs = true
+check_untyped_defs = false
+disallow_untyped_defs = false
 
 [dependency-groups]
 dev = [
@@ -112,4 +99,9 @@ packages = ["src/albumentations_mcp"]
 "src/albumentations_mcp/py.typed" = "albumentations_mcp/py.typed"
 
 [tool.hatch.build.targets.sdist]
-include = ["src/albumentations_mcp/py.typed"]
+include = [
+  "src/**",
+  "README.md",
+  "LICENSE",
+  "pyproject.toml",
+]

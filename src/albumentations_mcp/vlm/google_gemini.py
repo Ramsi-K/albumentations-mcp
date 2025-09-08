@@ -31,10 +31,13 @@ class GoogleGeminiClient(VLMClient):
         seed: int | None = None,
         timeout: int | None = None,
     ) -> Image.Image:
-        """Generate an image for the given prompt.
+        """Generate an edited image conditioned on the provided image.
 
-        For MVP, this ignores the input image and treats `prompt_or_recipe` as a
-        string prompt. Returning a generated PIL Image.
+        Behavior:
+        - Sends the provided PIL image alongside the text prompt in the
+          `contents` array to the Gemini preview model, matching the official
+          SDK examples for image-conditioned edits.
+        - Returns the first inline image from the response as a PIL Image.
         """
         try:
             # Lazy import so server can start without dependency installed
@@ -57,10 +60,11 @@ class GoogleGeminiClient(VLMClient):
             genai.Client(api_key=self._api_key) if self._api_key else genai.Client()
         )
 
-        # Generate content
+        # Generate content (image-conditioned edit): include the input image then the prompt
+        # The SDK accepts PIL Images directly in the contents list.
         response = client.models.generate_content(
             model=self.model,
-            contents=[prompt],
+            contents=[image, prompt],
         )
 
         # Find first inline image in parts
