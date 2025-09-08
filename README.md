@@ -75,6 +75,98 @@ Or add manually:
 - **`get_quick_transform_reference`** - Condensed transform keywords for prompting
 - **`get_getting_started_guide`** - Structured workflow guide for first-time assistants
 
+### VLM (Gemini “Nano Banana”) Tools
+
+- **`check_vlm_config`** – Report readiness without exposing secrets
+- **`vlm_generate_preview`** – Text→image preview for prompt/style ideation (no session)
+- **`vlm_edit_image`** – Image‑conditioned edit; runs full session + verification
+- **`vlm_suggest_recipe`** – Planning‑only: outputs Alb Compose + optional VLMEdit prompt template; can save under `outputs/recipes/`
+
+VLM quickstart (env or file):
+
+```bash
+# Option 1: env
+set ENABLE_VLM=true
+set VLM_PROVIDER=google
+set VLM_MODEL=gemini-2.5-flash-image-preview
+set GOOGLE_API_KEY=...  # or GEMINI_API_KEY / VLM_API_KEY
+
+# Option 2: file (auto‑discovered)
+# Place a non‑secret file at config/vlm.json:
+{
+  "enabled": true,
+  "provider": "google",
+  "model": "gemini-2.5-flash-image-preview"
+  // api_key may be in file or environment
+}
+```
+
+Examples:
+
+```python
+# Preview (no input image, no session)
+vlm_generate_preview(prompt="Neon night street, cinematic moodboard")
+
+# Edit (image + prompt, full session)
+vlm_edit_image(
+    image_path="examples/basic_images/cat.jpg",
+    prompt=(
+        "Using the provided photo of a cat, add a small, knitted wizard hat. "
+        "Preserve identity, pose, lighting, and composition."
+    ),
+    edit_type="edit",
+)
+
+# Plan and save a hybrid recipe (Alb + VLMEdit)
+plan = vlm_suggest_recipe(
+    task="domain_shift",
+    constraints_json='{"output_count":3,"identity_preserve":true}',
+    save=True,
+)
+print(plan["paths"])  # outputs/recipes/<timestamp>_<task>_<hash>/
+```
+
+MCP env examples for VLM (choose one option)
+
+Option A — file (preferred):
+
+```json
+{
+  "mcpServers": {
+    "albumentations": {
+      "command": "uvx",
+      "args": ["albumentations-mcp"],
+      "env": {
+        "MCP_LOG_LEVEL": "INFO",
+        "OUTPUT_DIR": "./outputs",
+        "ENABLE_VLM": "true",
+        "VLM_CONFIG_PATH": "config/vlm.json"
+      }
+    }
+  }
+}
+```
+
+Option B — inline env (no file):
+
+```json
+{
+  "mcpServers": {
+    "albumentations": {
+      "command": "uvx",
+      "args": ["albumentations-mcp"],
+      "env": {
+        "MCP_LOG_LEVEL": "INFO",
+        "OUTPUT_DIR": "./outputs",
+        "ENABLE_VLM": "true",
+        "VLM_PROVIDER": "google",
+        "VLM_MODEL": "gemini-2.5-flash-image-preview"
+      }
+    }
+  }
+}
+```
+
 ## Available Prompts
 
 - **`compose_preset`** - Generate augmentation policies from presets with optional tweaks
@@ -134,9 +226,9 @@ augment_image(session_id="<session_id>", prompt="add blur and rotate 10 degrees"
 - [Preset Configurations](docs/presets.md)
 - [Session Folders (outputs/) Guide](docs/session-folders.md)
 - [Regex Security Analysis](docs/regex_security_analysis.md)
-- [Known Issues](docs/known_issues.md)
 - [Design Philosophy](docs/design_philosophy.md)
 - [Usage Examples](docs/examples.md)
+- [VLM (Nano Banana/Gemini) Guide](docs/vlm_nano_banana.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Contributing](docs/contributing.md)
 
@@ -145,6 +237,7 @@ augment_image(session_id="<session_id>", prompt="add blur and rotate 10 degrees"
 - [Claude Desktop Config](docs/claude-desktop-config.json)
 - [Kiro IDE Config](docs/kiro-mcp-config.json)
 - [All Configuration Examples](docs/mcp-config-examples.json)
+- [VLM Example Config](config/vlm.example.json)
 
 ## License
 
