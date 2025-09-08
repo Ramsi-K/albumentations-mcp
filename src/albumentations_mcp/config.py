@@ -134,6 +134,38 @@ def validate_environment_variables() -> dict[str, Any]:
             f"MAX_SECURITY_CHECK_LENGTH must be an integer, got: {os.getenv('MAX_SECURITY_CHECK_LENGTH')}",
         )
 
+    # Validate PROMPT_MAX_LENGTH (for Alb tools)
+    try:
+        prompt_max_len = int(os.getenv("PROMPT_MAX_LENGTH", "4000"))
+        if prompt_max_len < 256:
+            errors.append("PROMPT_MAX_LENGTH must be at least 256 characters")
+        elif prompt_max_len > 200000:  # 200k hard cap
+            errors.append("PROMPT_MAX_LENGTH must be at most 200000 characters")
+        else:
+            config["PROMPT_MAX_LENGTH"] = prompt_max_len
+    except ValueError:
+        errors.append(
+            f"PROMPT_MAX_LENGTH must be an integer, got: {os.getenv('PROMPT_MAX_LENGTH')}",
+        )
+
+    # Validate VLM_PROMPT_MAX_LENGTH (for VLM tools)
+    try:
+        vlm_prompt_max_len = int(os.getenv("VLM_PROMPT_MAX_LENGTH", "6000"))
+        if vlm_prompt_max_len < 512:
+            errors.append(
+                "VLM_PROMPT_MAX_LENGTH must be at least 512 characters",
+            )
+        elif vlm_prompt_max_len > 200000:
+            errors.append(
+                "VLM_PROMPT_MAX_LENGTH must be at most 200000 characters",
+            )
+        else:
+            config["VLM_PROMPT_MAX_LENGTH"] = vlm_prompt_max_len
+    except ValueError:
+        errors.append(
+            f"VLM_PROMPT_MAX_LENGTH must be an integer, got: {os.getenv('VLM_PROMPT_MAX_LENGTH')}",
+        )
+
     if errors:
         error_msg = "Configuration validation failed:\n" + "\n".join(
             f"  - {error}" for error in errors
@@ -194,6 +226,8 @@ def get_config_summary() -> str:
             f"  • Log Level: {config['MCP_LOG_LEVEL']}",
             f"  • Vision Verification: {'Enabled' if config['ENABLE_VISION_VERIFICATION'] else 'Disabled'}",
             f"  • Max Security Check Length: {config['MAX_SECURITY_CHECK_LENGTH']:,} chars ({config['MAX_SECURITY_CHECK_LENGTH'] / 1024:.1f}KB)",
+            f"  • Prompt Max Length: {config['PROMPT_MAX_LENGTH']:,} chars",
+            f"  • VLM Prompt Max Length: {config['VLM_PROMPT_MAX_LENGTH']:,} chars",
         ]
 
         if "DEFAULT_SEED" in config:
@@ -229,3 +263,81 @@ def is_strict_mode() -> bool:
 def get_max_security_check_length() -> int:
     """Get validated MAX_SECURITY_CHECK_LENGTH value."""
     return get_validated_config()["MAX_SECURITY_CHECK_LENGTH"]
+
+
+# --- VLM (Vision Language Model) configuration helpers ---
+
+
+def is_vlm_enabled() -> bool:
+    """Check if VLM features are enabled (file-first, env fallback)."""
+    try:
+        from .vlm.config import load_vlm_config
+
+        return bool(load_vlm_config().get("enabled", False))
+    except Exception:
+        # Fallback to env-only if loader fails
+        val = os.getenv("ENABLE_VLM", "false").strip().lower()
+        return val in ("true", "1", "yes", "on")
+
+
+def get_vlm_provider() -> str | None:
+    """Get the configured VLM provider identifier (file-first)."""
+    try:
+        from .vlm.config import load_vlm_config
+
+        provider = load_vlm_config().get("provider")
+        return provider or None
+    except Exception:
+        provider = os.getenv("VLM_PROVIDER") or os.getenv("VLM_BACKEND")
+        provider = (provider or "").strip()
+        return provider or None
+
+
+def get_vlm_model() -> str | None:
+    """Get the configured VLM model name (file-first)."""
+    try:
+        from .vlm.config import load_vlm_config
+
+        model = load_vlm_config().get("model")
+        return model or None
+    except Exception:
+        model = os.getenv("VLM_MODEL") or os.getenv("GEMINI_MODEL")
+        model = (model or "").strip()
+        return model or None
+
+
+def get_vlm_config_path() -> str | None:
+    """Optional path to a local VLM config file (reported by loader)."""
+    try:
+        from .vlm.config import load_vlm_config
+
+        return load_vlm_config().get("config_path") or None
+    except Exception:
+        path = os.getenv("VLM_CONFIG_PATH", "").strip()
+        return path or None
+
+
+def has_vlm_api_key() -> bool:
+    """Return True if a VLM API key is available (file-first, env fallback)."""
+    try:
+        from .vlm.config import load_vlm_config
+
+        return bool(load_vlm_config().get("api_key_present", False))
+    except Exception:
+        candidates = [
+            "NANO_BANANA_API_KEY",
+            "VLM_API_KEY",
+            "GOOGLE_API_KEY",
+            "GEMINI_API_KEY",
+        ]
+        return any((os.getenv(name) or "").strip() for name in candidates)
+
+
+def get_prompt_max_length() -> int:
+    """Get validated PROMPT_MAX_LENGTH value for Alb tools."""
+    return get_validated_config()["PROMPT_MAX_LENGTH"]
+
+
+def get_vlm_prompt_max_length() -> int:
+    """Get validated VLM_PROMPT_MAX_LENGTH value for VLM tools."""
+    return get_validated_config()["VLM_PROMPT_MAX_LENGTH"]

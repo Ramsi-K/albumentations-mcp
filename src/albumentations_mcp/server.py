@@ -16,12 +16,34 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 from PIL import Image
 
+from .config import get_prompt_max_length, get_vlm_prompt_max_length
 from .parser import get_available_transforms
 from .pipeline import get_pipeline, parse_prompt_with_hooks
 from .presets import get_available_presets, get_preset
 
+# VLM config loader (file-first)
+from .vlm.config import get_vlm_api_key, load_vlm_config
+
 # Initialize FastMCP server
 mcp = FastMCP("albumentations-mcp")
+
+
+# Simple health check
+@mcp.tool()
+def ping() -> dict:
+    """Lightweight health check for the MCP server."""
+    try:
+        # Lazy import to avoid circulars on early import
+        from . import __version__ as _version  # type: ignore
+    except Exception:
+        _version = "0.0.0"
+
+    return {
+        "status": "ok",
+        "server": "albumentations-mcp",
+        "version": _version,
+        "time": datetime.now().isoformat(),
+    }
 
 
 # Use existing validation system instead of recreating validation logic
@@ -35,10 +57,7 @@ def validate_mcp_request(tool_name: str, **kwargs) -> tuple[bool, str | None]:
     Returns:
         Tuple of (is_valid, error_message)
     """
-    from .utils.validation_utils import (
-        validate_numeric_range,
-        validate_string_input,
-    )
+    from .utils.validation_utils import validate_numeric_range, validate_string_input
 
     try:
         # Tool-specific validation using existing utilities
@@ -58,7 +77,11 @@ def validate_mcp_request(tool_name: str, **kwargs) -> tuple[bool, str | None]:
             if kwargs.get("session_id"):
                 validate_string_input(kwargs["session_id"], "session_id", max_length=50)
             if kwargs.get("prompt"):
-                validate_string_input(kwargs["prompt"], "prompt", max_length=1000)
+                validate_string_input(
+                    kwargs["prompt"],
+                    "prompt",
+                    max_length=get_prompt_max_length(),
+                )
             if kwargs.get("preset"):
                 validate_string_input(kwargs["preset"], "preset", max_length=50)
                 if kwargs["preset"] not in [
@@ -86,7 +109,11 @@ def validate_mcp_request(tool_name: str, **kwargs) -> tuple[bool, str | None]:
 
         elif tool_name == "validate_prompt":
             if "prompt" in kwargs:
-                validate_string_input(kwargs["prompt"], "prompt", max_length=1000)
+                validate_string_input(
+                    kwargs["prompt"],
+                    "prompt",
+                    max_length=get_prompt_max_length(),
+                )
 
         elif tool_name == "set_default_seed":
             if "seed" in kwargs and kwargs["seed"] is not None:
@@ -687,11 +714,7 @@ def _load_and_preprocess_from_file(
 
         from PIL import Image
 
-        from .config import (
-            get_max_image_size,
-            get_max_pixels_in,
-            is_strict_mode,
-        )
+        from .config import get_max_image_size, get_max_pixels_in, is_strict_mode
         from .image_conversions import pil_to_base64
 
         # Validate file exists early
@@ -957,6 +980,733 @@ def get_pipeline_status() -> dict:
             "error": str(e),
             "message": f"Error getting pipeline status: {e!s}",
         }
+
+
+# VLM Tools
+@mcp.tool()
+def check_vlm_config() -> dict:
+    """Report VLM readiness without exposing secrets.
+
+    Returns:
+        { status, provider, model, config_path, api_key_present, source, suggestions }
+    """
+    try:
+        cfg = load_vlm_config()
+        enabled = bool(cfg.get("enabled", False))
+        provider = cfg.get("provider") or ""
+        model = cfg.get("model") or ""
+        api_key_present = bool(cfg.get("api_key_present", False))
+        source = cfg.get("source") or "none"
+        config_path = cfg.get("config_path") or ""
+
+        status = (
+            "ready"
+            if (enabled and provider and model and api_key_present)
+            else ("partial" if enabled else "disabled")
+        )
+
+        suggestions: list[str] = []
+        if not enabled:
+            suggestions.append(
+                "Set enabled=true in your VLM config file or ENABLE_VLM=true in env"
+            )
+        if not provider:
+            suggestions.append("Set provider='google' in VLM config")
+        if not model:
+            suggestions.append("Set model, e.g. 'gemini-2.5-flash-image-preview'")
+        if enabled and not api_key_present:
+            suggestions.append(
+                "Provide API key in config file (api_key) or set GOOGLE_API_KEY in env"
+            )
+
+        return {
+            "status": status,
+            "provider": provider,
+            "model": model,
+            "config_path": config_path,
+            "api_key_present": api_key_present,
+            "source": source,
+            "suggestions": suggestions,
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "suggestions": ["Verify your VLM_CONFIG_PATH and JSON format"],
+        }
+
+
+@mcp.tool()
+def vlm_test_prompt(
+    prompt: str,
+    model: str | None = None,
+    output_dir: str | None = None,
+) -> dict:
+    """Generate a preview image from a text prompt (no input image).
+
+    Purpose:
+    - Explore prompts and styles quickly without supplying an input photo.
+    - No session or verification; saves under OUTPUT_DIR/vlm_tests.
+
+    Use `vlm_edit_image` for photo edits that need full session artifacts.
+    """
+    try:
+        cfg = load_vlm_config()
+        if not cfg.get("enabled"):
+            return {
+                "success": False,
+                "message": "VLM disabled. Enable in config.",
+            }
+
+        provider = (cfg.get("provider") or "").lower()
+        if provider != "google":
+            return {
+                "success": False,
+                "message": f"Unsupported provider '{provider}'. Only 'google' is wired for MVP.",
+            }
+
+        # Validate prompt length for VLM
+        from .utils.validation_utils import validate_string_input
+
+        validate_string_input(
+            prompt,
+            "prompt",
+            max_length=get_vlm_prompt_max_length(),
+        )
+
+        # Resolve model and API key
+        use_model = model or cfg.get("model") or "gemini-2.5-flash-image-preview"
+        api_key = get_vlm_api_key()
+
+        # Lazy import adapter to avoid import-time errors if deps missing
+        from PIL import Image
+
+        from .vlm.google_gemini import GoogleGeminiClient
+
+        client = GoogleGeminiClient(model=use_model, api_key=api_key)
+
+        # For MVP test, we don't use an input image; pass a tiny blank image placeholder
+        temp_img = Image.new("RGB", (16, 16), color=(0, 0, 0))
+        generated = client.apply(temp_img, prompt)
+
+        # Save to OUTPUT_DIR/vlm_tests
+        out_base = output_dir or os.getenv("OUTPUT_DIR", "outputs")
+        from datetime import datetime
+        from pathlib import Path
+
+        tests_dir = Path(out_base) / "vlm_tests"
+        tests_dir.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        out_path = tests_dir / f"gemini_preview_{ts}.png"
+        generated.save(out_path)
+
+        return {
+            "success": True,
+            "message": "Image generated",
+            "model": use_model,
+            "path": str(out_path.resolve()),
+        }
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@mcp.tool()
+def vlm_generate_preview(
+    prompt: str,
+    model: str | None = None,
+    output_dir: str | None = None,
+) -> dict:
+    """Generate an image from a text prompt for quick ideation.
+
+    Purpose:
+    - Explore prompts and styles without supplying an input photo.
+    - No session or verification; saves under OUTPUT_DIR/vlm_tests.
+
+    Use `vlm_edit_image` for photo edits that need full session artifacts.
+    """
+    return vlm_test_prompt(prompt=prompt, model=model, output_dir=output_dir)
+
+
+@mcp.tool()
+def vlm_apply(
+    image_path: str = "",
+    session_id: str = "",
+    prompt: str = "",
+    edit_type: str | None = None,
+    seed: int | None = None,
+    output_dir: str | None = None,
+) -> dict:
+    """Edit an image with Gemini and save session artifacts.
+
+    Args:
+        image_path: Path to an input image, or provide `session_id` instead
+        session_id: Existing session created via `load_image_for_processing`
+        prompt: Semantic edit description for the VLM.
+            Assistants: build a high-quality edit prompt using the built-in
+            Gemini resources before calling this tool:
+              - Use `get_gemini_prompt_templates` (resource+tool) for patterns
+                like edit, inpaint, style transfer, and composition.
+              - Follow best-practices from the guide: be specific about what to
+                change, what to preserve (identity/pose/lighting/composition),
+                and scope (change only background, add/remove element, etc.).
+            This tool expects both the image and the enriched prompt; it does
+            not call another LLM internally.
+        edit_type: Optional hint to auto-pick an editing template. One of
+            {"edit", "inpaint", "style_transfer", "compose"}.
+        seed: Optional seed (stored in metadata only for now)
+        output_dir: Optional override for `OUTPUT_DIR`
+
+    Returns:
+        Dict with success flag, message, paths, and metadata summary
+    """
+    try:
+        # Ensure pipeline is initialized so hooks are registered
+        pipeline = get_pipeline()
+        _ = pipeline.get_pipeline_status()
+        # 0) Check VLM readiness
+        cfg = load_vlm_config()
+        if not cfg.get("enabled"):
+            return {
+                "success": False,
+                "message": "VLM disabled. Enable in config/env.",
+            }
+        if (cfg.get("provider") or "").lower() != "google":
+            return {
+                "success": False,
+                "message": f"Unsupported provider '{cfg.get('provider')}'. Only 'google' wired for MVP.",
+            }
+        use_model = cfg.get("model") or "gemini-2.5-flash-image-preview"
+        api_key = get_vlm_api_key()
+        if not api_key:
+            return {
+                "success": False,
+                "message": "Missing API key. Set GOOGLE_API_KEY or in config file.",
+            }
+
+        # 1) Build/enrich prompt if possible, then validate length for VLM
+        enriched_prompt = prompt.strip()
+        try:
+            if edit_type:
+                # Fetch templates and prefer editing templates when present
+                guide_raw = get_gemini_prompt_templates()
+                import json as _json
+
+                guide = _json.loads(guide_raw)
+                editing = (
+                    (guide.get("editing_templates") or {})
+                    if isinstance(guide, dict)
+                    else {}
+                )
+                candidates = (
+                    editing.get(edit_type.lower())
+                    if isinstance(editing, dict)
+                    else None
+                )
+                if (
+                    (not enriched_prompt)
+                    and candidates
+                    and isinstance(candidates, list)
+                    and candidates
+                ):
+                    enriched_prompt = candidates[0]
+                elif enriched_prompt:
+                    # Wrap provided prompt in a clear edit directive
+                    enriched_prompt = (
+                        f"Using the provided image, {enriched_prompt}. "
+                        "Preserve subject identity, pose, lighting, and composition unless specified."
+                    )
+        except Exception:
+            # Fall back to the original prompt if enrichment fails
+            enriched_prompt = prompt.strip()
+
+        from .utils.validation_utils import validate_string_input
+
+        validate_string_input(
+            enriched_prompt or prompt,
+            "prompt",
+            max_length=get_vlm_prompt_max_length(),
+        )
+
+        # 2) Detect input mode and load original image (as base64 + PIL)
+        mode, err = _detect_input_mode(image_path, "", session_id)
+        if err:
+            return {"success": False, "message": err}
+        b64, err = _load_image_from_input(mode, image_path, "", session_id)
+        if err or not b64:
+            return {"success": False, "message": err or "Failed to load image"}
+
+        from .image_conversions import base64_to_pil, pil_to_base64
+
+        original_image = base64_to_pil(b64)
+
+        # 3) Call VLM adapter
+        from .vlm.google_gemini import GoogleGeminiClient
+
+        client = GoogleGeminiClient(model=use_model, api_key=api_key)
+        generated_img = client.apply(
+            original_image, enriched_prompt or prompt, seed=seed
+        )
+
+        # 4) Prepare hook context and reuse existing hooks (pre_save, post_transform, verify, post_save)
+        # Ensure consistent session id
+        import uuid as _uuid
+
+        from .hooks import HookContext, HookStage, execute_stage
+        from .utils import run_async_safely
+
+        sid = session_id or str(_uuid.uuid4())[:8]
+
+        ctx = HookContext(
+            session_id=sid,
+            original_prompt=enriched_prompt or prompt,
+            image_data=b64.encode(),
+            parsed_transforms=[
+                {
+                    "name": "VLMEdit",
+                    "parameters": {
+                        "prompt": (enriched_prompt or prompt),
+                        "provider": "google",
+                        "model": use_model,
+                    },
+                    "probability": 1.0,
+                }
+            ],
+            metadata={
+                "timestamp": datetime.now().isoformat(),
+                "pipeline_version": "1.0.0",
+                "seed": seed,
+            },
+        )
+
+        # If caller provided an output_dir, pre-create a session directory there
+        # and seed it into context so PreSaveHook reuses it.
+        if output_dir:
+            os.environ["OUTPUT_DIR"] = output_dir
+            try:
+                precreated_session = _create_session_directory(sid)
+                ctx.metadata["session_dir"] = precreated_session
+            except Exception:
+                # Non-fatal: PreSaveHook will fall back to its default output dir
+                pass
+
+        # pre_save: creates directories, filenames, saves original image
+        res = run_async_safely(execute_stage, HookStage.PRE_SAVE, ctx)
+        if not res.success:
+            return {
+                "success": False,
+                "message": res.error or "pre_save failed",
+            }
+        ctx = res.context
+
+        # Attach generated image to context for downstream hooks
+        ctx.augmented_image = pil_to_base64(generated_img).encode()
+        ctx.metadata.update(
+            {
+                "processing_result": {
+                    "applied_transforms": [
+                        {
+                            "name": "VLMEdit",
+                            "parameters": {
+                                "provider": "google",
+                                "model": use_model,
+                            },
+                        }
+                    ],
+                    "skipped_transforms": [],
+                    "execution_time": None,
+                    "success": True,
+                },
+                "original_image": original_image,
+                "augmented_image": generated_img,
+                "reproducible": False,
+                "seed_used": seed is not None,
+                "seed_value": seed,
+            }
+        )
+
+        # post_transform: compute metadata/metrics (non-critical)
+        res = run_async_safely(execute_stage, HookStage.POST_TRANSFORM, ctx)
+        ctx = res.context
+
+        # verify: generate visual verification report content
+        res = run_async_safely(execute_stage, HookStage.POST_TRANSFORM_VERIFY, ctx)
+        ctx = res.context
+
+        # post_save: write augmented image, metadata, visual eval, etc.
+        res = run_async_safely(execute_stage, HookStage.POST_SAVE, ctx)
+        ctx = res.context
+
+        files = (ctx.metadata.get("output_files") or {}) if ctx else {}
+        session_dir = (ctx.metadata.get("session_dir") if ctx else None) or ""
+
+        return {
+            "success": True,
+            "message": "VLM edit applied",
+            "model": use_model,
+            "session_id": sid,
+            "paths": {
+                "session": session_dir,
+                "image": files.get("augmented_image"),
+                "report": files.get("visual_eval"),
+                "metadata": files.get("metadata"),
+            },
+        }
+
+    except Exception as e:
+        return {"success": False, "message": f"VLM apply failed: {e}"}
+
+
+@mcp.tool()
+def vlm_edit_image(
+    image_path: str = "",
+    session_id: str = "",
+    prompt: str = "",
+    edit_type: str | None = None,
+    seed: int | None = None,
+    output_dir: str | None = None,
+) -> dict:
+    """Perform an image-conditioned edit with Gemini and save session artifacts.
+
+    Purpose:
+    - Edit an existing image (add/remove element, background swap, inpaint,
+      style transfer) via Gemini preview.
+    - Runs full pipeline hooks to save original/edited images, verification
+      markdown, metadata, and logs in a session directory.
+
+    Assistants:
+    - Build a clear edit prompt using `get_gemini_prompt_templates`.
+    - State what to change and what to preserve (identity/pose/lighting/composition).
+    - Optionally set `edit_type` to one of: edit | inpaint | style_transfer | compose.
+    """
+    return vlm_apply(
+        image_path=image_path,
+        session_id=session_id,
+        prompt=prompt,
+        edit_type=edit_type,
+        seed=seed,
+        output_dir=output_dir,
+    )
+
+
+@mcp.tool()
+def vlm_suggest_recipe(
+    task: str,
+    constraints_json: str = "",
+    image_path: str = "",
+    session_id: str = "",
+    save: bool = False,
+    output_dir: str | None = None,
+) -> dict:
+    """Suggest a reproducible augmentation recipe for the given task.
+
+    Planning-only tool. Returns a structured recipe (Alb Compose + optional
+    VLMEdit prompt template) with rationale and an execution plan. Does not
+    call any external APIs or write files.
+
+    Args:
+        task: One of {classification, segmentation, domain_shift, style_transfer}
+        constraints_json: Optional JSON to tune the plan (keys supported):
+          - output_count: int
+          - photometric_strength: "mild" | "moderate"
+          - identity_preserve: bool
+          - avoid_ops: list[str] of Alb op names to exclude
+          - order: "alb_then_vlm" | "vlm_then_alb"
+        image_path: Optional context path (not read); used only for rationale text
+        session_id: Optional context session (not read)
+
+    Returns:
+        { recipe, rationale, execution_plan, recipe_hash, paths? }
+    """
+    import hashlib
+    import json as _json
+
+    def _parse_constraints(raw: str) -> dict:
+        if not raw or not raw.strip():
+            return {}
+        try:
+            data = _json.loads(raw)
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+
+    def _strength_to_limits(level: str) -> tuple[float, float]:
+        lvl = (level or "mild").strip().lower()
+        if lvl == "moderate":
+            return (0.2, 0.2)
+        return (0.12, 0.12)
+
+    constraints = _parse_constraints(constraints_json)
+    task_norm = (task or "").strip().lower()
+    if task_norm not in {
+        "classification",
+        "segmentation",
+        "domain_shift",
+        "style_transfer",
+    }:
+        task_norm = "classification"
+
+    avoid_ops = set(constraints.get("avoid_ops") or [])
+    strength = constraints.get("photometric_strength") or "mild"
+    b_lim, c_lim = _strength_to_limits(strength)
+    out_count = int(constraints.get("output_count") or 6)
+    identity_preserve = bool(
+        constraints.get("identity_preserve") or (task_norm != "style_transfer")
+    )
+
+    # Alb block defaults by task
+    alb_ops: list[dict] = []
+
+    def add_op(name: str, params: dict, p: float) -> None:
+        if name not in avoid_ops:
+            alb_ops.append({"name": name, "parameters": params, "probability": p})
+
+    if task_norm in {"classification", "domain_shift"}:
+        add_op(
+            "RandomBrightnessContrast",
+            {"brightness_limit": b_lim, "contrast_limit": c_lim},
+            0.7,
+        )
+        add_op("HueSaturationValue", {"hue_shift_limit": 6, "sat_shift_limit": 12}, 0.5)
+        add_op("MotionBlur", {"blur_limit": [3, 7]}, 0.3)
+    elif task_norm == "segmentation":
+        add_op("CLAHE", {"clip_limit": 2.0, "tile_grid_size": [8, 8]}, 0.5)
+        add_op("HueSaturationValue", {"hue_shift_limit": 4, "sat_shift_limit": 8}, 0.4)
+        add_op("GaussianBlur", {"blur_limit": [3, 5]}, 0.2)
+    elif task_norm == "style_transfer":
+        # Minimal Alb; primarily VLM driven
+        add_op("Normalize", {}, 1.0)
+
+    # VLM readiness
+    try:
+        cfg = load_vlm_config()
+        vlm_ready = bool(
+            cfg.get("enabled")
+            and cfg.get("provider")
+            and cfg.get("model")
+            and cfg.get("api_key_present")
+        )
+    except Exception:
+        vlm_ready = False
+
+    # Choose VLM template
+    vlm_block = None
+    if vlm_ready:
+        try:
+            guide = _json.loads(get_gemini_prompt_templates())
+            edits = (
+                (guide.get("editing_templates") or {})
+                if isinstance(guide, dict)
+                else {}
+            )
+        except Exception:
+            edits = {}
+
+        if task_norm == "style_transfer":
+            templates = edits.get("style_transfer") or []
+            etype = "style_transfer"
+        elif task_norm == "segmentation":
+            templates = edits.get("edit") or []
+            etype = "edit"
+        elif task_norm == "domain_shift":
+            templates = edits.get("edit") or []
+            etype = "edit"
+        else:
+            templates = edits.get("edit") or []
+            etype = "edit"
+
+        prompt_template = (
+            templates[0]
+            if templates
+            else "Using the provided image, make a minimal, scoped change while preserving identity and composition."
+        )
+        if identity_preserve:
+            prompt_template += (
+                " Preserve subject identity, pose, lighting, and composition."
+            )
+
+        vlm_block = {
+            "VLMEdit": {
+                "prompt_template": prompt_template,
+                "edit_type": etype,
+                "vlm_required": True,
+            }
+        }
+
+    recipe = {
+        "alb": {"Compose": alb_ops},
+    }
+    if vlm_block:
+        recipe["vlm"] = vlm_block
+
+    # Execution plan
+    order_default = (
+        "alb_then_vlm"
+        if task_norm in {"classification", "domain_shift", "segmentation"}
+        else "vlm_then_alb"
+    )
+    order = constraints.get("order") or order_default
+    execution_plan = {
+        "order": order,
+        "output_count": out_count,
+        "seed_strategy": "fixed_per_variant",
+        "naming": "session/<timestamp>_<task>_<variant>",
+    }
+
+    rationale = {
+        "task": task_norm,
+        "summary": (
+            "Mild photometric Alb ops for label stability; optional VLMEdit for environment/style changes"
+            if vlm_block
+            else "Alb-only plan due to VLM not ready; photometric ops tuned for stability"
+        ),
+        "identity_preserve": identity_preserve,
+        "notes": [
+            "Review and adjust ranges/probabilities to fit your dataset",
+            "Use vlm_edit_image for the VLM step; use augment_image for Alb-only",
+        ],
+    }
+
+    # Stable hash over canonical JSON
+    canonical = _json.dumps(recipe, sort_keys=True, separators=(",", ":"))
+    recipe_hash = hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
+
+    result = {
+        "recipe": recipe,
+        "rationale": rationale,
+        "execution_plan": execution_plan,
+        "recipe_hash": recipe_hash,
+    }
+
+    # Optional: persist planning artifacts for later execution by clients/agents
+    if save:
+        try:
+            from datetime import datetime
+            from pathlib import Path as _Path
+
+            base = output_dir or os.getenv("OUTPUT_DIR", "outputs")
+            root = _Path(base) / "recipes"
+            root.mkdir(parents=True, exist_ok=True)
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            plan_dir = root / f"{ts}_{task_norm}_{recipe_hash}"
+            plan_dir.mkdir(parents=True, exist_ok=True)
+
+            # Write files
+            (plan_dir / "recipe.json").write_text(
+                _json.dumps(recipe, indent=2), encoding="utf-8"
+            )
+            (plan_dir / "rationale.json").write_text(
+                _json.dumps(rationale, indent=2), encoding="utf-8"
+            )
+            (plan_dir / "execution_plan.json").write_text(
+                _json.dumps(execution_plan, indent=2), encoding="utf-8"
+            )
+
+            manifest = {
+                "task": task_norm,
+                "recipe_hash": recipe_hash,
+                "created": ts,
+                "files": {
+                    "recipe": str((plan_dir / "recipe.json").resolve()),
+                    "rationale": str((plan_dir / "rationale.json").resolve()),
+                    "execution_plan": str((plan_dir / "execution_plan.json").resolve()),
+                },
+                "hints": {
+                    "edit_call": "vlm_edit_image(image_path=..., prompt=<fill_template>, edit_type=<from recipe>)",
+                    "alb_call": "augment_image(image_path=..., prompt=<describe Alb ops or use presets>)",
+                },
+            }
+            (plan_dir / "manifest.json").write_text(
+                _json.dumps(manifest, indent=2), encoding="utf-8"
+            )
+
+            result["paths"] = {
+                "dir": str(plan_dir.resolve()),
+                "recipe": str((plan_dir / "recipe.json").resolve()),
+                "rationale": str((plan_dir / "rationale.json").resolve()),
+                "execution_plan": str((plan_dir / "execution_plan.json").resolve()),
+                "manifest": str((plan_dir / "manifest.json").resolve()),
+            }
+        except Exception as e:
+            result["save_error"] = f"Failed to save recipe artifacts: {e}"
+
+    return result
+
+
+# Gemini Prompt Templates & Guide
+@mcp.tool()
+@mcp.resource("file://gemini_prompt_templates")
+def get_gemini_prompt_templates() -> str:
+    """JSON guide of Gemini image generation tips and templates.
+
+    Contains:
+    - recommended model name (preview)
+    - safety notes
+    - example prompts by scenario
+    - response handling tips
+    """
+    guide = {
+        "provider": "google",
+        "recommended_model": "gemini-2.5-flash-image-preview",
+        "notes": [
+            "The preview model returns candidates with content.parts; images are in parts[n].inline_data.data.",
+            "Use concise, visual descriptions; specify style, environment, lighting, camera if relevant.",
+            "Keep generation resolution reasonable for latency; upscale separately if needed.",
+        ],
+        "best_practices": [
+            "Be hyper-specific about subjects, colors, lighting, and composition",
+            "Provide context and intent (purpose and desired mood)",
+            "Iterate and refine prompts; adjust based on outputs",
+            "Use step-by-step instructions for complex scenes",
+            "Prefer positive framing (describe what you want instead of 'no X')",
+            "Control the camera (e.g., wide-angle, macro, low-angle perspective)",
+        ],
+        "response_parsing": {
+            "python": "for part in response.candidates[0].content.parts: if part.inline_data: Image.open(BytesIO(part.inline_data.data))",
+        },
+        "templates": {
+            "product_style": [
+                "Generate a studio photo of a [subject] on a seamless background, soft diffused lighting, 85mm lens look, high detail",
+                "Create a lifestyle image of [subject] in a modern living room, natural window light, shallow depth of field",
+            ],
+            "environment_shift": [
+                "Create an image of a [subject] in a night street scene with neon lights and light rain, cinematic contrast",
+                "Create an image of a [subject] in a forest at golden hour, warm rim lighting, soft haze",
+            ],
+            "branding_theme": [
+                "Design a [theme] visual featuring [subject] with a minimal composition and a color palette of [colors]",
+                "Poster-style artwork of [subject] with bold typography spelling '[brand]', complementary color scheme",
+            ],
+            "technical_specs": [
+                "Ultra-detailed macro photograph of [subject], 1:1 magnification, focus stacking look, softbox lighting",
+                "Architectural photograph of [subject] at blue hour, long exposure look, reflections on wet ground",
+            ],
+        },
+        "editing_templates": {
+            "edit": [
+                "Using the provided image of [subject], please [add/remove/modify] [element] and ensure the change matches the original style, lighting, and perspective.",
+            ],
+            "inpaint": [
+                "Using the provided image, change only the [specific element] to [new element/description]. Keep everything else exactly the same, preserving original style, lighting, and composition.",
+            ],
+            "style_transfer": [
+                "Transform the provided photograph of [subject] into the artistic style of [artist/art style]. Preserve the original composition but render it with [stylistic elements].",
+            ],
+            "compose": [
+                "Create a new image by combining the elements from the provided images. Take the [element from image 1] and place it with/on the [element from image 2]. The final image should be a [description of the final scene].",
+            ],
+        },
+        "safety": [
+            "Follow content policy and avoid sensitive topics. For medical/automotive damage depiction, add 'for research and simulation only'.",
+            "Do not request or produce disallowed content.",
+        ],
+        "attribution": "See https://ai.google.dev/gemini-api/docs/image-generation for official guidance.",
+    }
+
+    import json as _json
+
+    return _json.dumps(guide, indent=2)
 
 
 # MCP Prompt Templates
@@ -1361,6 +2111,32 @@ def get_getting_started_guide() -> str:
                             "prompt": "add gaussian blur and rotate 15 degrees",
                         },
                         "result": "Saves augmented image + metadata under outputs/<session>/",
+                    },
+                ],
+            },
+            {
+                "name": "VLM preview (text->image)",
+                "calls": [
+                    {
+                        "tool": "vlm_generate_preview",
+                        "args": {
+                            "prompt": "Create a moodboard-style image of a neon-lit night street scene",
+                        },
+                        "result": "Writes a single preview image under outputs/vlm_tests/",
+                    },
+                ],
+            },
+            {
+                "name": "VLM edit (image + prompt)",
+                "calls": [
+                    {
+                        "tool": "vlm_edit_image",
+                        "args": {
+                            "image_path": "examples/basic_images/cat.jpg",
+                            "prompt": "Using the provided image of my cat, please add a small, knitted wizard hat on its head. Preserve pose, lighting, and composition.",
+                            "edit_type": "edit",
+                        },
+                        "result": "Creates a full session with original + edited images and a verification markdown",
                     },
                 ],
             },

@@ -1,0 +1,6 @@
+{
+  "enabled": true,
+  "provider": "google",
+  "model": "gemini-2.5-flash-image-preview",
+  "api_key": "REPLACE_WITH_YOUR_SECRET_KEY"
+}

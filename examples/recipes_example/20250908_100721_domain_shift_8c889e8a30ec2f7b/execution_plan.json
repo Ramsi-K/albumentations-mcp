@@ -1,0 +1,6 @@
+{
+  "order": "alb_then_vlm",
+  "output_count": 1,
+  "seed_strategy": "fixed_per_variant",
+  "naming": "session/<timestamp>_<task>_<variant>"
+}
