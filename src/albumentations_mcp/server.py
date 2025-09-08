@@ -1043,11 +1043,13 @@ def vlm_test_prompt(
     model: str | None = None,
     output_dir: str | None = None,
 ) -> dict:
-    """Generate a single image from a prompt using Google Gemini preview.
+    """Generate a preview image from a text prompt (no input image).
 
-    Notes:
-    - Requires 'google-genai' package and a valid API key.
-    - Saves image to a simple test folder under OUTPUT_DIR (vlm_tests).
+    Purpose:
+    - Explore prompts and styles quickly without supplying an input photo.
+    - No session or verification; saves under OUTPUT_DIR/vlm_tests.
+
+    Use `vlm_edit_image` for photo edits that need full session artifacts.
     """
     try:
         cfg = load_vlm_config()
@@ -1111,6 +1113,23 @@ def vlm_test_prompt(
 
 
 @mcp.tool()
+def vlm_generate_preview(
+    prompt: str,
+    model: str | None = None,
+    output_dir: str | None = None,
+) -> dict:
+    """Generate an image from a text prompt for quick ideation.
+
+    Purpose:
+    - Explore prompts and styles without supplying an input photo.
+    - No session or verification; saves under OUTPUT_DIR/vlm_tests.
+
+    Use `vlm_edit_image` for photo edits that need full session artifacts.
+    """
+    return vlm_test_prompt(prompt=prompt, model=model, output_dir=output_dir)
+
+
+@mcp.tool()
 def vlm_apply(
     image_path: str = "",
     session_id: str = "",
@@ -1119,7 +1138,7 @@ def vlm_apply(
     seed: int | None = None,
     output_dir: str | None = None,
 ) -> dict:
-    """Apply a VLM semantic edit (image-conditioned) and write artifacts to the session.
+    """Edit an image with Gemini and save session artifacts.
 
     Args:
         image_path: Path to an input image, or provide `session_id` instead
@@ -1337,6 +1356,38 @@ def vlm_apply(
 
     except Exception as e:
         return {"success": False, "message": f"VLM apply failed: {e}"}
+
+
+@mcp.tool()
+def vlm_edit_image(
+    image_path: str = "",
+    session_id: str = "",
+    prompt: str = "",
+    edit_type: str | None = None,
+    seed: int | None = None,
+    output_dir: str | None = None,
+) -> dict:
+    """Perform an image-conditioned edit with Gemini and save session artifacts.
+
+    Purpose:
+    - Edit an existing image (add/remove element, background swap, inpaint,
+      style transfer) via Gemini preview.
+    - Runs full pipeline hooks to save original/edited images, verification
+      markdown, metadata, and logs in a session directory.
+
+    Assistants:
+    - Build a clear edit prompt using `get_gemini_prompt_templates`.
+    - State what to change and what to preserve (identity/pose/lighting/composition).
+    - Optionally set `edit_type` to one of: edit | inpaint | style_transfer | compose.
+    """
+    return vlm_apply(
+        image_path=image_path,
+        session_id=session_id,
+        prompt=prompt,
+        edit_type=edit_type,
+        seed=seed,
+        output_dir=output_dir,
+    )
 
 
 # Gemini Prompt Templates & Guide
@@ -1816,6 +1867,32 @@ def get_getting_started_guide() -> str:
                             "prompt": "add gaussian blur and rotate 15 degrees",
                         },
                         "result": "Saves augmented image + metadata under outputs/<session>/",
+                    },
+                ],
+            },
+            {
+                "name": "VLM preview (text->image)",
+                "calls": [
+                    {
+                        "tool": "vlm_generate_preview",
+                        "args": {
+                            "prompt": "Create a moodboard-style image of a neon-lit night street scene",
+                        },
+                        "result": "Writes a single preview image under outputs/vlm_tests/",
+                    },
+                ],
+            },
+            {
+                "name": "VLM edit (image + prompt)",
+                "calls": [
+                    {
+                        "tool": "vlm_edit_image",
+                        "args": {
+                            "image_path": "examples/basic_images/cat.jpg",
+                            "prompt": "Using the provided image of my cat, please add a small, knitted wizard hat on its head. Preserve pose, lighting, and composition.",
+                            "edit_type": "edit",
+                        },
+                        "result": "Creates a full session with original + edited images and a verification markdown",
                     },
                 ],
             },

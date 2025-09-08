@@ -34,7 +34,7 @@ from pathlib import Path
 from albumentations_mcp.server import (
     check_vlm_config,
     get_gemini_prompt_templates,
-    vlm_apply,
+    vlm_edit_image,
 )
 
 
@@ -75,7 +75,7 @@ def _run_vlm_apply_mvp(tmp_dir: Path | None = None) -> dict:
     test_outputs.mkdir(parents=True, exist_ok=True)
 
     # 5) Apply the VLM edit (this will generate and save artifacts via hooks)
-    resp = vlm_apply(
+    resp = vlm_edit_image(
         image_path=str(img_path),
         prompt=base_prompt,
         edit_type="edit",
