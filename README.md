@@ -86,6 +86,17 @@ Or add manually:
 - **`vlm_edit_image`** – Image‑conditioned edit; runs full session + verification
 - **`vlm_suggest_recipe`** – Planning‑only: outputs Alb Compose + optional VLMEdit prompt template; can save under `outputs/recipes/`
 
+Install (with or without VLM)
+
+- Core only (Alb augmentations): `pip install albumentations-mcp`
+- With VLM (Gemini): `pip install 'albumentations-mcp[vlm]'`
+- Local dev (with VLM): `uv pip install -e '.[vlm]'`
+
+Claude/uvx note: include the extra in args when you need VLM
+
+- Latest prerelease with VLM: `"args": ["--refresh", "--prerelease=allow", "albumentations-mcp[vlm]"]`
+- Pin stable with VLM: `"args": ["--refresh", "albumentations-mcp[vlm]==1.0.2"]`
+
 VLM quickstart (env or file):
 
 ```bash
