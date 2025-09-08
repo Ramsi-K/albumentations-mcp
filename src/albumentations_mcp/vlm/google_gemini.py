@@ -60,24 +60,59 @@ class GoogleGeminiClient(VLMClient):
             genai.Client(api_key=self._api_key) if self._api_key else genai.Client()
         )
 
-        # Generate content (image-conditioned edit): include the input image then the prompt
-        # The SDK accepts PIL Images directly in the contents list.
+        # Helper to extract first inline image from a response
+        def _extract_image(resp) -> Image.Image | None:
+            try:
+                for cand in getattr(resp, "candidates", []) or []:
+                    content = getattr(cand, "content", None)
+                    parts = getattr(content, "parts", None) if content else None
+                    if not parts:
+                        continue
+                    for part in parts:
+                        inline = getattr(part, "inline_data", None)
+                        if inline is not None and getattr(inline, "data", None):
+                            data = inline.data
+                            with BytesIO(data) as buf:
+                                img = Image.open(buf)
+                                img.load()
+                                return img
+            except Exception:
+                return None
+            return None
+
+        # Attempt 1: follow working sample ordering [prompt, image]
         response = client.models.generate_content(
+            model=self.model,
+            contents=[prompt, image],
+        )
+        img = _extract_image(response)
+        if img is not None:
+            return img
+
+        # Attempt 2 (fallback): try [image, prompt]
+        response2 = client.models.generate_content(
             model=self.model,
             contents=[image, prompt],
         )
+        img2 = _extract_image(response2)
+        if img2 is not None:
+            return img2
 
-        # Find first inline image in parts
-        candidate = response.candidates[0]
-        for part in candidate.content.parts:
-            if getattr(part, "inline_data", None) is not None:
-                data = part.inline_data.data
-                with BytesIO(data) as buf:
-                    img = Image.open(buf)
-                    img.load()
-                    return img
+        # Collect debug info to aid prompts/model tuning
+        def _summarize(resp) -> str:
+            try:
+                texts = []
+                for cand in getattr(resp, "candidates", []) or []:
+                    content = getattr(cand, "content", None)
+                    for part in getattr(content, "parts", []) or []:
+                        if getattr(part, "text", None):
+                            texts.append(part.text[:120])
+                return "; ".join(texts) if texts else ""
+            except Exception:
+                return ""
 
-        # If no image parts, try any text fallback (not expected for image model)
+        text_hint = _summarize(response) or _summarize(response2)
+        hint_msg = f" Hint: received text parts: {text_hint}" if text_hint else ""
         raise RuntimeError(
-            "No image returned by Gemini model; check model name and prompt"
+            "No image returned by Gemini model; check model name and prompt." + hint_msg
         )

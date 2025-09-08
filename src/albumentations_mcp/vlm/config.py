@@ -75,8 +75,15 @@ def load_vlm_config() -> dict[str, Any]:
       - source ("file"|"env"|"none")
       - raw_options (dict) non-secret options loaded from file (if any)
     """
-    # Discover config path
+    # Discover config path (env, then common defaults)
     config_path = (os.getenv("VLM_CONFIG_PATH") or "").strip() or None
+    if not config_path:
+        # Try common local defaults so users don't have to set env vars
+        for cand in ("config/vlm.json", "./vlm.json"):
+            p = Path(cand)
+            if p.exists() and p.is_file():
+                config_path = str(p)
+                break
 
     # Read file first
     file_cfg, file_path = _get_file_config(config_path)
