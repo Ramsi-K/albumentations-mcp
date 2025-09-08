@@ -42,6 +42,7 @@ wheels = [
 [[package]]
 name = "albumentations-mcp"
 version = "1.0.2"
+
 source = { editable = "." }
 dependencies = [
     { name = "albumentations" },
@@ -80,6 +81,7 @@ requires-dist = [
     { name = "google-genai", marker = "extra == 'vlm'", specifier = ">=0.2.0" },
     { name = "httpx", specifier = "<0.28" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.12,<2" },
+
     { name = "numpy", specifier = ">=1.26.0" },
     { name = "opencv-python-headless", specifier = ">=4.8.0" },
     { name = "pillow", specifier = ">=10.0.0" },
