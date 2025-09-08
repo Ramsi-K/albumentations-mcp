@@ -1,0 +1,14 @@
+{
+  "task": "domain_shift",
+  "recipe_hash": "8c889e8a30ec2f7b",
+  "created": "20250908_100721",
+  "files": {
+    "recipe": "outputs/recipes/20250908_100721_domain_shift_8c889e8a30ec2f7b/recipe.json",
+    "rationale": "outputs/recipes/20250908_100721_domain_shift_8c889e8a30ec2f7b/rationale.json",
+    "execution_plan": "outputs/recipes/20250908_100721_domain_shift_8c889e8a30ec2f7b/execution_plan.json"
+  },
+  "hints": {
+    "edit_call": "vlm_edit_image(image_path=..., prompt=<fill_template>, edit_type=<from recipe>)",
+    "alb_call": "augment_image(image_path=..., prompt=<describe Alb ops or use presets>)"
+  }
+}

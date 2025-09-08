@@ -1,0 +1,39 @@
+{
+  "alb": {
+    "Compose": [
+      {
+        "name": "RandomBrightnessContrast",
+        "parameters": {
+          "brightness_limit": 0.12,
+          "contrast_limit": 0.12
+        },
+        "probability": 0.7
+      },
+      {
+        "name": "HueSaturationValue",
+        "parameters": {
+          "hue_shift_limit": 6,
+          "sat_shift_limit": 12
+        },
+        "probability": 0.5
+      },
+      {
+        "name": "MotionBlur",
+        "parameters": {
+          "blur_limit": [
+            3,
+            7
+          ]
+        },
+        "probability": 0.3
+      }
+    ]
+  },
+  "vlm": {
+    "VLMEdit": {
+      "prompt_template": "Using the provided image of [subject], please [add/remove/modify] [element] and ensure the change matches the original style, lighting, and perspective. Preserve subject identity, pose, lighting, and composition.",
+      "edit_type": "edit",
+      "vlm_required": true
+    }
+  }
+}

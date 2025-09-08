@@ -1,0 +1,9 @@
+{
+  "task": "domain_shift",
+  "summary": "Mild photometric Alb ops for label stability; optional VLMEdit for environment/style changes",
+  "identity_preserve": true,
+  "notes": [
+    "Review and adjust ranges/probabilities to fit your dataset",
+    "Use vlm_edit_image for the VLM step; use augment_image for Alb-only"
+  ]
+}
