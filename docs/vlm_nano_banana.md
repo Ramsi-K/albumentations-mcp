@@ -6,7 +6,7 @@ Integrates Google Gemini 2.5 Flash Image (preview) for semantic/contextual edits
 
 Option A — file (preferred)
 
-1) Create `config/vlm.json` (non‑secret options):
+1. Create `config/vlm.json` (non‑secret options):
 
 ```json
 {
@@ -16,7 +16,7 @@ Option A — file (preferred)
 }
 ```
 
-2) Provide your API key via OS env (one of): `GOOGLE_API_KEY`, `GEMINI_API_KEY`, `VLM_API_KEY`, or `NANO_BANANA_API_KEY`.
+2. Provide your API key via OS env (one of): `GOOGLE_API_KEY`, `GEMINI_API_KEY`, `VLM_API_KEY`, or `NANO_BANANA_API_KEY`.
 
 Option B — inline env (no file)
 
@@ -63,7 +63,7 @@ Inline env:
   "mcpServers": {
     "albumentations": {
       "command": "uvx",
-      "args": ["albumentations-mcp"],
+      "args": ["albumentations-mcp[vlm]"],
       "env": {
         "OUTPUT_DIR": "./outputs",
         "ENABLE_VLM": "true",
@@ -114,9 +114,21 @@ print(plan["paths"])  # outputs/recipes/<timestamp>_<task>_<hash>/
   "recipe": {
     "alb": {
       "Compose": [
-        {"name": "RandomBrightnessContrast", "parameters": {"brightness_limit": 0.12, "contrast_limit": 0.12}, "probability": 0.7},
-        {"name": "HueSaturationValue", "parameters": {"hue_shift_limit": 6, "sat_shift_limit": 12}, "probability": 0.5},
-        {"name": "MotionBlur", "parameters": {"blur_limit": [3, 7]}, "probability": 0.3}
+        {
+          "name": "RandomBrightnessContrast",
+          "parameters": { "brightness_limit": 0.12, "contrast_limit": 0.12 },
+          "probability": 0.7
+        },
+        {
+          "name": "HueSaturationValue",
+          "parameters": { "hue_shift_limit": 6, "sat_shift_limit": 12 },
+          "probability": 0.5
+        },
+        {
+          "name": "MotionBlur",
+          "parameters": { "blur_limit": [3, 7] },
+          "probability": 0.3
+        }
       ]
     },
     "vlm": {
@@ -127,7 +139,11 @@ print(plan["paths"])  # outputs/recipes/<timestamp>_<task>_<hash>/
       }
     }
   },
-  "execution_plan": {"order": "alb_then_vlm", "output_count": 3, "seed_strategy": "fixed_per_variant"},
+  "execution_plan": {
+    "order": "alb_then_vlm",
+    "output_count": 3,
+    "seed_strategy": "fixed_per_variant"
+  },
   "recipe_hash": "<hash>"
 }
 ```
