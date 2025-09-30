@@ -71,21 +71,25 @@ Or add manually:
 
 ## Available Tools
 
-- **`augment_image`** - Apply augmentations using natural language or presets
-- **`list_available_transforms`** - Get supported transforms and parameters
-- **`validate_prompt`** - Test prompts without processing images
-- **`list_available_presets`** - Get available preset configurations
-- **`set_default_seed`** - Set global seed for reproducible results
-- **`get_pipeline_status`** - Check pipeline health and configuration
-- **`get_quick_transform_reference`** - Condensed transform keywords for prompting
-- **`get_getting_started_guide`** - Structured workflow guide for first-time assistants
+### Core MCP Tools
+- **`ping`** - Lightweight health check that reports status, version, and timestamp.
+- **`load_image_for_processing`** - Stage remote URLs or base64 payloads and return a `session_id` for follow-up calls.
+- **`augment_image`** - Run Albumentations pipelines from natural language prompts or named presets.
+- **`validate_prompt`** - Parse prompts and surface the structured transforms without processing images.
+- **`list_available_transforms`** - Enumerate supported transforms with parameter metadata.
+- **`list_available_presets`** - List built-in presets (`segmentation`, `portrait`, `lowlight`).
+- **`get_quick_transform_reference`** - Provide a condensed keyword-to-transform reference for prompting.
+- **`set_default_seed`** - Persist a global seed to keep augmentations reproducible.
+- **`get_pipeline_status`** - Report pipeline configuration, enabled features, and output locations.
+- **`get_getting_started_guide`** - Deliver the structured onboarding walkthrough as a tool response.
 
-### VLM (Gemini “Nano Banana”) Tools
-
-- **`check_vlm_config`** – Report readiness without exposing secrets
-- **`vlm_generate_preview`** – Text→image preview for prompt/style ideation (no session)
-- **`vlm_edit_image`** – Image‑conditioned edit; runs full session + verification
-- **`vlm_suggest_recipe`** – Planning‑only: outputs Alb Compose + optional VLMEdit prompt template; can save under `outputs/recipes/`
+### VLM (Gemini / Nano Banana) Tools
+- **`check_vlm_config`** - Verify VLM readiness without exposing secrets.
+- **`vlm_test_prompt`** - Low-level text-to-image preview helper (no session required).
+- **`vlm_generate_preview`** - Convenience wrapper for quick prompt/style ideation previews.
+- **`vlm_apply`** - Direct VLM apply endpoint for image-to-image edits with fine-grained controls.
+- **`vlm_edit_image`** - Full session edit flow that includes verification steps.
+- **`vlm_suggest_recipe`** - Generate Albumentations + VLM plans and optionally save under `outputs/recipes/`.
 
 Install (with or without VLM)
 
@@ -107,8 +111,8 @@ set VLM_PROVIDER=google
 set VLM_MODEL=gemini-2.5-flash-image-preview
 set GOOGLE_API_KEY=...  # or GEMINI_API_KEY / VLM_API_KEY
 
-# Option 2: file (auto‑discovered)
-# Place a non‑secret file at config/vlm.json:
+# Option 2: file (auto-discovered)
+# Place a non-secret file at config/vlm.json:
 {
   "enabled": true,
   "provider": "google",
@@ -144,7 +148,7 @@ print(plan["paths"])  # outputs/recipes/<timestamp>_<task>_<hash>/
 
 MCP env examples for VLM (choose one option)
 
-Option A — file (preferred):
+Option A - file (preferred):
 
 ```json
 {
@@ -163,7 +167,7 @@ Option A — file (preferred):
 }
 ```
 
-Option B — inline env (no file):
+Option B - inline env (no file):
 
 ```json
 {
@@ -185,20 +189,29 @@ Option B — inline env (no file):
 
 ## Available Prompts
 
+### Core Prompt Templates
 - **`compose_preset`** - Generate augmentation policies from presets with optional tweaks
 - **`explain_effects`** - Analyze pipeline effects in plain English
 - **`augmentation_parser`** - Parse natural language to structured transforms
 - **`vision_verification`** - Compare original and augmented images
 - **`error_handler`** - Generate user-friendly error messages and recovery suggestions
 
+### VLM Prompt Templates
+- None (VLM flows currently reuse the core prompt templates.)
+
 ## Available Resources
 
-- **`transforms_guide`** - Complete transform documentation with parameters and ranges
-- **`policy_presets`** - Built-in preset configurations (segmentation, portrait, lowlight)
-- **`available_transforms_examples`** - Usage examples and patterns organized by categories
-- **`preset_pipelines_best_practices`** - Best practices guide for augmentation workflows
-- **`troubleshooting_common_issues`** - Common issues, solutions, and diagnostic steps
-- **`getting_started_guide`** - Same content as the tool version, resource-style
+### Core MCP Resources
+- **`transforms_guide`** - Comprehensive transform documentation with defaults and parameter ranges.
+- **`policy_presets`** - Built-in preset configurations for segmentation, portrait, and lowlight workflows.
+- **`available_transforms_examples`** - Practical usage examples organized by transform category.
+- **`preset_pipelines_best_practices`** - Guidance for composing and maintaining augmentation pipelines.
+- **`troubleshooting_common_issues`** - Frequently seen problems with recommended fixes.
+- **`get_getting_started_guide`** - Structured onboarding guide; identical content to the tool response.
+
+### VLM Resources
+- **`get_gemini_prompt_templates`** - JSON templates and style guidance for Gemini-based VLM flows.
+
 
 ## Usage Examples
 
