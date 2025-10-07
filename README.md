@@ -1,5 +1,6 @@
 # Albumentations-MCP with Nano Banana (Gemini)
 
+
 Natural language image augmentation via MCP protocol. Transform images using plain English with this MCP-compliant server built on [Albumentations](https://albumentations.ai/).
 
 **Example:** `"add blur and rotate 15 degrees"` → Applies GaussianBlur + Rotate transforms automatically

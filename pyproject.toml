@@ -5,6 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "albumentations-mcp"
 version = "1.0.2"
+
 description = "MCP-compliant image augmentation server using Albumentations"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -49,7 +50,6 @@ dependencies = [
   # Temporary compatibility cap: httpx_sse (via mcp) breaks on httpx >= 0.28
   "httpx<0.28",
   "pre-commit>=4.2.0",
-]
 
 [project.optional-dependencies]
 dev = [
@@ -97,6 +97,7 @@ warn_return_any = false
 warn_unused_configs = true
 check_untyped_defs = false
 disallow_untyped_defs = false
+
 
 [dependency-groups]
 dev = [
