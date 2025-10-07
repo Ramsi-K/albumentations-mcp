@@ -71,6 +71,7 @@ Or add manually:
 ## Available Tools
 
 ### Core MCP Tools
+
 - **`ping`** - Lightweight health check that reports status, version, and timestamp.
 - **`load_image_for_processing`** - Stage remote URLs or base64 payloads and return a `session_id` for follow-up calls.
 - **`augment_image`** - Run Albumentations pipelines from natural language prompts or named presets.
@@ -83,6 +84,7 @@ Or add manually:
 - **`get_getting_started_guide`** - Deliver the structured onboarding walkthrough as a tool response.
 
 ### VLM (Gemini / Nano Banana) Tools
+
 - **`check_vlm_config`** - Verify VLM readiness without exposing secrets.
 - **`vlm_test_prompt`** - Low-level text-to-image preview helper (no session required).
 - **`vlm_generate_preview`** - Convenience wrapper for quick prompt/style ideation previews.
@@ -189,6 +191,7 @@ Option B - inline env (no file):
 ## Available Prompts
 
 ### Core Prompt Templates
+
 - **`compose_preset`** - Generate augmentation policies from presets with optional tweaks
 - **`explain_effects`** - Analyze pipeline effects in plain English
 - **`augmentation_parser`** - Parse natural language to structured transforms
@@ -196,11 +199,13 @@ Option B - inline env (no file):
 - **`error_handler`** - Generate user-friendly error messages and recovery suggestions
 
 ### VLM Prompt Templates
+
 - None (VLM flows currently reuse the core prompt templates.)
 
 ## Available Resources
 
 ### Core MCP Resources
+
 - **`transforms_guide`** - Comprehensive transform documentation with defaults and parameter ranges.
 - **`policy_presets`** - Built-in preset configurations for segmentation, portrait, and lowlight workflows.
 - **`available_transforms_examples`** - Practical usage examples organized by transform category.
@@ -209,8 +214,8 @@ Option B - inline env (no file):
 - **`get_getting_started_guide`** - Structured onboarding guide; identical content to the tool response.
 
 ### VLM Resources
-- **`get_gemini_prompt_templates`** - JSON templates and style guidance for Gemini-based VLM flows.
 
+- **`get_gemini_prompt_templates`** - JSON templates and style guidance for Gemini-based VLM flows.
 
 ## Usage Examples
 
@@ -259,6 +264,9 @@ augment_image(session_id="<session_id>", prompt="add blur and rotate 10 degrees"
 - [VLM (Nano Banana/Gemini) Guide](docs/vlm_nano_banana.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Contributing](docs/contributing.md)
+- [Start Here - New Contributors](docs/start-here.md)
+- [Hacktoberfest Guide](docs/hacktoberfest-guide.md)
+- [Contribution Ideas](docs/contribution-ideas.md)
 
 ### Configuration Files
 
@@ -266,6 +274,24 @@ augment_image(session_id="<session_id>", prompt="add blur and rotate 10 degrees"
 - [Kiro IDE Config](docs/kiro-mcp-config.json)
 - [All Configuration Examples](docs/mcp-config-examples.json)
 - [VLM Example Config](config/vlm.example.json)
+
+## Contributing
+
+We welcome contributions! This project is participating in **Hacktoberfest 2024** 🎃
+
+**Quick Start for Contributors:**
+
+- 🚀 [Start Here Guide](docs/start-here.md) - Perfect for first-time contributors
+- 🎃 [Hacktoberfest Guide](docs/hacktoberfest-guide.md) - Hacktoberfest-specific information
+- 💡 [Contribution Ideas](docs/contribution-ideas.md) - Specific tasks you can work on
+- 📋 [Contributing Guide](docs/contributing.md) - Detailed development setup
+
+**High-Impact Areas:**
+
+- **Transform Mappings**: Add natural language patterns (currently ~20, goal: 50+)
+- **Presets**: Create domain-specific configurations (medical, satellite, artistic)
+- **Documentation**: Examples, tutorials, and guides
+- **Testing**: Improve coverage and fix remaining test failures
 
 ## License
 
