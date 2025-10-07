@@ -1,0 +1,99 @@
+name: Documentation Improvement
+description: Improve or add documentation
+title: '[Docs]: '
+labels: ['documentation', 'good first issue']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help improve our documentation! Good documentation makes the project accessible to everyone.
+
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: Documentation Type
+      description: What type of documentation needs improvement?
+      options:
+        - README improvements
+        - API documentation
+        - Usage examples
+        - Setup/installation guide
+        - Troubleshooting guide
+        - Contributing guide
+        - Code comments/docstrings
+        - Tutorial/walkthrough
+        - Other (specify in description)
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-issue
+    attributes:
+      label: Current Issue
+      description: What's wrong with the current documentation or what's missing?
+      placeholder: |
+        Example:
+        - The setup guide doesn't cover Windows installation
+        - Missing examples for batch processing
+        - API documentation is unclear about parameter types
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-improvement
+    attributes:
+      label: Proposed Improvement
+      description: What specific improvements would you like to make?
+      placeholder: |
+        Example:
+        - Add Windows-specific installation steps
+        - Create 5 practical examples with different image types
+        - Add type hints and better parameter descriptions
+    validations:
+      required: true
+
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Target Audience
+      description: Who is this documentation improvement for?
+      options:
+        - Complete beginners
+        - Python developers new to the project
+        - Experienced users looking for advanced features
+        - Contributors/developers
+        - All users
+    validations:
+      required: true
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples or References
+      description: Any examples of good documentation or specific content you'd like to add?
+      placeholder: |
+        Links to good documentation examples, specific code snippets,
+        or detailed content you'd like to include
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope of Work
+      description: What aspects would you like to work on?
+      options:
+        - label: Writing new content
+        - label: Editing existing content
+        - label: Adding code examples
+        - label: Creating diagrams/visuals
+        - label: Improving formatting/structure
+        - label: Adding cross-references/links
+        - label: Testing documentation accuracy
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/ramsi-k/albumentations-mcp/blob/main/docs/contributing.md#community-guidelines)
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

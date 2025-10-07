@@ -1,0 +1,133 @@
+name: New Preset Configuration
+description: Add a new preset for specific use cases
+title: '[Preset]: Add preset for '
+labels: ['enhancement', 'presets', 'good first issue']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help expand our preset library!
+
+        Currently we have: `segmentation`, `portrait`, `lowlight`
+
+        Presets are pre-configured transformation pipelines for specific use cases.
+
+  - type: input
+    id: preset-name
+    attributes:
+      label: Preset Name
+      description: What should this preset be called?
+      placeholder: e.g., "medical", "satellite", "document", "artistic"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: domain
+    attributes:
+      label: Domain/Use Case
+      description: What domain or use case is this preset for?
+      options:
+        - Computer Vision/ML Training
+        - Photography/Creative
+        - Medical Imaging
+        - Satellite/Aerial Imagery
+        - Document Processing
+        - Scientific Imaging
+        - Art/Design
+        - Other (specify in description)
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Preset Description
+      description: Describe what this preset does and when to use it
+      placeholder: |
+        Example:
+        This preset is designed for medical X-ray image augmentation. It applies subtle transformations that preserve diagnostic information while increasing dataset diversity for training medical AI models.
+    validations:
+      required: true
+
+  - type: textarea
+    id: transforms
+    attributes:
+      label: Transform Pipeline
+      description: What transforms should be included in this preset?
+      placeholder: |
+        Example transforms for medical preset:
+        - Rotate(limit=5, p=0.3) # Small rotations only
+        - ShiftScaleRotate(shift_limit=0.05, scale_limit=0.05, rotate_limit=3, p=0.3)
+        - GaussNoise(var_limit=(5, 15), p=0.2) # Minimal noise
+        - Contrast(limit=0.1, p=0.3) # Subtle contrast changes
+        - Brightness(limit=0.1, p=0.3) # Subtle brightness changes
+    validations:
+      required: true
+
+  - type: textarea
+    id: parameters
+    attributes:
+      label: Parameter Justification
+      description: Why did you choose these specific parameters?
+      placeholder: |
+        Example:
+        - Small rotation limits (5°) preserve anatomical orientation
+        - Low noise levels maintain diagnostic quality
+        - Subtle contrast/brightness changes simulate different imaging conditions
+    validations:
+      required: false
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Important Constraints
+      description: What should this preset NOT do? Any important limitations?
+      placeholder: |
+        Example:
+        - Must not flip medical images (would change anatomy)
+        - Should avoid heavy distortions that could hide pathology
+        - Color changes should be minimal for grayscale medical images
+    validations:
+      required: false
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Example Use Cases
+      description: Provide specific examples of when someone would use this preset
+      placeholder: |
+        Example:
+        - Training a pneumonia detection model on chest X-rays
+        - Augmenting MRI scan datasets for brain tumor classification
+        - Preparing ultrasound images for automated measurement tools
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: implementation
+    attributes:
+      label: Implementation Scope
+      description: What aspects of this would you like to work on?
+      options:
+        - label: Define preset configuration in presets.py
+        - label: Add preset validation logic
+        - label: Write unit tests for the preset
+        - label: Add documentation and examples
+        - label: Create sample images/demos
+        - label: Update CLI and MCP tool integration
+
+  - type: textarea
+    id: research
+    attributes:
+      label: Research/References
+      description: Any research papers, articles, or references that support this preset design?
+      placeholder: Links to papers, industry best practices, or domain expertise
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/ramsi-k/albumentations-mcp/blob/main/docs/contributing.md#community-guidelines)
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

@@ -1,0 +1,102 @@
+name: Expand Transform Mappings
+description: Add new natural language patterns for image transformations
+title: '[Transforms]: Add support for '
+labels: ['enhancement', 'transforms', 'nlp', 'good first issue']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help expand our natural language processing capabilities!
+
+        Currently we support ~20 transform mappings. You can see the current list by running:
+        ```bash
+        uvx albumentations-mcp
+        # Then use the list_available_transforms tool
+        ```
+
+  - type: textarea
+    id: new-patterns
+    attributes:
+      label: New Natural Language Patterns
+      description: What new phrases or patterns should we support?
+      placeholder: |
+        Examples:
+        - "make it vintage" → Sepia + Vignette + Noise
+        - "add film grain" → GaussNoise with specific parameters
+        - "simulate old photo" → Sepia + Blur + Noise + Vignette
+      value: |
+        - "phrase here" → Transform(parameters)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: transform-category
+    attributes:
+      label: Transform Category
+      description: What category do these transforms fall into?
+      options:
+        - Color/Tone adjustments
+        - Blur/Sharpening effects
+        - Noise/Texture effects
+        - Geometric transformations
+        - Artistic/Style effects
+        - Weather/Environmental effects
+        - Other (specify in description)
+    validations:
+      required: true
+
+  - type: textarea
+    id: albumentations-mapping
+    attributes:
+      label: Albumentations Transform Mapping
+      description: Which specific Albumentations transforms should these map to?
+      placeholder: |
+        Example:
+        - "make it vintage" should map to:
+          - ToSepia(p=0.8)
+          - Vignette(p=0.6)
+          - GaussNoise(var_limit=(10, 50), p=0.4)
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: Use Cases
+      description: When would someone use these transforms? What's the practical application?
+      placeholder: |
+        Example:
+        - Photography post-processing
+        - Data augmentation for vintage photo classification
+        - Creative image editing
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: implementation
+    attributes:
+      label: Implementation Scope
+      description: What aspects of this would you like to work on?
+      options:
+        - label: Add new patterns to parser.py
+        - label: Update transform mappings
+        - label: Add parameter validation
+        - label: Write unit tests
+        - label: Update documentation
+        - label: Add usage examples
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Example Images/Results
+      description: If you have example images or expected results, please describe or link them
+      placeholder: Links to example images or descriptions of expected visual effects
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/ramsi-k/albumentations-mcp/blob/main/docs/contributing.md#community-guidelines)
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true
