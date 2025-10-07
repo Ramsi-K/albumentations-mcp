@@ -1,5 +1,17 @@
 # Contributing
 
+Welcome to Albumentations-MCP! We're excited to have you contribute to our project.
+
+## 🚀 New Contributors Start Here
+
+If you're new to the project or open source in general, check out these guides first:
+
+- **[Start Here Guide](start-here.md)** - Perfect introduction for first-time contributors
+- **[Hacktoberfest Guide](hacktoberfest-guide.md)** - Hacktoberfest 2024 specific information
+- **[Contribution Ideas](contribution-ideas.md)** - 50+ specific tasks you can work on
+
+These guides will help you find the perfect contribution that matches your skills and interests!
+
 ## Development Setup
 
 ### Prerequisites
@@ -234,22 +246,31 @@ uv publish
 
 ### Issue Reporting
 
+We have issue templates to help you create quality reports:
+
+- **Bug Report**: Use our [bug report template](.github/ISSUE_TEMPLATE/bug_report.yml)
+- **Feature Request**: Use our [feature request template](.github/ISSUE_TEMPLATE/feature_request.yml)
+- **Transform Expansion**: Use our [transform expansion template](.github/ISSUE_TEMPLATE/expand_transforms.yml)
+- **New Presets**: Use our [preset template](.github/ISSUE_TEMPLATE/new_preset.yml)
+- **Documentation**: Use our [documentation template](.github/ISSUE_TEMPLATE/documentation.yml)
+
 When reporting issues:
 
 1. **Search existing issues** first
-2. **Provide minimal reproduction** case
-3. **Include system information** (OS, Python version, etc.)
-4. **Attach relevant logs** and error messages
-5. **Describe expected vs actual** behavior
+2. **Use the appropriate template** for your issue type
+3. **Provide minimal reproduction** case
+4. **Include system information** (OS, Python version, etc.)
+5. **Attach relevant logs** and error messages
+6. **Describe expected vs actual** behavior
 
 ### Feature Requests
 
-For new features:
+For new features, use our templates which guide you to provide:
 
-1. **Describe the use case** and motivation
-2. **Provide examples** of desired behavior
-3. **Consider implementation** complexity
-4. **Discuss alternatives** if applicable
+1. **Use case and motivation** - Why is this needed?
+2. **Specific examples** of desired behavior
+3. **Implementation complexity** assessment
+4. **Alternative approaches** considered
 
 ## Getting Help
 
@@ -269,6 +290,14 @@ We welcome code review from the community:
 - **Peer Review**: Share with Python/CV communities
 
 ### Resources
+
+**Project-Specific:**
+
+- **[Start Here Guide](start-here.md)** - New contributor onboarding
+- **[Contribution Ideas](contribution-ideas.md)** - Specific tasks and examples
+- **[Hacktoberfest Guide](hacktoberfest-guide.md)** - Event participation info
+
+**Python Development:**
 
 - **Python Style Guide**: [PEP 8](https://pep8.org/)
 - **Type Hints**: [PEP 484](https://pep.python.org/pep-0484/)
